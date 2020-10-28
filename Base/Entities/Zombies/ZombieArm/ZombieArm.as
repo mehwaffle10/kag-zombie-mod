@@ -22,70 +22,65 @@ namespace State
 
 void onInit(CBlob@ this)
 {
-	if (getNet().isClient())
+	// Spawn sound
+	if (XORRandom(1) == 0)
 	{
-		// Spawn sound
-		if (XORRandom(1) == 0)
-		{
-			this.getSprite().PlaySound("ZombieHit.ogg");
-		}
+		this.getSprite().PlaySound("ZombieHit.ogg");
 	}
-	else
-	{
-		RunnerMoveVars moveVars;
-		//walking vars
-		moveVars.walkSpeed = 2.6f;
-		moveVars.walkSpeedInAir = 2.5f;
-		moveVars.walkFactor = 1.0f;
-		moveVars.walkLadderSpeed.Set(0.15f, 0.6f);
-		//jumping vars
-		moveVars.jumpMaxVel = 2.9f;
-		moveVars.jumpStart = 1.0f;
-		moveVars.jumpMid = 0.55f;
-		moveVars.jumpEnd = 0.4f;
-		moveVars.jumpFactor = 1.0f;
-		moveVars.jumpCount = 0;
-		moveVars.canVault = true;
-		//swimming
-		moveVars.swimspeed = 1.2;
-		moveVars.swimforce = 30;
-		moveVars.swimEdgeScale = 2.0f;
-		//the overall scale of movement
-		moveVars.overallScale = 0.05f;
-		//stopping forces
-		moveVars.stoppingForce = 0.80f; //function of mass
-		moveVars.stoppingForceAir = 0.30f; //function of mass
-		moveVars.stoppingFactor = 1.0f;
-		//
-		moveVars.walljumped = false;
-		moveVars.walljumped_side = Walljump::NONE;
-		moveVars.wallrun_length = 0;
-		moveVars.wallrun_start = -1.0f;
-		moveVars.wallrun_current = -1.0f;
-		moveVars.wallclimbing = false;
-		moveVars.wallsliding = false;
-		//
-		this.set("moveVars", moveVars);
-		this.getShape().getVars().waterDragScale = 30.0f;
-		this.getShape().getConsts().collideWhenAttached = true;
 
-		// Make it so builders don't highlight on hit
-		this.Tag("flesh");
+	RunnerMoveVars moveVars;
+	//walking vars
+	moveVars.walkSpeed = 2.6f;
+	moveVars.walkSpeedInAir = 2.5f;
+	moveVars.walkFactor = 1.0f;
+	moveVars.walkLadderSpeed.Set(0.15f, 0.6f);
+	//jumping vars
+	moveVars.jumpMaxVel = 2.9f;
+	moveVars.jumpStart = 1.0f;
+	moveVars.jumpMid = 0.55f;
+	moveVars.jumpEnd = 0.4f;
+	moveVars.jumpFactor = 1.0f;
+	moveVars.jumpCount = 0;
+	moveVars.canVault = true;
+	//swimming
+	moveVars.swimspeed = 1.2;
+	moveVars.swimforce = 30;
+	moveVars.swimEdgeScale = 2.0f;
+	//the overall scale of movement
+	moveVars.overallScale = 0.05f;
+	//stopping forces
+	moveVars.stoppingForce = 0.80f; //function of mass
+	moveVars.stoppingForceAir = 0.30f; //function of mass
+	moveVars.stoppingFactor = 1.0f;
+	//
+	moveVars.walljumped = false;
+	moveVars.walljumped_side = Walljump::NONE;
+	moveVars.wallrun_length = 0;
+	moveVars.wallrun_start = -1.0f;
+	moveVars.wallrun_current = -1.0f;
+	moveVars.wallclimbing = false;
+	moveVars.wallsliding = false;
+	//
+	this.set("moveVars", moveVars);
+	this.getShape().getVars().waterDragScale = 30.0f;
+	this.getShape().getConsts().collideWhenAttached = true;
 
-		// Make them stompable
-		this.Tag("player");
+	// Make it so builders don't highlight on hit
+	this.Tag("flesh");
 
-		// Setup knocked
-		InitKnockable(this);
+	// Make them stompable
+	this.Tag("player");
 
-		// For limiting to one hit per attack
-		actorlimit_setup(this);
+	// Setup knocked
+	InitKnockable(this);
 
-		// State for anims/action sync
-		this.set_u8("state", State::idle);
-		this.Sync("state", true);
-		this.set_u16("state timer", 0);
-	}
+	// For limiting to one hit per attack
+	actorlimit_setup(this);
+
+	// State for anims/action sync
+	this.set_u8("state", State::idle);
+	this.Sync("state", true);
+	this.set_u16("state timer", 0);
 }
 
 // Blame Fuzzle.
@@ -114,6 +109,7 @@ bool canHit(CBlob@ this, CBlob@ b)
 
 void onTick(CBlob@ this)
 {
+	print("" + this.exists("LimitedActors"));
 	u8 state = this.get_u8("state");
 	CSprite@ sprite = this.getSprite();
 
@@ -186,10 +182,10 @@ void onTick(CBlob@ this)
 		{
 			f32 dmg = .25f;
 			CBlob@ blob = overlapping[i];
-			Vec2f vel = blob.getPosition() - this.getPosition();
 
 			if (blob !is null && canHit(this, blob) && !has_hit_actor(this, blob))
 			{
+				Vec2f vel = blob.getPosition() - this.getPosition();
 				if (blockAttack(overlapping[i], vel, dmg))
 				{
 					this.set_u8("state", State::blocked);
