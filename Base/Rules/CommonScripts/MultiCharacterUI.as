@@ -41,7 +41,7 @@ void onRender(CRules@ this)
 	if (controls.isKeyPressed(KEY_KEY_R) && cooldown == 0)
 	{
 		CBlob@[] blobsInRadius;
-		map.getBlobsInRadius(controls.getMouseWorldPos(), .5f, @blobsInRadius);
+		map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
 		for (u16 i = 0; i < blobsInRadius.length(); i++)
 		{
 			if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
