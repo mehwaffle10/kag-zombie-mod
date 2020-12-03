@@ -61,7 +61,7 @@ void onPlayerRequestSpawn(CRules@ this, CPlayer@ player)
 
 CBlob@ Respawn(CRules@ this, CPlayer@ player)
 {
-	if (player !is null && getNet().isServer())
+	if (isServer() && player !is null)
 	{
 		// remove previous players blob
 		CBlob @blob = player.getBlob();
@@ -73,8 +73,11 @@ CBlob@ Respawn(CRules@ this, CPlayer@ player)
 			blob.server_Die();
 		}
 
-		CBlob @newBlob = server_CreateBlob(this.get_string("default class"), 0, getSpawnLocation(player));
+		CBlob@ newBlob = server_CreateBlobNoInit(this.get_string("default class"));
+		newBlob.server_setTeamNum(0);
+		newBlob.setPosition(getSpawnLocation(player));
 		newBlob.server_SetPlayer(player);
+		newBlob.Init();
 		return newBlob;
 	}
 
