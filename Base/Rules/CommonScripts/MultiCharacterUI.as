@@ -1,4 +1,6 @@
 
+#include "MultiCharacterCommon.as"
+
 void onInit(CPlayer@ this)
 {
 	this.set_u8("char_swap_cooldown", 0);
@@ -53,6 +55,32 @@ void onRender(CRules@ this)
 				this.SendCommand(this.getCommandID("swap_player"), params);
 				player.set_u8("char_swap_cooldown", getTicksASecond() / 2);
 				break;
+			}
+		}
+	}
+
+	// Get player's char list
+	u16[] player_char_networkIDs;
+	if (readCharList(player.getUsername(), @player_char_networkIDs))
+	{
+		// Render players on the right
+		u8 frame_width = 80;
+		Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
+		Vec2f bottom_right = Vec2f(getScreenWidth(), frame_width);
+		for (u8 i = 0; i < player_char_networkIDs.length(); i++)
+		{
+			CBlob@ char = getBlobByNetworkID(player_char_networkIDs[i]);
+			if (char !is null)
+			{
+				// Draw Frame
+				GUI::DrawFramedPane(upper_left, bottom_right);
+
+				// Draw char sprite
+				Vec2f middle = (upper_left + bottom_right)/2;
+
+				// Update corners
+				upper_left.y += frame_width - 2;
+				bottom_right.y += frame_width - 2;
 			}
 		}
 	}
