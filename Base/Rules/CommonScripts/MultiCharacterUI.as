@@ -72,16 +72,72 @@ void onRender(CRules@ this)
 			CBlob@ char = getBlobByNetworkID(player_char_networkIDs[i]);
 			if (char !is null)
 			{
-				// Draw Frame
-				GUI::DrawFramedPane(upper_left, bottom_right);
+				CSprite@ sprite = char.getSprite();
+				if (sprite !is null)
+				{
+					// Draw Frame
+					GUI::DrawFramedPane(upper_left, bottom_right);
 
-				// Draw char sprite
-				Vec2f middle = (upper_left + bottom_right)/2;
+					// Draw char sprite
+					Vec2f middle = (upper_left + bottom_right)/2;
+					// GUI::DrawFramedPane(middle, bottom_right);
+					GUI::DrawIcon(sprite.getFilename(), sprite.getFrame(), middle, 1.0f);
 
-				// Update corners
-				upper_left.y += frame_width - 2;
-				bottom_right.y += frame_width - 2;
+					// Draw health bar
+					RenderHPBar(char, middle);
+
+					// Update corners
+					upper_left.y += frame_width - 2;
+					bottom_right.y += frame_width - 2;
+				}
 			}
 		}
+	}
+}
+
+void RenderHPBar(CBlob@ blob, Vec2f middle)
+{
+	if (blob is null)
+	{
+		return;
+	}
+
+	string heartFile = "GUI/HeartNBubble.png";
+	int segmentWidth = 16;
+	int iconWidth = 12;
+	int HPs = 0;
+	f32 scale = 1.0f;
+
+	for (f32 step = 0.0f; step < blob.getInitialHealth(); step += 0.5f)
+	{
+		f32 thisHP = blob.getHealth() - step;
+
+		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - (segmentWidth - iconWidth)/4, 7) * 2;
+		Vec2f heartpos = middle + Vec2f(segmentWidth * HPs, 0) + heartoffset;
+
+		// Always render the frame
+		GUI::DrawIcon(heartFile, 0, Vec2f(iconWidth, iconWidth), heartpos, scale);
+		if (thisHP <= 0)
+		{
+			
+		}
+		else if (thisHP <= 0.125f)
+		{
+			GUI::DrawIcon(heartFile, 4, Vec2f(iconWidth, iconWidth), heartpos, scale);
+		}
+		else if (thisHP <= 0.25f)
+		{
+			GUI::DrawIcon(heartFile, 3, Vec2f(iconWidth, iconWidth), heartpos, scale);
+		}
+		else if (thisHP <= 0.375f)
+		{
+			GUI::DrawIcon(heartFile, 2, Vec2f(iconWidth, iconWidth), heartpos, scale);
+		}
+		else
+		{
+			GUI::DrawIcon(heartFile, 1, Vec2f(iconWidth, iconWidth), heartpos, scale);
+		}
+
+		HPs++;
 	}
 }

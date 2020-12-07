@@ -197,7 +197,7 @@ void PrintCharList(u16[]@ player_char_networkIDs)
 void DebugPrint(string message)
 {
 	// Set this to true if you want to print debug information
-	if (true)
+	if (false)
 	{
 		print(message);
 	}
