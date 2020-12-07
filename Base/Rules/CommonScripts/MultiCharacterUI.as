@@ -64,7 +64,7 @@ void onRender(CRules@ this)
 	if (readCharList(player.getUsername(), @player_char_networkIDs))
 	{
 		// Render players on the right
-		u8 frame_width = 80;
+		u8 frame_width = 82;
 		Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
 		Vec2f bottom_right = Vec2f(getScreenWidth(), frame_width);
 		for (u8 i = 0; i < player_char_networkIDs.length(); i++)
@@ -80,7 +80,7 @@ void onRender(CRules@ this)
 
 					// Draw char sprite
 					Vec2f middle = (upper_left + bottom_right)/2;
-					// GUI::DrawFramedPane(middle, bottom_right);
+					GUI::DrawFramedPane(middle, bottom_right);
 					GUI::DrawIcon(sprite.getFilename(), sprite.getFrame(), middle, 1.0f);
 
 					// Draw health bar
@@ -103,7 +103,7 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 	}
 
 	string heartFile = "GUI/HeartNBubble.png";
-	int segmentWidth = 16;
+	int segmentWidth = 18;
 	int iconWidth = 12;
 	int HPs = 0;
 	f32 scale = 1.0f;
@@ -112,7 +112,7 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 	{
 		f32 thisHP = blob.getHealth() - step;
 
-		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - (segmentWidth - iconWidth)/4, 7) * 2;
+		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - 1, 7) * 2;
 		Vec2f heartpos = middle + Vec2f(segmentWidth * HPs, 0) + heartoffset;
 
 		// Always render the frame
