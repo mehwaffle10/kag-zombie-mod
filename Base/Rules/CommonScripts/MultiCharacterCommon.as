@@ -1,4 +1,6 @@
 
+#include "RandomNames.as"
+
 // Transfers control of a player to a target blob if the player owns that blob
 void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID)
 {
@@ -6,7 +8,6 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	{
 		return;
 	}
-
 
 	DebugPrint("Attempting to swap the player " + player_to_swap_username + "'s control to " + target_blob_networkID);
 
@@ -76,6 +77,12 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner)
 
 	// Set the object's new owner
 	this.set_string("owning_player", new_owner);
+
+	// Give the char a name if they don't have one already
+	if (!this.exists("forename") && !this.exists("surname"))
+	{
+		SetRandomName(this);
+	}
 }
 
 // Remove this blob from the player's char list if possible

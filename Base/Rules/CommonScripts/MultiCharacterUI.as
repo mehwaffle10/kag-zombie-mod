@@ -64,7 +64,7 @@ void onRender(CRules@ this)
 	if (readCharList(player.getUsername(), @player_char_networkIDs))
 	{
 		// Render players on the right
-		u8 frame_width = 82;
+		u8 frame_width = 124;
 		Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
 		Vec2f bottom_right = Vec2f(getScreenWidth(), frame_width);
 		for (u8 i = 0; i < player_char_networkIDs.length(); i++)
@@ -75,20 +75,63 @@ void onRender(CRules@ this)
 				CSprite@ sprite = char.getSprite();
 				if (sprite !is null)
 				{
-					// Draw Frame
-					GUI::DrawFramedPane(upper_left, bottom_right);
+					CSpriteLayer@ head = sprite.getSpriteLayer("head");
+					if (head !is null)
+					{
+						// Draw Frame
+						GUI::DrawFramedPane(upper_left, bottom_right);
 
-					// Draw char sprite
-					Vec2f middle = (upper_left + bottom_right)/2;
-					GUI::DrawFramedPane(middle, bottom_right);
-					GUI::DrawIcon(sprite.getFilename(), sprite.getFrame(), middle, 1.0f);
+						// Print character's name
+						Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 12);
+						if (char.exists("forename"))
+						{
+							GUI::DrawShadowedTextCentered(char.get_string("forename"), middle, SColor(255, 255, 255, 255));
+						}
+						middle.y += 12;
+						if (char.exists("surname"))
+						{
+							GUI::DrawShadowedTextCentered(char.get_string("surname"), middle, SColor(255, 255, 255, 255));
+						}
 
-					// Draw health bar
-					RenderHPBar(char, middle);
+						// Draw character's sprite
+						middle.y = bottom_right.y - frame_width/2;
+						GUI::DrawFramedPane(middle, bottom_right);
+						string gender = char.getSexNum() == 0 ? "Male" : "Female";
+						string player_class = sprite.getFilename().split("_")[2];
+						player_class = player_class.substr(0, 1).toUpper() + player_class.substr(1, -1);
+						GUI::DrawIcon(
+							player_class + gender + ".png",
+							sprite.getFrame(),
+							Vec2f(sprite.getFrameWidth(), sprite.getFrameHeight()),
+							middle - Vec2f(13, 30),
+							1.0f,
+							char.getTeamNum()
+						);
+						GUI::DrawIcon(
+							head.getFilename(),
+							head.getFrame(),
+							Vec2f(head.getFrameWidth(), head.getFrameHeight()),
+							middle - Vec2f(13, 30),
+							1.2f,
+							char.getTeamNum()
+						);
 
-					// Update corners
-					upper_left.y += frame_width - 2;
-					bottom_right.y += frame_width - 2;
+						/*
+						for (u8 j = 0; j < sprite.getSpriteLayerCount(); j++)
+						{
+							print(sprite.getSpriteLayer(j).name);
+						}
+						print("");
+						*/
+
+						// Draw health bar
+						middle.y += 20;
+						RenderHPBar(char, middle);
+
+						// Update corners
+						upper_left.y += frame_width - 2;
+						bottom_right.y += frame_width - 2;
+					}
 				}
 			}
 		}
@@ -112,7 +155,7 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 	{
 		f32 thisHP = blob.getHealth() - step;
 
-		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - 1, 7) * 2;
+		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - 1, 0) * 2;
 		Vec2f heartpos = middle + Vec2f(segmentWidth * HPs, 0) + heartoffset;
 
 		// Always render the frame
