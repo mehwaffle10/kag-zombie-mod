@@ -13,13 +13,41 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 
 	if (!playerOwnsChar(player_to_swap_username, target_blob_networkID))
 	{
+		DebugPrint("Player " + player_to_swap_username + " can not swap to " + target_blob_networkID);
 		return;
+	}
+
+	CPlayer@ player = getPlayerByUsername(player_to_swap_username);
+	if (player is null)
+	{
+		DebugPrint("Player " + player_to_swap_username + " was null");
+		return;
+	}
+
+	DebugPrint("Attempting to clear previous character's commands");
+
+	CBlob@ previous_character = player.getBlob();
+	if (previous_character !is null)
+	{
+		CControls@ controls = previous_character.getControls();
+		if (controls !is null)
+		{
+			controls.ClearKeys();  // TODO this doesn't work
+		}
+		else
+		{
+			DebugPrint("Player " + player_to_swap_username + "'s previous character's controls were null");
+		}
+	}
+	else
+	{
+		DebugPrint("Player " + player_to_swap_username + "'s previous character was null, abandoning command clearing");
 	}
 
 	DebugPrint("Transferring control");
 
 	// Set the player to control the target blob
-	getBlobByNetworkID(target_blob_networkID).server_SetPlayer(getPlayerByUsername(player_to_swap_username));
+	getBlobByNetworkID(target_blob_networkID).server_SetPlayer(player);
 }
 
 // Removes the blob from any char lists and adds it to owning_player's
@@ -204,7 +232,7 @@ void PrintCharList(u16[]@ player_char_networkIDs)
 void DebugPrint(string message)
 {
 	// Set this to true if you want to print debug information
-	if (false)
+	if (true)
 	{
 		print(message);
 	}

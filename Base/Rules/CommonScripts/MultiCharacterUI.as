@@ -1,5 +1,6 @@
 
 #include "MultiCharacterCommon.as"
+#include "RunnerTextures.as"
 
 void onInit(CPlayer@ this)
 {
@@ -82,7 +83,7 @@ void onRender(CRules@ this)
 						GUI::DrawFramedPane(upper_left, bottom_right);
 
 						// Print character's name
-						Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 12);
+						Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
 						if (char.exists("forename"))
 						{
 							GUI::DrawShadowedTextCentered(char.get_string("forename"), middle, SColor(255, 255, 255, 255));
@@ -94,39 +95,116 @@ void onRender(CRules@ this)
 						}
 
 						// Draw character's sprite
-						middle.y = bottom_right.y - frame_width/2;
-						GUI::DrawFramedPane(middle, bottom_right);
+						// Get character's info
 						string gender = char.getSexNum() == 0 ? "Male" : "Female";
 						string player_class = sprite.getFilename().split("_")[2];
 						player_class = player_class.substr(0, 1).toUpper() + player_class.substr(1, -1);
-						GUI::DrawIcon(
-							player_class + gender + ".png",
-							sprite.getFrame(),
-							Vec2f(sprite.getFrameWidth(), sprite.getFrameHeight()),
-							middle - Vec2f(13, 30),
-							1.0f,
-							char.getTeamNum()
-						);
-						GUI::DrawIcon(
-							head.getFilename(),
-							head.getFrame(),
-							Vec2f(head.getFrameWidth(), head.getFrameHeight()),
-							middle - Vec2f(13, 30),
-							1.2f,
-							char.getTeamNum()
-						);
 
-						/*
-						for (u8 j = 0; j < sprite.getSpriteLayerCount(); j++)
+						// Tuning variables
+						f32 scale = 1.5f;
+						middle.y += sprite.getFrameHeight() * scale * 0.8f;
+						Vec2f body_offset = Vec2f(sprite.getFrameWidth(), sprite.getFrameHeight());
+						body_offset *= scale;
+						int head_layer = 0;
+						Vec2f head_offset = Vec2f(sprite.getFrameWidth() / 2, sprite.getFrameHeight() / 2);
+						head_offset -= (getHeadOffset(char, -1, head_layer) - Vec2f(head.getFrameWidth(), head.getFrameHeight())) * 2.0f;
+						head_offset -= sprite.getOffset();
+						//head_offset -= Vec2f(1,0);  // Pixel adjustments
+						head_offset *= scale;
+
+						// Draw the head and body in the correct order based on the frame
+						if (head_layer == 0)  // Only draw the body 
 						{
-							print(sprite.getSpriteLayer(j).name);
+							// Draw character's body
+							GUI::DrawIcon(
+								player_class + gender + ".png",
+								sprite.getFrame(),
+								Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
+								middle - body_offset,
+								scale,
+								char.getTeamNum()
+							);
 						}
-						print("");
-						*/
+						else if (head_layer == -1)  // Draw Head First
+						{
+							// Draw character's head
+							GUI::DrawIcon(
+								head.getFilename(),
+								head.getFrame(),
+								Vec2f(head.getFrameWidth(), head.getFrameHeight()),
+								middle - head_offset,
+								scale,
+								char.getTeamNum()
+							);
+
+							// Draw character's body
+							GUI::DrawIcon(
+								player_class + gender + ".png",
+								sprite.getFrame(),
+								Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
+								middle - body_offset,
+								scale,
+								char.getTeamNum()
+							);
+						}
+						else if (head_layer == 1)  // Draw body first
+						{
+							// Draw character's body
+							GUI::DrawIcon(
+								player_class + gender + ".png",
+								sprite.getFrame(),
+								Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
+								middle - body_offset,
+								scale,
+								char.getTeamNum()
+							);
+
+							// Draw character's head
+							GUI::DrawIcon(
+								head.getFilename(),
+								head.getFrame(),
+								Vec2f(head.getFrameWidth(), head.getFrameHeight()),
+								middle - head_offset,
+								scale,
+								char.getTeamNum()
+							);
+						}
 
 						// Draw health bar
-						middle.y += 20;
+						middle.y = bottom_right.y - 27;
 						RenderHPBar(char, middle);
+
+						// Draw Buttons
+						u8 button_width = 24;
+						u8 frame_offset = 4;
+						Vec2f button_upper_left = Vec2f(upper_left.x + frame_offset, bottom_right.y - frame_offset - button_width);
+						Vec2f button_bottom_right = Vec2f(upper_left.x + frame_offset + button_width, bottom_right.y - frame_offset);
+						Vec2f mouse_pos = controls.getMouseScreenPos();
+
+						// Make the button interactive
+						if (mouse_pos.x > button_upper_left.x && mouse_pos.x < button_bottom_right.x
+							&& mouse_pos.y > button_upper_left.y && mouse_pos.y < button_bottom_right.y)  // Inside the button
+						{ 
+							if (controls.mousePressed1) {  // Clicking on the button
+								GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
+
+								// Attempt to swap to that character
+								CBitStream params;
+								params.write_string(player.getUsername());
+								params.write_netid(player_char_networkIDs[i]);
+
+								this.SendCommand(this.getCommandID("swap_player"), params);
+								player.set_u8("char_swap_cooldown", getTicksASecond() / 2);
+							}
+							else  // Hovering over the button
+							{
+								GUI::DrawButtonHover(button_upper_left, button_bottom_right);
+							}
+						}
+						else  // Outside the button
+						{
+							GUI::DrawButton(button_upper_left, button_bottom_right);
+						}
 
 						// Update corners
 						upper_left.y += frame_width - 2;
@@ -138,6 +216,7 @@ void onRender(CRules@ this)
 	}
 }
 
+// Render the character's health centered on a point
 void RenderHPBar(CBlob@ blob, Vec2f middle)
 {
 	if (blob is null)
@@ -158,7 +237,7 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - 1, 0) * 2;
 		Vec2f heartpos = middle + Vec2f(segmentWidth * HPs, 0) + heartoffset;
 
-		// Always render the frame
+		// Always render the heart's frame
 		GUI::DrawIcon(heartFile, 0, Vec2f(iconWidth, iconWidth), heartpos, scale);
 		if (thisHP <= 0)
 		{

@@ -14,7 +14,7 @@ void onInit(CPlayer@ this)
 		return;
 	}
 
-	DebugPrint("Iniitalizing player");
+	DebugPrint("Initalizing player");
 	if (this is null)
 	{
 		DebugPrint("Player was null");
