@@ -3,18 +3,46 @@
 
 void onInit(CRules@ this)
 {
+	// Safety check
+	if (this is null)
+	{
+		DebugPrint("Rules was null");
+		return;
+	}
+
 	this.addCommandID("swap_player");
 	this.addCommandID("transfer_char");
-}
 
-void onInit(CPlayer@ this)
-{
+	// Only server can save + sync lists
 	if (!isServer())
 	{
 		return;
 	}
 
-	DebugPrint("Initalizing player");
+	// Initialize list of the unclaimed characters if it doesn't exist yet
+	DebugPrint("Initializing unclaimed char list");
+	if (!hasCharList(""))
+	{
+		// Initialize the list and add it to our rules
+		DebugPrint("No existing unclaimed char list, initializing empty list");
+		u16[] char_networkIDs;
+		SaveCharList("", char_networkIDs);
+	}
+	else
+	{
+		DebugPrint("Unclaimed char list already exists");
+	}
+}
+
+void onInit(CPlayer@ this)
+{
+	// Only server can save + sync lists
+	if (!isServer())
+	{
+		return;
+	}
+
+	DebugPrint("Initalizing player char list");
 	if (this is null)
 	{
 		DebugPrint("Player was null");
@@ -22,12 +50,12 @@ void onInit(CPlayer@ this)
 	}
 
 	// Initialize list of the player's characters if it doesn't exist yet
-	if (!hasCharList(this.getUsername() + "_player_char_list_length"))
+	if (!hasCharList(this.getUsername()))
 	{
 		// Initialize the list and add it to our rules
-		DebugPrint("Player " + this.getUsername() + " does not have a char list, initializing");
-		u16[] player_char_networkIDs;
-		SaveCharList(this.getUsername(), player_char_networkIDs);
+		DebugPrint("Player " + this.getUsername() + " does not have a char list, initializing empty list");
+		u16[] char_networkIDs;
+		SaveCharList(this.getUsername(), char_networkIDs);
 	}
 	else
 	{
@@ -46,6 +74,7 @@ void onRespawn(CRules@ this, CRespawnQueueActor@ queue, CPlayer@ player, CBlob@ 
 	TransferCharToPlayerList(blob, player.getUsername());
 }
 
+/*
 void onBlobCreated(CRules@ this, CBlob@ blob)
 {
 	if (blob !is null && blob.hasTag("player") && blob.getPlayer() !is null)
@@ -53,6 +82,7 @@ void onBlobCreated(CRules@ this, CBlob@ blob)
 		TransferCharToPlayerList(blob, blob.getPlayer().getUsername());
 	}
 }
+*/
 
 void onBlobDie(CRules@ this, CBlob@ blob)
 {	
@@ -62,11 +92,13 @@ void onBlobDie(CRules@ this, CBlob@ blob)
 
 void onCommand(CRules@ this, u8 cmd, CBitStream @params)
 {
+	// Only server responds to commands
 	if (!isServer())
 	{
 		return;
 	}
 
+	// No need for safety checks, methods already have them
 	DebugPrint("Received Command");
 	if (cmd == this.getCommandID("swap_player"))
 	{
@@ -103,8 +135,8 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
 			return;
 		}
 
-		// Check if the player owns the target first
-		if (!playerOwnsChar(sending_player, target_blob_networkID))
+		// Check if the player has claimed the target or if the target is unclaimmed first
+		if (!hasClaimedChar(sending_player, target_blob_networkID) && !hasClaimedChar("", target_blob_networkID))
 		{
 			return;
 		}

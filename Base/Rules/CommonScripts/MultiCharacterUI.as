@@ -104,12 +104,33 @@ void onRender(CRules@ this)
 						f32 scale = 1.5f;
 						middle.y += sprite.getFrameHeight() * scale * 0.8f;
 						Vec2f body_offset = Vec2f(sprite.getFrameWidth(), sprite.getFrameHeight());
-						body_offset *= scale;
+						
 						int head_layer = 0;
 						Vec2f head_offset = Vec2f(sprite.getFrameWidth() / 2, sprite.getFrameHeight() / 2);
 						head_offset -= (getHeadOffset(char, -1, head_layer) - Vec2f(head.getFrameWidth(), head.getFrameHeight())) * 2.0f;
 						head_offset -= sprite.getOffset();
-						//head_offset -= Vec2f(1,0);  // Pixel adjustments
+						
+
+						f32 scale_x = scale;
+						f32 scale_y = scale;
+						// IDK what this does but it's needed in any signature that has scale_x and scale_y
+						SColor default_color = SColor(255, 255, 255, 255);
+
+						// Handle facing left
+						bool facing_left = char.isFacingLeft();
+						if (facing_left)
+						{
+							// Flip the sprite horizontally
+							scale_x = -scale_x;
+
+							// Reverse the offsets as well
+							body_offset.x = -body_offset.x;
+							head_offset.x = -head_offset.x;
+							
+						}
+
+						// Scale up the offsets
+						body_offset *= scale;
 						head_offset *= scale;
 
 						// Draw the head and body in the correct order based on the frame
@@ -121,8 +142,10 @@ void onRender(CRules@ this)
 								sprite.getFrame(),
 								Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
 								middle - body_offset,
-								scale,
-								char.getTeamNum()
+								scale_x,
+								scale_y,
+								char.getTeamNum(),
+								default_color
 							);
 						}
 						else if (head_layer == -1)  // Draw Head First
@@ -133,8 +156,10 @@ void onRender(CRules@ this)
 								head.getFrame(),
 								Vec2f(head.getFrameWidth(), head.getFrameHeight()),
 								middle - head_offset,
-								scale,
-								char.getTeamNum()
+								scale_x,
+								scale_y,
+								char.getTeamNum(),
+								default_color
 							);
 
 							// Draw character's body
@@ -143,8 +168,10 @@ void onRender(CRules@ this)
 								sprite.getFrame(),
 								Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
 								middle - body_offset,
-								scale,
-								char.getTeamNum()
+								scale_x,
+								scale_y,
+								char.getTeamNum(),
+								default_color
 							);
 						}
 						else if (head_layer == 1)  // Draw body first
@@ -155,8 +182,10 @@ void onRender(CRules@ this)
 								sprite.getFrame(),
 								Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
 								middle - body_offset,
-								scale,
-								char.getTeamNum()
+								scale_x,
+								scale_y,
+								char.getTeamNum(),
+								default_color
 							);
 
 							// Draw character's head
@@ -165,8 +194,10 @@ void onRender(CRules@ this)
 								head.getFrame(),
 								Vec2f(head.getFrameWidth(), head.getFrameHeight()),
 								middle - head_offset,
-								scale,
-								char.getTeamNum()
+								scale_x,
+								scale_y,
+								char.getTeamNum(),
+								default_color
 							);
 						}
 
@@ -213,6 +244,25 @@ void onRender(CRules@ this)
 				}
 			}
 		}
+
+		// Check if the player is trying to use hotkeys to swap to another char
+		if (player.get_u8("char_swap_cooldown") == 0 && controls.isKeyPressed(KEY_LCONTROL))
+		{
+			int[] hotkeys = {KEY_KEY_1, KEY_KEY_2, KEY_KEY_3, KEY_KEY_4, KEY_KEY_5, KEY_KEY_6, KEY_KEY_7, KEY_KEY_8, KEY_KEY_9, KEY_KEY_0};
+			for (u8 i = 0; i < Maths::Min(player_char_networkIDs.length(), hotkeys.length()); i++)
+			{
+				if (controls.isKeyPressed(hotkeys[i]))
+				{
+					CBitStream params;
+					params.write_string(player.getUsername());
+					params.write_netid(player_char_networkIDs[i]);
+
+					this.SendCommand(this.getCommandID("swap_player"), params);
+					player.set_u8("char_swap_cooldown", getTicksASecond() / 2);
+					break;
+				}
+			}
+		}
 	}
 }
 
@@ -236,28 +286,29 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 
 		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - 1, 0) * 2;
 		Vec2f heartpos = middle + Vec2f(segmentWidth * HPs, 0) + heartoffset;
+		Vec2f heartframe = Vec2f(iconWidth, iconWidth);
 
 		// Always render the heart's frame
-		GUI::DrawIcon(heartFile, 0, Vec2f(iconWidth, iconWidth), heartpos, scale);
+		GUI::DrawIcon(heartFile, 0, heartframe, heartpos, scale);
 		if (thisHP <= 0)
 		{
 			
 		}
 		else if (thisHP <= 0.125f)
 		{
-			GUI::DrawIcon(heartFile, 4, Vec2f(iconWidth, iconWidth), heartpos, scale);
+			GUI::DrawIcon(heartFile, 4, heartframe, heartpos, scale);
 		}
 		else if (thisHP <= 0.25f)
 		{
-			GUI::DrawIcon(heartFile, 3, Vec2f(iconWidth, iconWidth), heartpos, scale);
+			GUI::DrawIcon(heartFile, 3, heartframe, heartpos, scale);
 		}
 		else if (thisHP <= 0.375f)
 		{
-			GUI::DrawIcon(heartFile, 2, Vec2f(iconWidth, iconWidth), heartpos, scale);
+			GUI::DrawIcon(heartFile, 2, heartframe, heartpos, scale);
 		}
 		else
 		{
-			GUI::DrawIcon(heartFile, 1, Vec2f(iconWidth, iconWidth), heartpos, scale);
+			GUI::DrawIcon(heartFile, 1, heartframe, heartpos, scale);
 		}
 
 		HPs++;
