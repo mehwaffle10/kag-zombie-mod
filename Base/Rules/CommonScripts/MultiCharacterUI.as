@@ -2,6 +2,8 @@
 #include "MultiCharacterCommon.as"
 #include "RunnerTextures.as"
 
+funcdef void fxn(CPlayer@ player, u16 char_networkID);
+
 void onInit(CPlayer@ this)
 {
 	this.set_u8("char_swap_cooldown", 0);
@@ -208,33 +210,42 @@ void onRender(CRules@ this)
 						// Draw Buttons
 						u8 button_width = 24;
 						u8 frame_offset = 4;
-						Vec2f button_upper_left = Vec2f(upper_left.x + frame_offset, bottom_right.y - frame_offset - button_width);
-						Vec2f button_bottom_right = Vec2f(upper_left.x + frame_offset + button_width, bottom_right.y - frame_offset);
-						Vec2f mouse_pos = controls.getMouseScreenPos();
 
-						// Make the button interactive
-						if (mouse_pos.x > button_upper_left.x && mouse_pos.x < button_bottom_right.x
-							&& mouse_pos.y > button_upper_left.y && mouse_pos.y < button_bottom_right.y)  // Inside the button
-						{ 
-							if (controls.mousePressed1) {  // Clicking on the button
-								GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
+						string[] button_names = {"swap_player", "unclaim_char", "move_up_char", "move_down_char"};
+						Vec2f[] button_upper_lefts = {
+							Vec2f(upper_left.x + frame_offset, bottom_right.y - 2 * button_width - frame_offset),
+							Vec2f(upper_left.x + frame_offset, bottom_right.y - button_width - frame_offset),
+							Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - 2 * button_width - frame_offset),
+							Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - button_width - frame_offset),
+						};
+						fxn@[] execute_on_press = {@SendSwapPlayerCmd, @SendUnclaimCharCmd, @SendMoveUpCharCmd, @SendMoveDownCharCmd};
 
-								// Attempt to swap to that character
-								CBitStream params;
-								params.write_string(player.getUsername());
-								params.write_netid(player_char_networkIDs[i]);
-
-								this.SendCommand(this.getCommandID("swap_player"), params);
-								player.set_u8("char_swap_cooldown", getTicksASecond() / 2);
-							}
-							else  // Hovering over the button
-							{
-								GUI::DrawButtonHover(button_upper_left, button_bottom_right);
-							}
-						}
-						else  // Outside the button
+						// Create buttons
+						for (u8 i = 0; i < button_names.length(); i++)
 						{
-							GUI::DrawButton(button_upper_left, button_bottom_right);
+							string button_name = button_names[i];
+							Vec2f button_upper_left = button_upper_lefts[i];
+							Vec2f button_bottom_right = Vec2f(button_upper_left.x + button_width, button_upper_left.y + button_width);
+							Vec2f mouse_pos = controls.getMouseScreenPos();
+
+							// Make the button interactive
+							if (mouse_pos.x > button_upper_left.x && mouse_pos.x < button_bottom_right.x
+								&& mouse_pos.y > button_upper_left.y && mouse_pos.y < button_bottom_right.y)  // Inside the button
+							{ 
+								if (controls.mousePressed1)  // Clicking on the button
+								{ 
+									GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
+									execute_on_press[i](player, player_char_networkIDs[i]);
+								}
+								else  // Hovering over the button
+								{
+									GUI::DrawButtonHover(button_upper_left, button_bottom_right);
+								}
+							}
+							else  // Outside the button
+							{
+								GUI::DrawButton(button_upper_left, button_bottom_right);
+							}
 						}
 
 						// Update corners
@@ -313,4 +324,36 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 
 		HPs++;
 	}
+}
+
+void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID)
+{
+	CRules@ rules = getRules();
+	if (rules is null || player is null)
+	{
+		return;
+	}
+
+	// Attempt to swap to that character
+	CBitStream params;
+	params.write_string(player.getUsername());
+	params.write_netid(char_networkID);
+
+	rules.SendCommand(rules.getCommandID("swap_player"), params);
+	player.set_u8("char_swap_cooldown", getTicksASecond() / 2);
+}
+
+void SendUnclaimCharCmd(CPlayer@ player, u16 char_networkID)
+{
+	print("unclaim char");
+}
+
+void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID)
+{
+	print("move up char");
+}
+
+void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID)
+{
+	print("move down char");
 }

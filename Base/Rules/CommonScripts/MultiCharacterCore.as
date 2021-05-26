@@ -62,7 +62,7 @@ void onInit(CPlayer@ this)
 		DebugPrint("Player " + this.getUsername() + " already has a char list");
 	}
 }
-
+/*
 void onRespawn(CRules@ this, CRespawnQueueActor@ queue, CPlayer@ player, CBlob@ blob)
 {
 	DebugPrint("Player respawn");
@@ -73,8 +73,8 @@ void onRespawn(CRules@ this, CRespawnQueueActor@ queue, CPlayer@ player, CBlob@ 
 	}
 	TransferCharToPlayerList(blob, player.getUsername());
 }
+*/
 
-/*
 void onBlobCreated(CRules@ this, CBlob@ blob)
 {
 	if (blob !is null && blob.hasTag("player") && blob.getPlayer() !is null)
@@ -82,7 +82,6 @@ void onBlobCreated(CRules@ this, CBlob@ blob)
 		TransferCharToPlayerList(blob, blob.getPlayer().getUsername());
 	}
 }
-*/
 
 void onBlobDie(CRules@ this, CBlob@ blob)
 {	
