@@ -304,20 +304,19 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 					Vec2f button_bottom_right = Vec2f(button_upper_left.x + button_width, button_upper_left.y + button_width);
 					Vec2f mouse_pos = controls.getMouseScreenPos();
 					string button_state_string = char_networkID + "_" + button_name + "_button_state";
-					u8 button_state = player.get_u8(button_state_string);
+					u8 previous_button_state = player.get_u8(button_state_string);
 
-					// Make the button interactive
-					if (locked[i])  // Button is locked ie at top of list for up button or rendered elsewhere
+					// Update state and make the button interactive
+					if (locked[i])  // Button is locked ie at top of list for up button or rendered elsewhere, etc
 					{
 						player.set_u8(button_state_string, ButtonStates::locked);
-						GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
 					}
 					else if (mouse_pos.x > button_upper_left.x && mouse_pos.x < button_bottom_right.x
 						&& mouse_pos.y > button_upper_left.y && mouse_pos.y < button_bottom_right.y)  // Inside the button
 					{ 
-						if (button_state == ButtonStates::hovered && player.get_u8("multichar_ui_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
+						if (previous_button_state == ButtonStates::hovered && player.get_u8("multichar_ui_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
 						{ 
-							if (button_state != ButtonStates::pressed)
+							if (previous_button_state != ButtonStates::pressed)
 							{
 								Sound::Play("buttonclick.ogg");
 							}
@@ -328,27 +327,41 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 						}
 						else  // Hovering over the button
 						{
-							if (!controls.mousePressed1)  // Don't let players press the button by holding m1 and then mousing over the button
+							// Don't let players press the button by holding m1 and then mousing over the button
+							// and make the state not change back until m1 is released or the mouse moves off the button ie button stays pressed
+							if (!controls.mousePressed1)  
 							{
-								if (button_state != ButtonStates::hovered)  // Only play the sound once
+								if (previous_button_state != ButtonStates::hovered)  // Only play the sound once
 								{
 									Sound::Play("select.ogg");
 								}
 
 								player.set_u8(button_state_string, ButtonStates::hovered);
-								GUI::DrawButtonHover(button_upper_left, button_bottom_right);
-							}
-							else  // Don't let the button state change unless we hover while not holding m1
-							{
-								// Draw the idle state
-								GUI::DrawButton(button_upper_left, button_bottom_right);
 							}
 						}
 					}
 					else  // Outside the button
 					{
 						player.set_u8(button_state_string, ButtonStates::idle);
+					}
+
+					// Draw the button
+					u8 button_state = player.get_u8(button_state_string);
+					if (button_state == ButtonStates::idle)
+					{
 						GUI::DrawButton(button_upper_left, button_bottom_right);
+					}
+					else if (button_state == ButtonStates::hovered)
+					{
+						GUI::DrawButtonHover(button_upper_left, button_bottom_right);
+					}
+					else if (button_state == ButtonStates::pressed)
+					{
+						GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
+					}
+					else if (button_state == ButtonStates::locked)
+					{
+						GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
 					}
 				}
 			}
