@@ -75,10 +75,16 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 // Removes the blob from any char lists and adds it to owning_player's char list
 // If new_owner is empty, removes the blob from any char lists and adds it to the unclaimed char list instead
 // DebugPrint needs to be set to true for this to print anything
-void TransferCharToPlayerList(CBlob@ this, string new_owner)
+void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 {
 	// Only server can save + sync lists
 	if (!isServer())
+	{
+		return;
+	}
+
+	CRules@ rules = getRules();
+	if (rules is null)
 	{
 		return;
 	}
@@ -102,9 +108,11 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner)
 		return;
 	}
 
+	// Remove the blob from any char list it may be in
+	RemoveCharFromPlayerList(this);
+
 	// Get the new char list
 	u16[] char_networkIDs;
-	CRules@ rules = getRules();
 	if (hasCharList(new_owner))
 	{
 		DebugPrint(new_owner != "" ?
@@ -119,14 +127,19 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner)
 			"Failed to find unclaimed char list, creating new list");
 	}
 
-	// Remove the blob from any char list it may be in
-	RemoveCharFromPlayerList(this);
-
 	DebugPrint("Char list before addition:");
 	PrintCharList(char_networkIDs);
 
 	// Add the blob to player's char list
-	char_networkIDs.push_back(this.getNetworkID());
+	if (index < 0 || index >= char_networkIDs.length())
+	{
+		char_networkIDs.push_back(this.getNetworkID());
+	}
+	else
+	{
+		char_networkIDs.insertAt(index, this.getNetworkID());
+	}
+	
 	DebugPrint("Char list after addition:");
 	PrintCharList(char_networkIDs);
 
