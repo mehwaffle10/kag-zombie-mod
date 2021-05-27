@@ -317,6 +317,11 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 					{ 
 						if (button_state == ButtonStates::hovered && player.get_u8("multichar_ui_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
 						{ 
+							if (button_state != ButtonStates::pressed)
+							{
+								Sound::Play("buttonclick.ogg");
+							}
+
 							player.set_u8(button_state_string, ButtonStates::pressed);
 							GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
 							execute_on_press[i](player, char_networkID, claimed);
@@ -325,6 +330,11 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 						{
 							if (!controls.mousePressed1)  // Don't let players press the button by holding m1 and then mousing over the button
 							{
+								if (button_state != ButtonStates::hovered)  // Only play the sound once
+								{
+									Sound::Play("select.ogg");
+								}
+
 								player.set_u8(button_state_string, ButtonStates::hovered);
 								GUI::DrawButtonHover(button_upper_left, button_bottom_right);
 							}
