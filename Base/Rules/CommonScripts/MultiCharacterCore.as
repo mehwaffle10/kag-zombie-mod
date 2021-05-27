@@ -65,26 +65,107 @@ void onInit(CPlayer@ this)
 		DebugPrint("Player " + this.getUsername() + " already has a char list");
 	}
 }
-/*
-void onRespawn(CRules@ this, CRespawnQueueActor@ queue, CPlayer@ player, CBlob@ blob)
+
+// Handle class changes and spawning
+void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 {
-	DebugPrint("Player respawn");
+	// Only server can set players
+	if (!isServer())
+	{
+		return;
+	}
+
+	DebugPrint("Entering onSetPlayer");
+
+	// Safety checks
+	if (this is null)
+	{
+		DebugPrint("Rules was null");
+		return;
+	}
+
+	if (blob is null)
+	{
+		DebugPrint("Blob was null");
+		return;
+	}
+
+	print("" + blob.getNetworkID());
+
 	if (player is null)
 	{
 		DebugPrint("Player was null");
 		return;
 	}
-	TransferCharToPlayerList(blob, player.getUsername(), -1);
-}
-*/
 
-// Temporary for respawning
-void onBlobCreated(CRules@ this, CBlob@ blob)
-{
-	if (blob !is null && blob.hasTag("player") && blob.getPlayer() !is null)
+	if (player.exists("previous_char_networkID"))
 	{
-		TransferCharToPlayerList(blob, blob.getPlayer().getUsername(), -1);
+		DebugPrint("Player has previous char networkID");
+
+		// Check if the previous blob was in the char's list or the unclaimed list
+		u16 previous_char_networkID = player.get_u16("previous_char_networkID");
+		CBlob@ previous_char = getBlobByNetworkID(previous_char_networkID);
+
+		u16[] player_char_networkIDs;
+		readCharList(player.getUsername(), @player_char_networkIDs);
+		int player_char_list_index = player_char_networkIDs.find(previous_char_networkID);
+
+		u16[] unclaimed_char_networkIDs;
+		readCharList("", @player_char_networkIDs);
+		int unclaimed_char_list_index = player_char_networkIDs.find(previous_char_networkID);
+
+		// Check if previous blob doesn't exist anymore or is dead or was just created
+		if (previous_char is null || previous_char.hasTag("dead") || previous_char.getHealth() <= 0.0f || blob.getTickSinceCreated() <= 1)
+		{
+			DebugPrint("Previous char was null or dead or blob was just created");
+
+			// Replace the blob with the new one if possible
+			// It should never be in both lists at once, the second one wouldn't update otherwise
+			if (player_char_list_index >= 0)  // Found in player char list
+			{
+				// Copy the character's name if possible
+				if (previous_char !is null && previous_char.exists("forename") && previous_char.exists("surname"))
+				{
+					blob.set_string("forename", previous_char.get_string("forename"));
+					blob.set_string("surname", previous_char.get_string("surname"));
+				}
+
+				// Replace the old character in the player's char list
+				TransferCharToPlayerList(blob, player.getUsername(), player_char_list_index);
+			}
+			else if (unclaimed_char_list_index >= 0)  // Found in unclaimed char list
+			{
+				// Copy the character's name if possible
+				if (previous_char !is null && previous_char.exists("forename") && previous_char.exists("surname"))
+				{
+					blob.set_string("forename", previous_char.get_string("forename"));
+					blob.set_string("surname", previous_char.get_string("surname"));
+				}
+
+				// Replace the old character in the unclaimed char list
+				TransferCharToPlayerList(blob, "", unclaimed_char_list_index);
+			}
+			else  // Wasn't in either list, respawning most likely
+			{
+				TransferCharToPlayerList(blob, player.getUsername(), -1);
+			}
+		}
+		else
+		{
+			// Just swapping chars. Don't transfer any chars between lists
+			DebugPrint("Previous char was not null or dead and the new blob was not just created");
+		}
 	}
+	else  // Player 
+	{
+		DebugPrint("Player does not have previous char networkID");
+
+		// Add to the end of the list
+		TransferCharToPlayerList(blob, player.getUsername(), -1);
+	}
+
+	// Set the new char networkID
+	player.set_u16("previous_char_networkID", blob.getNetworkID());
 }
 
 void onBlobDie(CRules@ this, CBlob@ blob)
