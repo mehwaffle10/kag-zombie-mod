@@ -160,16 +160,7 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				GUI::DrawFramedPane(upper_left, bottom_right);
 
 				// Print character's name
-				Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
-				if (char.exists("forename"))
-				{
-					GUI::DrawShadowedTextCentered(char.get_string("forename"), middle, SColor(255, 255, 255, 255));
-				}
-				middle.y += 12;
-				if (char.exists("surname"))
-				{
-					GUI::DrawShadowedTextCentered(char.get_string("surname"), middle, SColor(255, 255, 255, 255));
-				}
+				Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 26);
 
 				// Draw character's sprite
 				// Get character's info
@@ -178,8 +169,8 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				player_class = player_class.substr(0, 1).toUpper() + player_class.substr(1, -1);
 
 				// Tuning variables
-				f32 scale = 1.5f;
-				middle.y += sprite.getFrameHeight() * scale * 0.8f;
+				f32 scale = 1.5f;  // 1.5f default
+				middle.y += sprite.getFrameHeight() * scale * 0.65f;
 				Vec2f body_offset = Vec2f(sprite.getFrameWidth(), sprite.getFrameHeight());
 				
 				int head_layer = 0;
@@ -190,12 +181,9 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 
 				f32 scale_x = scale;
 				f32 scale_y = scale;
-				// IDK what this does but it's needed in any signature that has scale_x and scale_y
-				SColor default_color = SColor(255, 255, 255, 255);
 
 				// Handle facing left
-				bool facing_left = char.isFacingLeft();
-				if (facing_left)
+				if (char.isFacingLeft())
 				{
 					// Flip the sprite horizontally
 					scale_x = -scale_x;
@@ -203,7 +191,6 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 					// Reverse the offsets as well
 					body_offset.x = -body_offset.x;
 					head_offset.x = -head_offset.x;
-					
 				}
 
 				// Scale up the offsets
@@ -214,68 +201,34 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				if (head_layer == 0)  // Only draw the body 
 				{
 					// Draw character's body
-					GUI::DrawIcon(
-						player_class + gender + ".png",
-						sprite.getFrame(),
-						Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
-						middle - body_offset,
-						scale_x,
-						scale_y,
-						char.getTeamNum(),
-						default_color
-					);
+					DrawBody(player_class + gender + ".png", sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class);
 				}
 				else if (head_layer == -1)  // Draw Head First
 				{
-					// Draw character's head
-					GUI::DrawIcon(
-						head.getFilename(),
-						head.getFrame(),
-						Vec2f(head.getFrameWidth(), head.getFrameHeight()),
-						middle - head_offset,
-						scale_x,
-						scale_y,
-						char.getTeamNum(),
-						default_color
-					);
-
-					// Draw character's body
-					GUI::DrawIcon(
-						player_class + gender + ".png",
-						sprite.getFrame(),
-						Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
-						middle - body_offset,
-						scale_x,
-						scale_y,
-						char.getTeamNum(),
-						default_color
-					);
+					DrawHead(head, middle, head_offset, scale_x, scale_y, char);
+					DrawBody(player_class + gender + ".png", sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class);
 				}
 				else if (head_layer == 1)  // Draw body first
 				{
-					// Draw character's body
-					GUI::DrawIcon(
-						player_class + gender + ".png",
-						sprite.getFrame(),
-						Vec2f(sprite.getFrameWidth() , sprite.getFrameHeight()),
-						middle - body_offset,
-						scale_x,
-						scale_y,
-						char.getTeamNum(),
-						default_color
-					);
+					DrawBody(player_class + gender + ".png", sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class);
+					DrawHead(head, middle, head_offset, scale_x, scale_y, char);
+				}
 
-					// Draw character's head
-					GUI::DrawIcon(
-						head.getFilename(),
-						head.getFrame(),
-						Vec2f(head.getFrameWidth(), head.getFrameHeight()),
-						middle - head_offset,
-						scale_x,
-						scale_y,
-						char.getTeamNum(),
-						default_color
-					);
+				// Always draw bow on top
+				DrawBow(sprite, middle, body_offset, scale_x, scale_y, char, player_class);
+
+				// Print character's name
+				// I moved this down to make it always draw the name over the character,
+				// although now it doesn't draw top to bottom
+				Vec2f name_middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
+				if (char.exists("forename"))
+				{
+					GUI::DrawShadowedTextCentered(char.get_string("forename"), name_middle, SColor(255, 255, 255, 255));
+				}
+				name_middle.y += 12;
+				if (char.exists("surname"))
+				{
+					GUI::DrawShadowedTextCentered(char.get_string("surname"), name_middle, SColor(255, 255, 255, 255));
 				}
 
 				// Draw health bar
@@ -368,6 +321,286 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 			}
 		}
 	}
+}
+
+// Draw a character's head
+void DrawHead(CSpriteLayer@ head, Vec2f middle, Vec2f head_offset, f32 scale_x, f32 scale_y, CBlob@ char)
+{
+	// Safety checks
+	if (head is null || char is null)
+	{
+		return;
+	}
+
+	// IDK what this does but it's needed in any signature that has scale_x and scale_y
+	SColor default_color = SColor(255, 255, 255, 255);
+
+	// Draw character's head
+	GUI::DrawIcon(
+		head.getFilename(),
+		head.getFrame(),
+		Vec2f(head.getFrameWidth(), head.getFrameHeight()),
+		middle - head_offset,
+		scale_x,
+		scale_y,
+		char.getTeamNum(),
+		default_color
+	);
+}
+
+// Draw a character's body. Draw's an archer's quiver and bow if needed
+void DrawBody(string filename, CSprite@ sprite, Vec2f middle, Vec2f body_offset, Vec2f head_offset, f32 scale_x, f32 scale_y, CBlob@ char, string player_class)
+{
+	// Safety checks
+	if (sprite is null || char is null)
+	{
+		return;
+	}
+
+	// IDK what this does but it's needed in any signature that has scale_x and scale_y
+	SColor default_color = SColor(255, 255, 255, 255);
+
+	u16 sprite_frame = sprite.getFrame();
+
+	// Draw archer bits if needed
+	if (player_class == "Archer")
+	{
+		// Draw quiver, handles crouching
+		Vec2f quiver_offset = sprite_frame == 11 || sprite_frame == 12 || sprite_frame == 13 ? Vec2f(-10.0f, -2.5f) : Vec2f(-8.0f, 6.0f);
+		
+		// Handle facing left
+		if (char.isFacingLeft())
+		{
+			quiver_offset.x = -quiver_offset.x;
+		}
+
+		quiver_offset *= Maths::Abs(scale_x);
+
+		CSpriteLayer@ quiver = sprite.getSpriteLayer("quiver");
+		if (quiver !is null)
+		{
+			// IDK what this does but it's needed in any signature that has scale_x and scale_y
+			SColor default_color = SColor(255, 255, 255, 255);
+
+			GUI::DrawIcon(
+				"RotatedQuiver.png",
+				quiver.getFrame() - 66,
+				Vec2f(256, 256),
+				middle - head_offset + quiver_offset,
+				scale_x / 16,
+				scale_y / 16,
+				char.getTeamNum(),
+				default_color
+			);
+		}
+
+		// Draw back arm if needed
+		if (sprite_frame == 10 || sprite_frame == 27 || sprite_frame == 28 || sprite_frame == 29 || sprite_frame == 30)
+		{
+			CSpriteLayer@ backarm = sprite.getSpriteLayer("backarm");
+			if (backarm !is null)
+			{
+				// IDK what this does but it's needed in any signature that has scale_x and scale_y
+				SColor default_color = SColor(255, 255, 255, 255);
+
+				// Get the frame, is always the same so we use our index in our spritesheet
+				u16 backarm_frame = 5;
+
+				Vec2f bow_offset;
+				u8 row_offset = getRotationOffsets(char, bow_offset, scale_x);
+				u8 bow_frames_per_row = 6;
+				backarm_frame += bow_frames_per_row * row_offset;
+
+				GUI::DrawIcon(
+					"RotatedBow.png",
+					backarm_frame,
+					Vec2f(512, 512),
+					middle - body_offset + bow_offset,
+					scale_x / 16,
+					scale_y / 16,
+					char.getTeamNum(),
+					default_color
+				);
+			}
+		}
+	}
+
+	// Draw character's body
+	GUI::DrawIcon(
+		filename,
+		sprite_frame,
+		Vec2f(sprite.getFrameWidth(), sprite.getFrameHeight()),
+		middle - body_offset,
+		scale_x,
+		scale_y,
+		char.getTeamNum(),
+		default_color
+	);
+}
+
+void DrawBow(CSprite@ sprite, Vec2f middle, Vec2f body_offset, f32 scale_x, f32 scale_y, CBlob@ char, string player_class)
+{
+	// Safety checks
+	if (sprite is null || char is null)
+	{
+		return;
+	}
+
+	// IDK what this does but it's needed in any signature that has scale_x and scale_y
+	SColor default_color = SColor(255, 255, 255, 255);
+
+	u16 sprite_frame = sprite.getFrame();
+
+	// Draw archer bits if needed
+	if (player_class == "Archer" && (sprite_frame == 10 || sprite_frame == 27 || sprite_frame == 28 || sprite_frame == 29 || sprite_frame == 30))
+	{
+		CSpriteLayer@ frontarm = sprite.getSpriteLayer("frontarm");
+		if (frontarm !is null)
+		{
+			// Translate the bow frame
+			u16 frontarm_frame = frontarm.getFrame();
+			if (frontarm_frame == 16)
+			{
+				frontarm_frame = 0;
+			}
+			else if (frontarm_frame == 24)
+			{
+				frontarm_frame = 1;
+			}
+			else if (frontarm_frame == 32)
+			{
+				frontarm_frame = 2;
+			}
+			else if (frontarm_frame == 40)
+			{
+				frontarm_frame = 3;
+			}
+			else if (frontarm_frame == 25)
+			{
+				frontarm_frame = 4;
+			}
+
+			Vec2f bow_offset;
+			u8 row_offset = getRotationOffsets(char, bow_offset, scale_x);
+			u8 bow_frames_per_row = 6;
+			frontarm_frame += bow_frames_per_row * row_offset;
+
+			// Draw arrow if needed
+			CSpriteLayer@ quiver = sprite.getSpriteLayer("quiver");
+			CSpriteLayer@ held_arrow = sprite.getSpriteLayer("held arrow");
+			if (held_arrow !is null && quiver !is null && quiver.getFrame() == 66)
+			{
+				// Translate the arrow frame
+				u16 arrow_frame = held_arrow.getFrame();
+				if (arrow_frame == 1)  // Normal arrow
+				{
+					arrow_frame = 0;
+				}
+				else if (arrow_frame == 9)  // Water arrow
+				{
+					arrow_frame = 1;
+				}
+				else if (arrow_frame == 8)  // Fire arrow
+				{
+					arrow_frame = 2;
+				}
+				else if (arrow_frame == 14)  // Bomb arrow
+				{
+					arrow_frame = 3;
+				}
+
+				u8 arrow_frames_per_row = 4;
+				arrow_frame += arrow_frames_per_row * row_offset; 
+				
+				// Move arrow back based on frame
+				Vec2f arrow_offset = Vec2f(0.0f, -16.0f);
+				if (frontarm_frame % bow_frames_per_row == 1)
+				{
+					arrow_offset.y += 3.0f;
+				}
+				else if (frontarm_frame % bow_frames_per_row == 2)
+				{
+					arrow_offset.y += 6.0f;
+				}
+
+				// Rotate arrow
+				arrow_offset.RotateByDegrees(row_offset * 22.5f);
+
+				// Handle facing left
+				if (char.isFacingLeft())
+				{
+					arrow_offset.x = -arrow_offset.x;
+				}
+
+
+				// Scale arrow
+				arrow_offset *= Maths::Abs(scale_x);
+
+				GUI::DrawIcon(
+					"RotatedArrow.png",
+					arrow_frame,
+					Vec2f(256, 256),
+					middle - body_offset / 2.0f + bow_offset + arrow_offset,  // body_offset is halved because arrow has half the frame width
+					scale_x / 16,
+					scale_y / 16,
+					char.getTeamNum(),
+					default_color
+				);
+			}
+		
+			// Draw bow and frontarm
+			GUI::DrawIcon(
+				"RotatedBow.png",
+				frontarm_frame,
+				Vec2f(512, 512),
+				middle - body_offset + bow_offset,
+				scale_x / 16,
+				scale_y / 16,
+				char.getTeamNum(),
+				default_color
+			);
+		}
+	}
+}
+
+// Returns the row_offset based on the angle of a char's bow and sets bow_offset to the appropriate offset
+u8 getRotationOffsets(CBlob@ char, Vec2f &out bow_offset, f32 scale)
+{
+	// Add the rotation row offset
+	Vec2f v;
+	char.getAimDirection(v);
+	v = v.RotateByDegrees(90.0f);
+	f32 bow_angle = v.AngleDegrees();
+	if (bow_angle >= 180.0f)
+	{
+		bow_angle = 360 - bow_angle;
+	}
+	u8 row_offset = Maths::Round(bow_angle / 22.5f);
+
+	// Add an offset so the arm is always connected in the right place, indexed by row_offset
+	Vec2f[] bow_offsets = {  // Index - Cardinal Direction
+		Vec2f(-6.0f, -4.0f),  // 0 - N
+		Vec2f(-3.0f, -3.0f),  // 1 - NNE
+		Vec2f(0.0f, 0.0f),   // 2 - NE
+		Vec2f(2.0f, 2.0f),   // 3 - NEE
+		Vec2f(2.0f, 4.0f),   // 4 - E
+		Vec2f(1.0f, 8.0f),   // 5 - SEE
+		Vec2f(0.0f, 10.0f),  // 6 - SE
+		Vec2f(-2.0f, 12.0f),  // 7 - SSE
+		Vec2f(-6.0f, 12.0f),  // 8 - S
+	};
+	bow_offset = bow_offsets[row_offset];
+
+	// Handle facing left
+	if (char.isFacingLeft())
+	{
+		bow_offset.x = -bow_offset.x;
+	}
+
+	// Scale up the icon
+	bow_offset *= Maths::Abs(scale);
+
+	return row_offset;
 }
 
 // Render the character's health centered on a point
