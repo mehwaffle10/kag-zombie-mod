@@ -14,6 +14,7 @@ void onInit(CRules@ this)
 	this.addCommandID("transfer_char");
 	this.addCommandID("move_down_char");
 	this.addCommandID("move_up_char");
+	this.addCommandID("give_char_random_name");
 	this.addCommandID("spawn_char");
 
 	// Only server can save + sync lists
@@ -174,7 +175,7 @@ void onBlobDie(CRules@ this, CBlob@ blob)
 	RemoveCharFromPlayerList(blob);
 }
 
-void onCommand(CRules@ this, u8 cmd, CBitStream @params)
+void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 {
 	// Only server responds to commands
 	if (!isServer())
@@ -308,6 +309,30 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
 		}
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), unclaimed ? "" : sending_player, index + 1);
+	}
+	else if (cmd == this.getCommandID("give_char_random_name"))
+	{
+		DebugPrint("Command is give_char_random_name");
+		u16 target_blob_networkID;
+		if (!params.saferead_netid(target_blob_networkID))
+		{
+			return;
+		}
+		CBlob@ char = getBlobByNetworkID(target_blob_networkID);
+		if (char is null)
+		{
+			return;
+		}
+
+		// Give the char a name if they don't have one already
+		if (!char.exists("forename"))
+		{
+			char.set_string("forename", getRandomForename(char));
+			char.set_string("surname", getRandomSurname());
+		}
+
+		char.Sync("forename", true);
+		char.Sync("surname", true);
 	}
 	else if (cmd == this.getCommandID("spawn_char"))  // This is just for debugging purposes
 	{

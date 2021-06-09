@@ -1,4 +1,6 @@
 
+#define CLIENT_ONLY
+
 #include "MultiCharacterCommon.as"
 #include "RunnerTextures.as"
 
@@ -17,7 +19,8 @@ namespace ButtonStates
 
 void onInit(CPlayer@ this)
 {
-	this.set_u8("multichar_ui_cooldown", 0);
+	this.set_u8("multichar_ui_action_cooldown", 0);
+	this.set_u8("multichar_ui_name_cooldown", 0);
 }
 
 void onRender(CRules@ this)
@@ -46,11 +49,17 @@ void onRender(CRules@ this)
 		return;
 	}
 
-	// Update the cooldown if active
-	u8 cooldown = player.get_u8("multichar_ui_cooldown");
+	// Update cooldowns if active
+	u8 cooldown = player.get_u8("multichar_ui_action_cooldown");
 	if (cooldown > 0)
 	{
-		player.set_u8("multichar_ui_cooldown", --cooldown);
+		player.set_u8("multichar_ui_action_cooldown", --cooldown);
+	}
+
+	u8 name_cooldown = player.get_u8("multichar_ui_name_cooldown");
+	if (name_cooldown > 0)
+	{
+		player.set_u8("multichar_ui_name_cooldown", --name_cooldown);
 	}
 
 	// Check if the player is trying to swap to another char
@@ -67,7 +76,7 @@ void onRender(CRules@ this)
 				params.write_netid(blobsInRadius[i].getNetworkID());
 
 				this.SendCommand(this.getCommandID("swap_player"), params);
-				player.set_u8("multichar_ui_cooldown", getTicksASecond() / 2);
+				player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 				break;
 			}
 		}
@@ -91,7 +100,7 @@ void onRender(CRules@ this)
 		}
 
 		// Check if the player is trying to use hotkeys to swap to another char
-		if (player.get_u8("multichar_ui_cooldown") == 0 && controls.isKeyPressed(KEY_LCONTROL))
+		if (cooldown == 0 && controls.isKeyPressed(KEY_LCONTROL))
 		{
 			int[] hotkeys = {KEY_KEY_1, KEY_KEY_2, KEY_KEY_3, KEY_KEY_4, KEY_KEY_5, KEY_KEY_6, KEY_KEY_7, KEY_KEY_8, KEY_KEY_9, KEY_KEY_0};
 			for (u8 i = 0; i < Maths::Min(player_char_networkIDs.length(), hotkeys.length()); i++)
@@ -103,7 +112,7 @@ void onRender(CRules@ this)
 					params.write_netid(player_char_networkIDs[i]);
 
 					this.SendCommand(this.getCommandID("swap_player"), params);
-					player.set_u8("multichar_ui_cooldown", getTicksASecond() / 2);
+					player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 					break;
 				}
 			}
@@ -132,6 +141,12 @@ void onRender(CRules@ this)
 
 void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u16 char_networkID, bool claimed, bool lock_swap, bool lock_claim, bool lock_up, bool lock_down)
 {
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
 	CControls@ controls = getControls();
 	if (controls is null)
 	{
@@ -225,6 +240,18 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				{
 					GUI::DrawShadowedTextCentered(char.get_string("forename"), name_middle, SColor(255, 255, 255, 255));
 				}
+				else
+				{
+					// Give the character a random name
+					if (player.get_u8("multichar_ui_name_cooldown") == 0)
+					{
+						CBitStream params;
+						params.write_netid(char_networkID);
+
+						rules.SendCommand(rules.getCommandID("give_char_random_name"), params);
+						player.set_u8("multichar_ui_name_cooldown", getTicksASecond());
+					}
+				}
 				name_middle.y += 12;
 				if (char.exists("surname"))
 				{
@@ -257,25 +284,26 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 					Vec2f button_upper_left = button_upper_lefts[i];
 					Vec2f button_bottom_right = Vec2f(button_upper_left.x + button_width, button_upper_left.y + button_width);
 					Vec2f mouse_pos = controls.getMouseScreenPos();
-					string button_state_string = char_networkID + "_" + button_name + "_button_state";
-					u8 previous_button_state = player.get_u8(button_state_string);
+					// Had to attach this to rules instead of the player, as it didn't work on the player for some reason
+					string button_state_string = player.getUsername() + "_" + char_networkID + "_" + button_name + "_button_state";
+					u8 button_state = rules.get_u8(button_state_string);
 
 					// Update state and make the button interactive
 					if (locked[i])  // Button is locked ie at top of list for up button or rendered elsewhere, etc
 					{
-						player.set_u8(button_state_string, ButtonStates::locked);
+						button_state = ButtonStates::locked;
 					}
 					else if (mouse_pos.x > button_upper_left.x && mouse_pos.x < button_bottom_right.x
 						&& mouse_pos.y > button_upper_left.y && mouse_pos.y < button_bottom_right.y)  // Inside the button
 					{ 
-						if (previous_button_state == ButtonStates::hovered && player.get_u8("multichar_ui_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
+						if (button_state == ButtonStates::hovered && player.get_u8("multichar_ui_action_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
 						{ 
-							if (previous_button_state != ButtonStates::pressed)
+							if (button_state != ButtonStates::pressed)  // Only play the sound once
 							{
 								Sound::Play("buttonclick.ogg");
 							}
 
-							player.set_u8(button_state_string, ButtonStates::pressed);
+							button_state = ButtonStates::pressed;
 							GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
 							execute_on_press[i](player, char_networkID, claimed);
 						}
@@ -285,22 +313,22 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 							// and make the state not change back until m1 is released or the mouse moves off the button ie button stays pressed
 							if (!controls.mousePressed1)  
 							{
-								if (previous_button_state != ButtonStates::hovered)  // Only play the sound once
+								if (button_state != ButtonStates::hovered)  // Only play the sound once
 								{
 									Sound::Play("select.ogg");
 								}
 
-								player.set_u8(button_state_string, ButtonStates::hovered);
+								button_state = ButtonStates::hovered;
 							}
 						}
 					}
 					else  // Outside the button
 					{
-						player.set_u8(button_state_string, ButtonStates::idle);
+						button_state = ButtonStates::idle;
 					}
-
+					rules.set_u8(button_state_string, button_state);
+					
 					// Draw the button
-					u8 button_state = player.get_u8(button_state_string);
 					if (button_state == ButtonStates::idle)
 					{
 						GUI::DrawButton(button_upper_left, button_bottom_right);
@@ -666,7 +694,7 @@ void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("swap_player"), params);
-	player.set_u8("multichar_ui_cooldown", getTicksASecond() / 2);
+	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
@@ -684,7 +712,7 @@ void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("transfer_char"), params);
-	player.set_u8("multichar_ui_cooldown", getTicksASecond() / 2);
+	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
@@ -701,7 +729,7 @@ void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("move_up_char"), params);
-	player.set_u8("multichar_ui_cooldown", getTicksASecond() / 2);
+	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
@@ -718,5 +746,122 @@ void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("move_down_char"), params);
-	player.set_u8("multichar_ui_cooldown", getTicksASecond() / 2);
+	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+}
+
+void DrawScoreboard()
+{
+	// Safety checks
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
+	//  Sort players
+	CPlayer@[] survivors;
+	CPlayer@[] spectators;
+	for (u32 i = 0; i < getPlayersCount(); i++)
+	{
+		CPlayer@ p = getPlayer(i);
+		int teamNum = p.getTeamNum();
+		if (teamNum == rules.getSpectatorTeamNum())
+		{
+			spectators.push_back(p);
+			continue;
+		}
+		else if (teamNum == 0)  // Survivors are on blue team
+		{
+			// Always render current player at top
+			if (p is getLocalPlayer())
+			{
+				survivors.insert(0, p);
+			}
+			else
+			{
+				survivors.push_back(p);
+			}
+		}
+	}
+
+	// Middle of the screen
+	Vec2f middle = Vec2f(getScreenWidth() / 2, 100);
+
+	// Draw each player's character list horizontally
+	
+
+	
+	/*
+	if (spectators.length > 0)
+	{
+		//draw spectators
+		f32 stepheight = 16;
+		Vec2f bottomright(Maths::Min(getScreenWidth() - 100, screenMidX+maxMenuWidth), topleft.y + stepheight * 2);
+		f32 specy = topleft.y + stepheight * 0.5;
+		GUI::DrawPane(topleft, bottomright, SColor(0xffc0c0c0));
+
+		Vec2f textdim;
+		string s = getTranslatedString("Spectators:");
+		GUI::GetTextDimensions(s, textdim);
+
+		GUI::DrawText(s, Vec2f(topleft.x + 5, specy), SColor(0xffaaaaaa));
+
+		f32 specx = topleft.x + textdim.x + 15;
+		for (u32 i = 0; i < spectators.length; i++)
+		{
+			CPlayer@ p = spectators[i];
+			if (specx < bottomright.x - 100)
+			{
+				string name = p.getCharacterName();
+				if (i != spectators.length - 1)
+					name += ",";
+				GUI::GetTextDimensions(name, textdim);
+				SColor namecolour = getNameColour(p);
+				GUI::DrawText(name, Vec2f(specx, specy), namecolour);
+				specx += textdim.x + 10;
+			}
+			else
+			{
+				GUI::DrawText(getTranslatedString("and more ..."), Vec2f(specx, specy), SColor(0xffaaaaaa));
+				break;
+			}
+		}
+
+		topleft.y += 52;
+	}
+
+	float scoreboardHeight = topleft.y + scrollOffset;
+	float screenHeight = getScreenHeight();
+	CControls@ controls = getControls();
+
+	if(scoreboardHeight > screenHeight) {
+		Vec2f mousePos = controls.getMouseScreenPos();
+
+		float fullOffset = (scoreboardHeight + scoreboardMargin) - screenHeight;
+
+		if(scrollOffset < fullOffset && mousePos.y > screenHeight*0.83f) {
+			scrollOffset += scrollSpeed;
+		}
+		else if(scrollOffset > 0.0f && mousePos.y < screenHeight*0.16f) {
+			scrollOffset -= scrollSpeed;
+		}
+
+		scrollOffset = Maths::Clamp(scrollOffset, 0.0f, fullOffset);
+	}
+
+	drawPlayerCard(hoveredPlayer, hoveredPos);
+
+	drawHoverExplanation(hovered_accolade, hovered_age, hovered_tier, Vec2f(getScreenWidth() * 0.5, topleft.y));
+
+	mouseWasPressed2 = controls.mousePressed2;
+	*/
+}
+
+void DrawFancyCopiedText(string username, Vec2f mousePos, uint duration)
+{
+	string text = "Username copied: " + username;
+	Vec2f pos = mousePos - Vec2f(0, duration);
+	int col = (255 - duration * 3);
+
+	GUI::DrawTextCentered(text, pos, SColor((255 - duration * 4), col, col, col));
 }

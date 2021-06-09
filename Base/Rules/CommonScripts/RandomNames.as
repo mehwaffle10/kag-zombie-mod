@@ -1,22 +1,13 @@
 
-void SetRandomName(CBlob@ this)
+string getRandomForename(CBlob@ this)
 {
-	if (!isServer())
-	{
-		return;
-	}
-
-	if (this is null)
-	{
-		return;
-	}
-
 	string[]@ forenames = this.getSexNum() == 0 ? male_forenames : female_forenames;
+	return forenames[XORRandom(forenames.length())];
+}
 
-	this.set_string("forename", forenames[XORRandom(forenames.length())]);
-	this.Sync("forename", true);
-	this.set_string("surname", surnames[XORRandom(surnames.length())]);
-	this.Sync("surname", true);
+string getRandomSurname()
+{
+	return surnames[XORRandom(surnames.length())];
 }
 
 string[] male_forenames = {

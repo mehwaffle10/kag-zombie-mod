@@ -148,12 +148,6 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 
 	// Set the object's new owner
 	this.set_string("owning_player", new_owner);
-
-	// Give the char a name if they don't have one already
-	if (!this.exists("forename") && !this.exists("surname"))
-	{
-		SetRandomName(this);
-	}
 }
 
 // Remove this blob from the owning char list or unclaimed char list if possible
