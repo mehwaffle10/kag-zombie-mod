@@ -169,6 +169,12 @@ void RemoveCharFromPlayerList(CBlob@ this)
 		return;
 	}
 
+	if (!this.hasTag("player"))
+	{
+		DebugPrint("Non-player blob");
+		return;
+	}
+
 	// Player that claimed this blob, or empty if unclaimed
 	string owning_player = this.exists("owning_player") ? this.get_string("owning_player") : "";
 	DebugPrint(owning_player != "" ? "Owned by player " + owning_player : "Potentially in unclaimed char list");
@@ -270,7 +276,7 @@ void PrintCharList(u16[]@ char_networkIDs)
 void DebugPrint(string message)
 {
 	// Set this to true if you want to print debug information
-	if (true)
+	if (false)
 	{
 		print(message);
 	}

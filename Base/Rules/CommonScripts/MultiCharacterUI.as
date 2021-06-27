@@ -17,7 +17,7 @@ namespace ButtonStates
 	};
 };
 
-void onInit(CPlayer@ this)
+void onInit(CRules@ this)
 {
 	this.set_u8("multichar_ui_action_cooldown", 0);
 	this.set_u8("multichar_ui_name_cooldown", 0);
@@ -50,16 +50,16 @@ void onRender(CRules@ this)
 	}
 
 	// Update cooldowns if active
-	u8 cooldown = player.get_u8("multichar_ui_action_cooldown");
+	u8 cooldown = this.get_u8("multichar_ui_action_cooldown");
 	if (cooldown > 0)
 	{
-		player.set_u8("multichar_ui_action_cooldown", --cooldown);
+		this.set_u8("multichar_ui_action_cooldown", --cooldown);
 	}
 
-	u8 name_cooldown = player.get_u8("multichar_ui_name_cooldown");
+	u8 name_cooldown = this.get_u8("multichar_ui_name_cooldown");
 	if (name_cooldown > 0)
 	{
-		player.set_u8("multichar_ui_name_cooldown", --name_cooldown);
+		this.set_u8("multichar_ui_name_cooldown", --name_cooldown);
 	}
 
 	// Check if the player is trying to swap to another char
@@ -76,7 +76,7 @@ void onRender(CRules@ this)
 				params.write_netid(blobsInRadius[i].getNetworkID());
 
 				this.SendCommand(this.getCommandID("swap_player"), params);
-				player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+				this.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 				break;
 			}
 		}
@@ -112,7 +112,7 @@ void onRender(CRules@ this)
 					params.write_netid(player_char_networkIDs[i]);
 
 					this.SendCommand(this.getCommandID("swap_player"), params);
-					player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+					this.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 					break;
 				}
 			}
@@ -137,6 +137,9 @@ void onRender(CRules@ this)
 			upper_left.y += frame_width - 2;
 		}
 	}
+
+	// temp
+	DrawScoreboard();
 }
 
 void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u16 char_networkID, bool claimed, bool lock_swap, bool lock_claim, bool lock_up, bool lock_down)
@@ -184,8 +187,7 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				player_class = player_class.substr(0, 1).toUpper() + player_class.substr(1, -1);
 
 				// Tuning variables
-				f32 scale = 1.5f;  // 1.5f default
-				middle.y += sprite.getFrameHeight() * scale * 0.65f;
+				middle.y += sprite.getFrameHeight() * character_scale * 0.65f;
 				Vec2f body_offset = Vec2f(sprite.getFrameWidth(), sprite.getFrameHeight());
 				
 				int head_layer = 0;
@@ -194,8 +196,8 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				head_offset -= sprite.getOffset();
 				
 
-				f32 scale_x = scale;
-				f32 scale_y = scale;
+				f32 scale_x = character_scale;
+				f32 scale_y = character_scale;
 
 				// Handle facing left
 				if (char.isFacingLeft())
@@ -209,8 +211,8 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				}
 
 				// Scale up the offsets
-				body_offset *= scale;
-				head_offset *= scale;
+				body_offset *= character_scale;
+				head_offset *= character_scale;
 
 				// Draw the head and body in the correct order based on the frame
 				if (head_layer == 0)  // Only draw the body 
@@ -275,7 +277,7 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				};
 				fxn@[] execute_on_press = {@SendSwapPlayerCmd, @SendClaimCharCmd, @SendMoveUpCharCmd, @SendMoveDownCharCmd};
 				bool dead = char.hasTag("dead") || char.getHealth() <= 0.0f;
-				bool[] locked = {dead, dead || lock_claim, lock_up, lock_down};
+				bool[] locked = {dead || lock_swap, dead || lock_claim, lock_up, lock_down};
 
 				// Create buttons
 				for (u8 i = 0; i < button_names.length(); i++)
@@ -285,7 +287,7 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 					Vec2f button_bottom_right = Vec2f(button_upper_left.x + button_width, button_upper_left.y + button_width);
 					Vec2f mouse_pos = controls.getMouseScreenPos();
 					// Had to attach this to rules instead of the player, as it didn't work on the player for some reason
-					string button_state_string = player.getUsername() + "_" + char_networkID + "_" + button_name + "_button_state";
+					string button_state_string = button_upper_left.x + "_" + button_upper_left.y + "_" + char_networkID + "_" + button_name + "_button_state";
 					u8 button_state = rules.get_u8(button_state_string);
 
 					// Update state and make the button interactive
@@ -296,7 +298,7 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 					else if (mouse_pos.x > button_upper_left.x && mouse_pos.x < button_bottom_right.x
 						&& mouse_pos.y > button_upper_left.y && mouse_pos.y < button_bottom_right.y)  // Inside the button
 					{ 
-						if (button_state == ButtonStates::hovered && player.get_u8("multichar_ui_action_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
+						if (button_state == ButtonStates::hovered && rules.get_u8("multichar_ui_action_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
 						{ 
 							if (button_state != ButtonStates::pressed)  // Only play the sound once
 							{
@@ -694,7 +696,7 @@ void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("swap_player"), params);
-	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
@@ -712,7 +714,7 @@ void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("transfer_char"), params);
-	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
@@ -723,13 +725,12 @@ void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 		return;
 	}
 
-	// Send an empty string to send the char to the unlaimed list
 	CBitStream params;
 	params.write_string(player.getUsername());
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("move_up_char"), params);
-	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
@@ -740,13 +741,12 @@ void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 		return;
 	}
 
-	// Send an empty string to send the char to the unlaimed list
 	CBitStream params;
 	params.write_string(player.getUsername());
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("move_down_char"), params);
-	player.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void DrawScoreboard()
@@ -759,7 +759,7 @@ void DrawScoreboard()
 	}
 
 	//  Sort players
-	CPlayer@[] survivors;
+	CPlayer@[] players;
 	CPlayer@[] spectators;
 	for (u32 i = 0; i < getPlayersCount(); i++)
 	{
@@ -770,26 +770,56 @@ void DrawScoreboard()
 			spectators.push_back(p);
 			continue;
 		}
-		else if (teamNum == 0)  // Survivors are on blue team
+		else
 		{
 			// Always render current player at top
 			if (p is getLocalPlayer())
 			{
-				survivors.insert(0, p);
+				players.insert(0, p);
 			}
 			else
 			{
-				survivors.push_back(p);
+				players.push_back(p);
 			}
 		}
 	}
 
-	// Middle of the screen
-	Vec2f middle = Vec2f(getScreenWidth() / 2, 100);
+	u8 frame_width = 124;
+	s32 max_y = 100;
 
-	// Draw each player's character list horizontally
-	
+	// Middle of the screen shifted by player count
+	Vec2f upper_left = Vec2f(getScreenWidth() / 2, max_y) - Vec2f(frame_width / 2.0f, 0) * players.length();
 
+	// Draw each player's character list
+	for (u8 player_index = 0; player_index < players.length(); player_index++)
+	{
+		// Safety check
+		CPlayer@ player = players[player_index];
+		if (player is null)
+		{
+			continue;
+		}
+
+		// Get player's char list
+		u16[] player_char_networkIDs;
+		if (!readCharList(player.getUsername(), @player_char_networkIDs))
+		{
+			continue;
+		}
+
+		// Draw each character
+		bool notLocalPlayer = player !is getLocalPlayer();
+		for (u8 char_index = 0; char_index < player_char_networkIDs.length(); char_index++)
+		{
+			DrawCharacterFrame(frame_width, upper_left, 1.5f, player_char_networkIDs[char_index], true,
+				notLocalPlayer, notLocalPlayer, notLocalPlayer || char_index == 0, notLocalPlayer || char_index == player_char_networkIDs.length() - 1);
+			upper_left.y += frame_width - 2;
+		}
+
+		// Move over and to the top for the next player
+		upper_left.x += frame_width - 2;
+		upper_left.y = max_y;
+	}
 	
 	/*
 	if (spectators.length > 0)

@@ -91,8 +91,6 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 		return;
 	}
 
-	print("" + blob.getNetworkID());
-
 	if (player is null)
 	{
 		DebugPrint("Player was null");
