@@ -2,20 +2,8 @@
 #define CLIENT_ONLY
 
 #include "MultiCharacterCommon.as"
+#include "MultiCharacterButtons.as"
 #include "RunnerTextures.as"
-
-funcdef void fxn(CPlayer@ player, u16 char_networkID, bool claimed);
-
-namespace ButtonStates
-{
-	enum state_type
-	{
-		idle = 0,
-		hovered,
-		pressed,
-		locked
-	};
-};
 
 void onInit(CRules@ this)
 {
@@ -275,6 +263,8 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - 2 * button_width - frame_offset),
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - button_width - frame_offset),
 				};
+
+				// Definitions from MultiCharacterButtons.as
 				fxn@[] execute_on_press = {@SendSwapPlayerCmd, @SendClaimCharCmd, @SendMoveUpCharCmd, @SendMoveDownCharCmd};
 				bool dead = char.hasTag("dead") || char.getHealth() <= 0.0f;
 				bool[] locked = {dead || lock_swap, dead || lock_claim, lock_up, lock_down};
@@ -282,71 +272,17 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				// Create buttons
 				for (u8 i = 0; i < button_names.length(); i++)
 				{
-					string button_name = button_names[i];
-					Vec2f button_upper_left = button_upper_lefts[i];
-					Vec2f button_bottom_right = Vec2f(button_upper_left.x + button_width, button_upper_left.y + button_width);
-					Vec2f mouse_pos = controls.getMouseScreenPos();
-					// Had to attach this to rules instead of the player, as it didn't work on the player for some reason
-					string button_state_string = button_upper_left.x + "_" + button_upper_left.y + "_" + char_networkID + "_" + button_name + "_button_state";
-					u8 button_state = rules.get_u8(button_state_string);
-
-					// Update state and make the button interactive
-					if (locked[i])  // Button is locked ie at top of list for up button or rendered elsewhere, etc
-					{
-						button_state = ButtonStates::locked;
-					}
-					else if (mouse_pos.x > button_upper_left.x && mouse_pos.x < button_bottom_right.x
-						&& mouse_pos.y > button_upper_left.y && mouse_pos.y < button_bottom_right.y)  // Inside the button
-					{ 
-						if (button_state == ButtonStates::hovered && rules.get_u8("multichar_ui_action_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
-						{ 
-							if (button_state != ButtonStates::pressed)  // Only play the sound once
-							{
-								Sound::Play("buttonclick.ogg");
-							}
-
-							button_state = ButtonStates::pressed;
-							GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
-							execute_on_press[i](player, char_networkID, claimed);
-						}
-						else  // Hovering over the button
-						{
-							// Don't let players press the button by holding m1 and then mousing over the button
-							// and make the state not change back until m1 is released or the mouse moves off the button ie button stays pressed
-							if (!controls.mousePressed1)  
-							{
-								if (button_state != ButtonStates::hovered)  // Only play the sound once
-								{
-									Sound::Play("select.ogg");
-								}
-
-								button_state = ButtonStates::hovered;
-							}
-						}
-					}
-					else  // Outside the button
-					{
-						button_state = ButtonStates::idle;
-					}
-					rules.set_u8(button_state_string, button_state);
-					
-					// Draw the button
-					if (button_state == ButtonStates::idle)
-					{
-						GUI::DrawButton(button_upper_left, button_bottom_right);
-					}
-					else if (button_state == ButtonStates::hovered)
-					{
-						GUI::DrawButtonHover(button_upper_left, button_bottom_right);
-					}
-					else if (button_state == ButtonStates::pressed)
-					{
-						GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
-					}
-					else if (button_state == ButtonStates::locked)
-					{
-						GUI::DrawButtonPressed(button_upper_left, button_bottom_right);
-					}
+					DrawButton(
+						player,
+						char_networkID,
+						button_names[i],
+						button_upper_lefts[i],
+						button_width,
+						button_width,
+						locked[i],
+						claimed,
+						execute_on_press[i]
+					);
 				}
 			}
 		}
@@ -680,73 +616,6 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 
 		HPs++;
 	}
-}
-
-void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
-{
-	CRules@ rules = getRules();
-	if (rules is null || player is null)
-	{
-		return;
-	}
-
-	// Attempt to swap to that character
-	CBitStream params;
-	params.write_string(player.getUsername());
-	params.write_netid(char_networkID);
-
-	rules.SendCommand(rules.getCommandID("swap_player"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
-}
-
-void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
-{
-	CRules@ rules = getRules();
-	if (rules is null || player is null)
-	{
-		return;
-	}
-
-	// Send an empty string to send the char to the unlaimed list
-	CBitStream params;
-	params.write_string(player.getUsername());
-	params.write_string(claimed ? "" : player.getUsername());
-	params.write_netid(char_networkID);
-
-	rules.SendCommand(rules.getCommandID("transfer_char"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
-}
-
-void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
-{
-	CRules@ rules = getRules();
-	if (rules is null || player is null)
-	{
-		return;
-	}
-
-	CBitStream params;
-	params.write_string(player.getUsername());
-	params.write_netid(char_networkID);
-
-	rules.SendCommand(rules.getCommandID("move_up_char"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
-}
-
-void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
-{
-	CRules@ rules = getRules();
-	if (rules is null || player is null)
-	{
-		return;
-	}
-
-	CBitStream params;
-	params.write_string(player.getUsername());
-	params.write_netid(char_networkID);
-
-	rules.SendCommand(rules.getCommandID("move_down_char"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
 void DrawScoreboard()
