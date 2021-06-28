@@ -20,6 +20,7 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 		return;
 	}
 
+	// Check that the player exists
 	CPlayer@ player = getPlayerByUsername(player_to_swap_username);
 	if (player is null)
 	{
@@ -27,6 +28,7 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 		return;
 	}
 
+	// Check if the target exists and is alive and doesn't already have a player
 	CBlob@ target_blob = getBlobByNetworkID(target_blob_networkID);
 	if (target_blob is null)
 	{
@@ -36,6 +38,12 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	if (target_blob.hasTag("dead") || target_blob.getHealth() <= 0.0f)
 	{
 		DebugPrint("Target blob with networkID " + target_blob_networkID + " was dead");
+		return;
+	}
+	if (target_blob.getPlayer() !is null)
+	{
+		DebugPrint("Target blob with networkID " + target_blob_networkID +
+			" had player " + target_blob.getPlayer().getUsername());
 		return;
 	}
 
@@ -105,6 +113,13 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 	if (new_owner != "" && getPlayerByUsername(new_owner) is null)
 	{
 		DebugPrint("Failed to find new owning player " + new_owner);
+		return;
+	}
+
+	// Check that the blob does not have a different player if taking from the unclaimed list
+	if (new_owner != "" && this.getPlayer() !is null && this.getPlayer().getUsername() != new_owner)
+	{
+		DebugPrint("Player " + new_owner + " tried to claim char controlled by player " + this.getPlayer().getUsername());
 		return;
 	}
 
@@ -276,7 +291,7 @@ void PrintCharList(u16[]@ char_networkIDs)
 void DebugPrint(string message)
 {
 	// Set this to true if you want to print debug information
-	if (false)
+	if (true)
 	{
 		print(message);
 	}

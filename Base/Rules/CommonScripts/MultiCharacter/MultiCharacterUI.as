@@ -267,7 +267,8 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				// Definitions from MultiCharacterButtons.as
 				fxn@[] execute_on_press = {@SendSwapPlayerCmd, @SendClaimCharCmd, @SendMoveUpCharCmd, @SendMoveDownCharCmd};
 				bool dead = char.hasTag("dead") || char.getHealth() <= 0.0f;
-				bool[] locked = {dead || lock_swap, dead || lock_claim, lock_up, lock_down};
+				CPlayer@ char_player = char.getPlayer();
+				bool[] locked = {dead || char_player !is null || lock_swap, dead || (char_player !is null && char_player !is player) || lock_claim, lock_up, lock_down};
 
 				// Create buttons
 				for (u8 i = 0; i < button_names.length(); i++)
