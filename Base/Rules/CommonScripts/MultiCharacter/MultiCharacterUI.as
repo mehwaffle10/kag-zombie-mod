@@ -233,13 +233,13 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				else
 				{
 					// Give the character a random name
-					if (player.get_u8("multichar_ui_name_cooldown") == 0)
+					if (rules.get_u8("multichar_ui_name_cooldown") == 0)
 					{
 						CBitStream params;
 						params.write_netid(char_networkID);
 
 						rules.SendCommand(rules.getCommandID("give_char_random_name"), params);
-						player.set_u8("multichar_ui_name_cooldown", getTicksASecond());
+						rules.set_u8("multichar_ui_name_cooldown", getTicksASecond());
 					}
 				}
 				name_middle.y += 12;
