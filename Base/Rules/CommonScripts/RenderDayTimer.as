@@ -5,7 +5,7 @@ void onRender(CRules@ this)
 	f32 time = map.getDayTime();
 	u16 ticks_left = this.get_u16("ticks_left");
 	u16 phase = this.get_u16("phase");
-	Vec2f pos = Vec2f(20, 10);
+	Vec2f pos = Vec2f(10, getScreenHeight() - 50);
 
 	string str;
 	if (phase % 2 == 0)

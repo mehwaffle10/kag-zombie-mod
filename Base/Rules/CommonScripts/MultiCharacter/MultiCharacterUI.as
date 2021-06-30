@@ -157,13 +157,14 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
 			3
 		);
 		upper_left.y += move_list_button_height;
-		
+
 		// Render claimed players starting from the top right corner under the button
 		bool ended_early = false;
 		for (u8 i = char_display_index; i < char_networkIDs.length(); i++)
 		{
 			// Check that there's enough room for the move down button and the frame
-			if (upper_left.y + frame_width + move_list_button_height > getScreenHeight())
+			// The extra distance from the bottom of the screen is to protect the day timer and HUD on the bottom
+			if (upper_left.y + frame_width + move_list_button_height > getScreenHeight() - 50)
 			{
 				ended_early = true;
 				break;
