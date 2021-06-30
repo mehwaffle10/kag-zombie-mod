@@ -16,15 +16,11 @@ namespace ButtonStates
 	};
 };
 
-void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f upper_left, u8 button_width, u8 button_height, bool locked, bool claimed, fxn@ execute_on_press)
+void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f upper_left,
+	u8 button_width, u8 button_height, bool locked, bool claimed, fxn@ execute_on_press,
+	string icon_filename, u8 row_offset, u8 frames_per_row)
 {
-	// Safety checks
-	if (player is null)
-	{
-		DebugPrint("Player was null");
-		return;
-	}
-
+	// Safety checks. Intentionally does not check if player is null
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
@@ -86,22 +82,71 @@ void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f u
 	}
 	rules.set_u8(button_state_string, button_state);
 	
-	// Draw the button
+	// Draw the buttom
+	u8 frame_offset = row_offset * frames_per_row;
 	if (button_state == ButtonStates::idle)
 	{
-		GUI::DrawButton(upper_left, bottom_right);
+		// GUI::DrawButton(upper_left, bottom_right);
+		GUI::DrawIcon(icon_filename, frame_offset, Vec2f(button_width / 2, button_height / 2), upper_left);
 	}
 	else if (button_state == ButtonStates::hovered)
 	{
-		GUI::DrawButtonHover(upper_left, bottom_right);
+		// GUI::DrawButtonHover(upper_left, bottom_right);
+		GUI::DrawIcon(icon_filename, frame_offset + 1, Vec2f(button_width / 2, button_height / 2), upper_left);
 	}
 	else if (button_state == ButtonStates::pressed)
 	{
-		GUI::DrawButtonPressed(upper_left, bottom_right);
+		// GUI::DrawButtonPressed(upper_left, bottom_right);
+		GUI::DrawIcon(icon_filename, frame_offset + 2, Vec2f(button_width / 2, button_height / 2), upper_left);
 	}
 	else if (button_state == ButtonStates::locked)
 	{
-		GUI::DrawButtonPressed(upper_left, bottom_right);
+		// GUI::DrawButtonPressed(upper_left, bottom_right);
+		GUI::DrawIcon(icon_filename, frame_offset + 2, Vec2f(button_width / 2, button_height / 2), upper_left);
+	}
+}
+
+void MoveUpPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
+{
+	// Safety checks
+	print("MoveUpPlayerList Enter");
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
+	// Get the current index
+	string char_display_index_string = player is null ? "unclaimed_char_display_index" : player.getUsername() + "_char_display_index";
+	u8 char_display_index = rules.get_u8(char_display_index_string);
+
+	// Avoid underflow
+	if (char_display_index > 0)
+	{
+		print(char_display_index_string + " - 1");
+		rules.set_u8(char_display_index_string, char_display_index - 1);
+	}
+}
+
+void MoveDownPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
+{
+	// Safety checks
+	print("MoveUpPlayerList Down");
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
+	// Get the current index
+	string char_display_index_string = player is null ? "unclaimed_char_display_index" : player.getUsername() + "_char_display_index";
+	u8 char_display_index = rules.get_u8(char_display_index_string);
+
+	// Avoid overflow
+	if (char_display_index < 255)
+	{
+		print(char_display_index_string + " + 1");
+		rules.set_u8(char_display_index_string, char_display_index + 1);
 	}
 }
 

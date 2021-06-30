@@ -167,6 +167,26 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 	player.set_u16("previous_char_networkID", blob.getNetworkID());
 }
 
+void onPlayerLeave(CRules@ this, CPlayer@ player)
+{
+	// Safety checks
+	if (player is null)
+	{
+		DebugPrint("Player was null");
+		return;
+	}
+
+	// Move all characters in this players list to the unclaimed list
+	u16[] player_char_networkIDs;
+	if (readCharList(player.getUsername(), @player_char_networkIDs))
+	{
+		for(u8 i = 0; i < player_char_networkIDs.length(); i++)
+		{
+			TransferCharToPlayerList(getBlobByNetworkID(player_char_networkIDs[i]), "", -1);
+		}
+	}
+}
+
 void onBlobDie(CRules@ this, CBlob@ blob)
 {	
 	// Clean up dead blobs

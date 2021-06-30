@@ -70,23 +70,16 @@ void onRender(CRules@ this)
 		}
 	}
 
+	// Draw player's char list in the top right
+	u8 frame_width = 124;
+	u8 move_list_button_height = 24;
+	Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
+	DrawCharacterList(player, upper_left, frame_width);
+
 	// Get player's char list
 	u16[] player_char_networkIDs;
 	if (readCharList(player.getUsername(), @player_char_networkIDs))
 	{
-		// Render claimed players starting from the top right corner
-		u8 frame_width = 124;
-		Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
-		
-		for (u8 i = 0; i < player_char_networkIDs.length(); i++)
-		{
-			// Draw the frame
-			DrawCharacterFrame(frame_width, upper_left, 1.5f, player_char_networkIDs[i], true, false, false, i == 0, i == player_char_networkIDs.length() - 1);
-
-			// Move the top left corner down
-			upper_left.y += frame_width - 2;
-		}
-
 		// Check if the player is trying to use hotkeys to swap to another char
 		if (cooldown == 0 && controls.isKeyPressed(KEY_LCONTROL))
 		{
@@ -107,27 +100,98 @@ void onRender(CRules@ this)
 		}
 	}
 
-	// Render unclaimed char list starting from the lower left corner
-	// Need to draw it top to bottom so the up and down keys work properly
-	u16[] unclaimed_char_networkIDs;
-	if (readCharList("", @unclaimed_char_networkIDs))
+	// Draw unclaimed char list in the top left
+	upper_left = Vec2f(0, 0);
+	DrawCharacterList(null, upper_left, frame_width);
+
+	// temp
+	DrawScoreboard();
+}
+
+// Renders a player list from top to bottom as far as possible from the start position
+// Renders the unclaimed list if player list is null
+void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
+{
+	// Safety checks
+	CRules@ rules = getRules();
+	if (rules is null)
 	{
-		// Render claimed players on the right
-		u8 frame_width = 124;
-		Vec2f upper_left = Vec2f(0, getScreenHeight() - (frame_width - 2) * unclaimed_char_networkIDs.length());
+		return;
+	}
+
+	CControls@ controls = getControls();
+	if (controls is null)
+	{
+		return;
+	}
+
+	u8 move_list_button_height = 24;
+
+	// Get player's char list
+	u16[] char_networkIDs;
+	if (readCharList(player !is null ? player.getUsername() : "", @char_networkIDs))
+	{
+		// Render the player's name
+		u8 name_box_height = 28;
+		Vec2f bottom_right = Vec2f(upper_left.x + frame_width, upper_left.y + name_box_height);
+		Vec2f name_middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
+		GUI::DrawFramedPane(upper_left, bottom_right);
+		GUI::DrawShadowedTextCentered(player !is null ? player.getUsername() : "Unclaimed", name_middle, SColor(255, 255, 255, 255));
+		upper_left.y += name_box_height;
+
+		// Render the move up in player's list button
+		u8 char_display_index = rules.get_u8((player !is null ? player.getUsername() : "unclaimed") + "_char_display_index");
+
+		DrawButton(
+			player,
+			0,
+			(player !is null ? player.getUsername() : "unclaimed") + "_move_up_list",
+			upper_left,
+			frame_width,
+			move_list_button_height,
+			char_display_index == 0,
+			player !is null,
+			@MoveUpPlayerList,
+			"MultiCharacterButtonsWide.png",
+			0,
+			3
+		);
+		upper_left.y += move_list_button_height;
 		
-		for (u8 i = 0; i < unclaimed_char_networkIDs.length(); i++)
+		// Render claimed players starting from the top right corner under the button
+		bool ended_early = false;
+		for (u8 i = char_display_index; i < char_networkIDs.length(); i++)
 		{
+			// Check that there's enough room for the move down button and the frame
+			if (upper_left.y + frame_width + move_list_button_height > getScreenHeight())
+			{
+				ended_early = true;
+				break;
+			}
+
 			// Draw the frame
-			DrawCharacterFrame(frame_width, upper_left, 1.5f, unclaimed_char_networkIDs[i], false, false, false, i == 0, i == unclaimed_char_networkIDs.length() - 1);
+			DrawCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i], player !is null, false, false, i == 0, i == char_networkIDs.length() - 1);
 
 			// Move the top left corner down
 			upper_left.y += frame_width - 2;
 		}
-	}
 
-	// temp
-	DrawScoreboard();
+		// Render the move down in list button
+		DrawButton(
+			player,
+			0,
+			(player !is null ? player.getUsername() : "unclaimed") + "_move_down_list",
+			upper_left,
+			frame_width,
+			move_list_button_height,
+			!ended_early,
+			player !is null,
+			@MoveDownPlayerList,
+			"MultiCharacterButtonsWide.png",
+			1,
+			3
+		);
+	}
 }
 
 void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u16 char_networkID, bool claimed, bool lock_swap, bool lock_claim, bool lock_up, bool lock_down)
@@ -256,19 +320,20 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				u8 button_width = 24;
 				u8 frame_offset = 4;
 
-				string[] button_names = {"swap_player", "claim_char", "move_up_char", "move_down_char"};
+				string[] button_names = {"move_up_char", "move_down_char", "swap_player", "claim_char"};
+				// string[] button_names = {"swap_player", "claim_char", "move_up_char", "move_down_char"};
 				Vec2f[] button_upper_lefts = {
-					Vec2f(upper_left.x + frame_offset, bottom_right.y - 2 * button_width - frame_offset),
-					Vec2f(upper_left.x + frame_offset, bottom_right.y - button_width - frame_offset),
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - 2 * button_width - frame_offset),
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - button_width - frame_offset),
+					Vec2f(upper_left.x + frame_offset, bottom_right.y - 2 * button_width - frame_offset),
+					Vec2f(upper_left.x + frame_offset, bottom_right.y - button_width - frame_offset),
 				};
 
 				// Definitions from MultiCharacterButtons.as
-				fxn@[] execute_on_press = {@SendSwapPlayerCmd, @SendClaimCharCmd, @SendMoveUpCharCmd, @SendMoveDownCharCmd};
+				fxn@[] execute_on_press = {@SendMoveUpCharCmd, @SendMoveDownCharCmd, @SendSwapPlayerCmd, @SendClaimCharCmd};
 				bool dead = char.hasTag("dead") || char.getHealth() <= 0.0f;
 				CPlayer@ char_player = char.getPlayer();
-				bool[] locked = {dead || char_player !is null || lock_swap, dead || (char_player !is null && char_player !is player) || lock_claim, lock_up, lock_down};
+				bool[] locked = {lock_up, lock_down, dead || char_player !is null || lock_swap, dead || (char_player !is null && char_player !is player) || lock_claim};
 
 				// Create buttons
 				for (u8 i = 0; i < button_names.length(); i++)
@@ -282,7 +347,10 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 						button_width,
 						locked[i],
 						claimed,
-						execute_on_press[i]
+						execute_on_press[i],
+						"MultiCharacterButtons.png",
+						i == 3 && claimed ? 4 : i,
+						3
 					);
 				}
 			}
@@ -642,23 +710,28 @@ void DrawScoreboard()
 		}
 		else
 		{
-			// Always render current player at top
+			// Temp for debugging
 			if (p is getLocalPlayer())
 			{
-				players.insert(0, p);
+				players.push_back(p);
+				players.push_back(p);
+				players.push_back(p);
 			}
-			else
+			/*
+			// Don't render local player
+			if (p !is getLocalPlayer())
 			{
 				players.push_back(p);
 			}
+			*/
 		}
 	}
 
 	u8 frame_width = 124;
-	s32 max_y = 100;
+	s32 min_y = 0;
 
 	// Middle of the screen shifted by player count
-	Vec2f upper_left = Vec2f(getScreenWidth() / 2, max_y) - Vec2f(frame_width / 2.0f, 0) * players.length();
+	Vec2f upper_left = Vec2f(getScreenWidth() / 2, min_y) - Vec2f(frame_width / 2.0f, 0) * players.length();
 
 	// Draw each player's character list
 	for (u8 player_index = 0; player_index < players.length(); player_index++)
@@ -670,25 +743,12 @@ void DrawScoreboard()
 			continue;
 		}
 
-		// Get player's char list
-		u16[] player_char_networkIDs;
-		if (!readCharList(player.getUsername(), @player_char_networkIDs))
-		{
-			continue;
-		}
-
-		// Draw each character
-		bool notLocalPlayer = player !is getLocalPlayer();
-		for (u8 char_index = 0; char_index < player_char_networkIDs.length(); char_index++)
-		{
-			DrawCharacterFrame(frame_width, upper_left, 1.5f, player_char_networkIDs[char_index], true,
-				notLocalPlayer, notLocalPlayer, notLocalPlayer || char_index == 0, notLocalPlayer || char_index == player_char_networkIDs.length() - 1);
-			upper_left.y += frame_width - 2;
-		}
+		// Draw player's char list
+		DrawCharacterList(player, upper_left, frame_width);
 
 		// Move over and to the top for the next player
 		upper_left.x += frame_width - 2;
-		upper_left.y = max_y;
+		upper_left.y = min_y;
 	}
 	
 	/*
