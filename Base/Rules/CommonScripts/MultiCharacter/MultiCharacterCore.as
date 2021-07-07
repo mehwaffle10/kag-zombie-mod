@@ -10,12 +10,18 @@ void onInit(CRules@ this)
 		return;
 	}
 
+	// Server commands, issued by the client
 	this.addCommandID("swap_player");
 	this.addCommandID("transfer_char");
 	this.addCommandID("move_down_char");
 	this.addCommandID("move_up_char");
 	this.addCommandID("give_char_random_name");
+
+	// Server side debugging commands
 	this.addCommandID("spawn_char");
+
+	// Client only, used in MultiCharacterUI.as
+	this.addCommandID("move_up_char_list");
 
 	// Only server can save + sync lists
 	if (!isServer())
@@ -189,6 +195,15 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 
 void onBlobDie(CRules@ this, CBlob@ blob)
 {	
+	// Tell clients to move up the appropriate char list
+	if (this !is null && blob !is null && blob.exists("owning_player"))
+	{
+		CBitStream params;
+		params.write_string(blob.get_string("owning_player"));
+
+		this.SendCommand(this.getCommandID("move_up_char_list"), params);
+	}
+
 	// Clean up dead blobs
 	RemoveCharFromPlayerList(blob);
 }
@@ -202,7 +217,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 
 	// No need for safety checks, methods already have them
-	DebugPrint("Received Command");
+	DebugPrint("Server Received Command");
 	if (cmd == this.getCommandID("swap_player"))
 	{
 		DebugPrint("Command is swap_player");

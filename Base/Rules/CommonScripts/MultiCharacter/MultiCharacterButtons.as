@@ -106,10 +106,10 @@ void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f u
 	}
 }
 
+// char_networkID and claimed are just to match the function signature at the top so I can pass functions around
 void MoveUpPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	// Safety checks
-	print("MoveUpPlayerList Enter");
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
@@ -123,15 +123,14 @@ void MoveUpPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
 	// Avoid underflow
 	if (char_display_index > 0)
 	{
-		print(char_display_index_string + " - 1");
 		rules.set_u8(char_display_index_string, char_display_index - 1);
 	}
 }
 
+// char_networkID and claimed are just to match the function signature at the top so I can pass functions around
 void MoveDownPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	// Safety checks
-	print("MoveUpPlayerList Down");
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
@@ -145,11 +144,11 @@ void MoveDownPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
 	// Avoid overflow
 	if (char_display_index < 255)
 	{
-		print(char_display_index_string + " + 1");
 		rules.set_u8(char_display_index_string, char_display_index + 1);
 	}
 }
 
+// claimed is just to match the function signature at the top so I can pass functions around
 void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	CRules@ rules = getRules();
@@ -185,6 +184,7 @@ void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
+// claimed is just to match the function signature at the top so I can pass functions around
 void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	CRules@ rules = getRules();
@@ -201,6 +201,7 @@ void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
 }
 
+// claimed is just to match the function signature at the top so I can pass functions around
 void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	CRules@ rules = getRules();

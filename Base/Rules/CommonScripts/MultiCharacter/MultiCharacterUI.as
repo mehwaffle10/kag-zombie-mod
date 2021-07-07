@@ -105,7 +105,25 @@ void onRender(CRules@ this)
 	DrawCharacterList(null, upper_left, frame_width);
 
 	// temp
-	DrawScoreboard();
+	// DrawScoreboard();
+}
+
+void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
+{
+	// Only client responds to these commands, but no need to check because of #define CLIENT_ONLY
+	// No need for safety checks, methods already have them
+	DebugPrint("Client Received Command");
+	if (cmd == this.getCommandID("move_up_char_list"))
+	{
+		DebugPrint("Command is move_up_char_list");
+		string player_list_to_move_up;
+		if (!params.saferead_string(player_list_to_move_up))
+		{
+			return;
+		}
+		
+		MoveUpPlayerList(player_list_to_move_up == "" ? null : getPlayerByUsername(player_list_to_move_up), 0, false);
+	}
 }
 
 // Renders a player list from top to bottom as far as possible from the start position

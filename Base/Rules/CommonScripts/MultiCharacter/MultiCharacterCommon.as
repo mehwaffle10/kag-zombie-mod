@@ -291,7 +291,7 @@ void PrintCharList(u16[]@ char_networkIDs)
 void DebugPrint(string message)
 {
 	// Set this to true if you want to print debug information
-	if (true)
+	if (false)
 	{
 		print(message);
 	}
@@ -412,7 +412,7 @@ bool readCharList(string player_name, u16[]@ char_networkIDs)
 			string player_list_name = player_name + "_player_char_list_" + i;
 			char_networkIDs.push_back(rules.get_u16(player_list_name));
 		}
-		//DebugPrint(player_name + "'s char list read successfully");
+		// DebugPrint(player_name + "'s char list read successfully");
 	}
 	else  // Read the unclaimed char list
 	{
@@ -421,7 +421,7 @@ bool readCharList(string player_name, u16[]@ char_networkIDs)
 			string player_list_name = "unclaimed_char_list_" + i;
 			char_networkIDs.push_back(rules.get_u16(player_list_name));
 		}
-		//DebugPrint("Unclaimed char list read successfully");
+		// DebugPrint("Unclaimed char list read successfully");
 	}
 	
 	return true;
