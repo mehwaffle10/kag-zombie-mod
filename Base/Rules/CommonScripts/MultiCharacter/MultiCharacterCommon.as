@@ -225,6 +225,16 @@ void RemoveCharFromPlayerList(CBlob@ this)
 	// Reset the list in rules
 	SaveCharList(owning_player, char_networkIDs);
 
+	// Tell clients to move up the appropriate char list
+	CRules@ rules = getRules();
+	if (rules !is null && this !is null && this.exists("owning_player"))
+	{
+		CBitStream params;
+		params.write_string(this.get_string("owning_player"));
+
+		rules.SendCommand(rules.getCommandID("move_up_char_list"), params);
+	}
+
 	// Remove the object's owner
 	this.set_string("owning_player", "");
 }
