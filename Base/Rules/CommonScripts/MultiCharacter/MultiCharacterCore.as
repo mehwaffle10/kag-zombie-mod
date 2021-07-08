@@ -259,6 +259,38 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 			return;
 		}
 
+		// Print who's doing what in the chat
+		CBlob@ blob = getBlobByNetworkID(target_blob_networkID);
+		if (blob !is null)
+		{
+			// Get the name of the player doing the action and the action
+			string message = player_to_swap_username == "" ?
+				sending_player + " unclaimed" :
+				player_to_swap_username + " claimed";
+
+			// Add the class
+			CSprite@ sprite = blob.getSprite();
+			if (sprite !is null)
+			{
+				message += " the " + sprite.getFilename().split("_")[2];
+			}
+			
+
+			// Add the first name
+			if (blob.exists("forename"))
+			{
+				message += " " + blob.get_string("forename");
+			}
+
+			// Add the last name
+			if (blob.exists("surname"))
+			{
+				message += " " + blob.get_string("surname");
+			}
+
+			client_AddToChat(message, SColor(0, 128, 128, 192));
+		}
+
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), player_to_swap_username, -1);
 	}
 	else if (cmd == this.getCommandID("move_up_char"))

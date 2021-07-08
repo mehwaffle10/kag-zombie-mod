@@ -181,8 +181,8 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
 		for (u8 i = char_display_index; i < char_networkIDs.length(); i++)
 		{
 			// Check that there's enough room for the move down button and the frame
-			// The extra distance from the bottom of the screen is to protect the day timer and HUD on the bottom
-			if (upper_left.y + frame_width + move_list_button_height > getScreenHeight() - 50)
+			// The extra distance from the bottom of the screen is to protect the day timer, HUD, and chat on the bottom
+			if (upper_left.y + frame_width + move_list_button_height > getScreenHeight() - 95)
 			{
 				ended_early = true;
 				break;
