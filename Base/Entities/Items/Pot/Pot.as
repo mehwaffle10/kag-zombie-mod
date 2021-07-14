@@ -4,22 +4,26 @@
 
 void onInit(CBlob@ this)
 {
+	// Safety Checks
+	if (this is null)
+	{
+		return;
+	}
+
 	this.server_setTeamNum(3);
+
+	CSprite@ sprite = this.getSprite();
+	if (sprite !is null)
+	{
+		// Give the pot a random texture, calculted the same on all clients, taken from Bush.as
+		sprite.SetFrameIndex(this.getNetworkID() % sprite.animation.getFramesCount());
+	}
 }
 
 //void onDie( CBlob@ this )
 //{
 //	//TODO: make random item
 //}
-
-
-//sprite
-
-void onInit(CSprite@ this)
-{
-	// Give the pot a random texture
-	this.SetFrameIndex(XORRandom(4));
-}
 
 bool doesCollideWithBlob(CBlob@ this, CBlob@ blob)
 {
