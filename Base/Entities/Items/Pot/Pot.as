@@ -1,4 +1,4 @@
-// Bush logic
+// Pot logic
 
 #include "LootCommon.as";
 
@@ -20,11 +20,6 @@ void onInit(CBlob@ this)
 	}
 }
 
-//void onDie( CBlob@ this )
-//{
-//	//TODO: make random item
-//}
-
 bool doesCollideWithBlob(CBlob@ this, CBlob@ blob)
 {
 	// Safety Checks
@@ -41,13 +36,13 @@ bool doesCollideWithBlob(CBlob@ this, CBlob@ blob)
 void onDie(CBlob@ this)
 {
 	// Drop loot when destroyed
-	addLoot(this, INDEX_KNIGHT, 1, 0);
 	server_CreateLoot(this, this.getPosition(), this.getTeamNum());
 
-	// Play a sound on death
+	// Play a sound and gib on death
 	CSprite@ sprite = this.getSprite();
 	if (sprite !is null)
 	{
+		sprite.Gib();
 		sprite.PlaySound(XORRandom(2) == 0 ? "Rubble1.ogg" : "Rubble2.ogg", 3.0f);
 	}
 }
@@ -64,11 +59,6 @@ void onCollision(CBlob@ this, CBlob@ blob, bool solid)
 	f32 threshold = 2.0f;
 	if (isServer() && solid && !this.isAttached() && this.hasScript("CheapFakeRolling.as")) // (this.getVelocity().Length() > threshold || this.getOldVelocity().getLength() > threshold))
 	{
-		CSprite@ sprite = this.getSprite();
-		if (sprite !is null)
-		{
-			sprite.Gib();
-		}
 		this.server_Die();
 	}
 }
