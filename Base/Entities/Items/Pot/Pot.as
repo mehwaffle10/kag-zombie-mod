@@ -64,6 +64,11 @@ void onCollision(CBlob@ this, CBlob@ blob, bool solid)
 	f32 threshold = 2.0f;
 	if (isServer() && solid && !this.isAttached() && this.hasScript("CheapFakeRolling.as")) // (this.getVelocity().Length() > threshold || this.getOldVelocity().getLength() > threshold))
 	{
+		CSprite@ sprite = this.getSprite();
+		if (sprite !is null)
+		{
+			sprite.Gib();
+		}
 		this.server_Die();
 	}
 }
@@ -76,7 +81,26 @@ void onAttach(CBlob@ this, CBlob@ attached, AttachmentPoint @attachedPoint)
 		return;
 	}
 
-	// Reset the rotation in CheapFakeRolling.as
+	// Tag so that it breaks on contact no matter what
+	if (!this.hasScript("CheapFakeRolling.as"))
+	{
+		this.AddScript("CheapFakeRolling.as");
+	}
+
+	// Reset the rotation when picked up to avoid holding it weird
+	ResetRotation(this);
+	
+}
+
+void onDetach(CBlob@ this, CBlob@ detached, AttachmentPoint@ attachedPoint)
+{
+	// Had to do this when thrown too because of onInit
+	ResetRotation(this);
+}
+
+void ResetRotation(CBlob@ this)
+{
+	// Reset the rotation when picked up from CheapFakeRolling.as
 	CSprite@ sprite = this.getSprite();
 	if (sprite !is null)
 	{
@@ -85,7 +109,4 @@ void onAttach(CBlob@ this, CBlob@ attached, AttachmentPoint @attachedPoint)
 		sprite.ResetTransform();
 		sprite.RotateBy(angle, Vec2f());
 	}
-
-	// Tag so that it breaks on contact no matter what
-	this.AddScript("CheapFakeRolling.as");
 }
