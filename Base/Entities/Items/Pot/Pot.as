@@ -76,6 +76,16 @@ void onAttach(CBlob@ this, CBlob@ attached, AttachmentPoint @attachedPoint)
 		return;
 	}
 
+	// Reset the rotation in CheapFakeRolling.as
+	CSprite@ sprite = this.getSprite();
+	if (sprite !is null)
+	{
+		f32 angle = 0.0f;
+		this.set_f32("angle", angle);
+		sprite.ResetTransform();
+		sprite.RotateBy(angle, Vec2f());
+	}
+
 	// Tag so that it breaks on contact no matter what
 	this.AddScript("CheapFakeRolling.as");
 }
