@@ -21,7 +21,9 @@ void onInit(CRules@ this)
 	this.addCommandID("spawn_char");
 
 	// Client only, used in MultiCharacterUI.as
+	this.addCommandID("print_transfer_char");
 	this.addCommandID("move_up_char_list");
+	this.addCommandID("kill_feed");
 
 	// Only server can save + sync lists
 	if (!isServer())
@@ -194,14 +196,21 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 }
 
 void onBlobDie(CRules@ this, CBlob@ blob)
-{	
-	// Tell clients to move up the appropriate char list
-	if (this !is null && blob !is null && blob.exists("owning_player"))
+{
+	// Safety Checks
+	if (!isServer() || this is null || blob is null)
 	{
+		return;
+	}
+
+	if (blob.hasTag("player") && blob.exists("owning_player") && !blob.hasTag("switch class"))
+	{
+		// Tell clients to add the char to the kill feed
 		CBitStream params;
 		params.write_string(blob.get_string("owning_player"));
+		params.write_netid(blob.getNetworkID());
 
-		this.SendCommand(this.getCommandID("move_up_char_list"), params);
+		this.SendCommand(this.getCommandID("kill_feed"), params);
 	}
 
 	// Clean up dead blobs
@@ -211,7 +220,7 @@ void onBlobDie(CRules@ this, CBlob@ blob)
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 {
 	// Only server responds to commands
-	if (!isServer())
+	if (!isServer() || this is null || params is null)
 	{
 		return;
 	}
@@ -269,13 +278,8 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 				player_to_swap_username + " claimed";
 
 			// Add the class
-			CSprite@ sprite = blob.getSprite();
-			if (sprite !is null)
-			{
-				message += " the " + sprite.getFilename().split("_")[2];
-			}
+			message += " the " + blob.getName();
 			
-
 			// Add the first name
 			if (blob.exists("forename"))
 			{
@@ -288,7 +292,11 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 				message += " " + blob.get_string("surname");
 			}
 
-			client_AddToChat(message, SColor(0, 128, 128, 192));
+			// Tell clients to print the char transfer
+			CBitStream params;
+			params.write_string(message);
+
+			this.SendCommand(this.getCommandID("print_transfer_char"), params);
 		}
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), player_to_swap_username, -1);

@@ -8,7 +8,6 @@
 void onInit(CRules@ this)
 {
 	this.set_u8("multichar_ui_action_cooldown", 0);
-	this.set_u8("multichar_ui_name_cooldown", 0);
 }
 
 void onRender(CRules@ this)
@@ -44,12 +43,6 @@ void onRender(CRules@ this)
 		this.set_u8("multichar_ui_action_cooldown", --cooldown);
 	}
 
-	u8 name_cooldown = this.get_u8("multichar_ui_name_cooldown");
-	if (name_cooldown > 0)
-	{
-		this.set_u8("multichar_ui_name_cooldown", --name_cooldown);
-	}
-
 	// Check if the player is trying to swap to another char
 	if (controls.isKeyPressed(KEY_KEY_R) && cooldown == 0)
 	{
@@ -59,12 +52,7 @@ void onRender(CRules@ this)
 		{
 			if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
 			{
-				CBitStream params;
-				params.write_string(player.getUsername());
-				params.write_netid(blobsInRadius[i].getNetworkID());
-
-				this.SendCommand(this.getCommandID("swap_player"), params);
-				this.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+				SendSwapPlayerCmd(player, blobsInRadius[i].getNetworkID(), false);
 				break;
 			}
 		}
@@ -88,12 +76,26 @@ void onRender(CRules@ this)
 			{
 				if (controls.isKeyPressed(hotkeys[i]))
 				{
-					CBitStream params;
-					params.write_string(player.getUsername());
-					params.write_netid(player_char_networkIDs[i]);
+					SendSwapPlayerCmd(player, player_char_networkIDs[i], false);
+					break;
+				}
+			}
+		}
 
-					this.SendCommand(this.getCommandID("swap_player"), params);
-					this.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+		// Check if the player is trying to claim/unclaim to another char
+		if (controls.isKeyPressed(KEY_KEY_G) && cooldown == 0)
+		{
+			CBlob@[] blobsInRadius;
+			map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
+			for (u16 i = 0; i < blobsInRadius.length(); i++)
+			{
+				if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
+				{
+					SendClaimCharCmd(
+						player,
+						blobsInRadius[i].getNetworkID(),
+						player_char_networkIDs.find(blobsInRadius[i].getNetworkID()) >= 0
+					);
 					break;
 				}
 			}
@@ -110,19 +112,46 @@ void onRender(CRules@ this)
 
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 {
+	// Safety checks
+	if (this is null || params is null)
+	{
+		return;
+	}
+
 	// Only client responds to these commands, but no need to check because of #define CLIENT_ONLY
-	// No need for safety checks, methods already have them
 	DebugPrint("Client Received Command");
 	if (cmd == this.getCommandID("move_up_char_list"))
 	{
-		DebugPrint("Command is move_up_char_list");
 		string player_list_to_move_up;
 		if (!params.saferead_string(player_list_to_move_up))
 		{
 			return;
 		}
-		
+
+		// Move up the corresponding player list
 		MoveUpPlayerList(player_list_to_move_up == "" ? null : getPlayerByUsername(player_list_to_move_up), 0, false);
+	}
+	else if (cmd == this.getCommandID("print_transfer_char"))
+	{
+		DebugPrint("Command is print_transfer_char");
+		string message;
+		if (!params.saferead_string(message))
+		{
+			return;
+		}
+
+		string[] split_message = message.split(" ");
+
+		CPlayer@ player = getPlayerByUsername(split_message[0]);
+		bool claimed = split_message[1] == "claimed";
+
+		SColor color = claimed ? SColor(0, 100, 0, 192) : SColor(0, 192, 0, 100);
+		if (player !is null && player is getLocalPlayer())
+		{
+			color.setGreen(100);
+		}
+
+		client_AddToChat(message, color);
 	}
 }
 
@@ -254,7 +283,7 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				// Draw character's sprite
 				// Get character's info
 				string gender = char.getSexNum() == 0 ? "Male" : "Female";
-				string player_class = sprite.getFilename().split("_")[2];
+				string player_class = char.getName();  // sprite.getFilename().split("_")[2];
 				player_class = player_class.substr(0, 1).toUpper() + player_class.substr(1, -1);
 
 				// Tuning variables
@@ -316,13 +345,20 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				else
 				{
 					// Give the character a random name
-					if (rules.get_u8("multichar_ui_name_cooldown") == 0)
+					string cooldown_string = char.getNetworkID() + "_multichar_ui_name_cooldown";
+					u8 name_cooldown = rules.get_u8(cooldown_string);
+
+					if (name_cooldown > 0)
+					{
+						rules.set_u8(cooldown_string, --name_cooldown);
+					}
+					else if (name_cooldown == 0)
 					{
 						CBitStream params;
 						params.write_netid(char_networkID);
 
 						rules.SendCommand(rules.getCommandID("give_char_random_name"), params);
-						rules.set_u8("multichar_ui_name_cooldown", getTicksASecond());
+						rules.set_u8(cooldown_string, getTicksASecond());
 					}
 				}
 				name_middle.y += 12;
