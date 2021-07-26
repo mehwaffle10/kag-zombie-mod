@@ -1,7 +1,9 @@
 
+
 #define CLIENT_ONLY
 
-#include "MultiCharacterCommon"
+string RENDER_BINDINGS_MENU_STRING = "render_bindings_menu";
+string UI_ACTION_COOLDOWN_STRING = "multichar_ui_action_cooldown";
 
 funcdef void fxn(CPlayer@ player, u16 char_networkID, bool claimed);
 
@@ -16,22 +18,20 @@ namespace ButtonStates
 	};
 };
 
-void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f upper_left,
-	u8 button_width, u8 button_height, bool locked, bool claimed, fxn@ execute_on_press,
+void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, string button_text, Vec2f upper_left,
+	u16 button_width, u16 button_height, bool locked, bool claimed, fxn@ execute_on_press,
 	string icon_filename, u8 row_offset, u8 frames_per_row)
 {
 	// Safety checks. Intentionally does not check if player is null
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
-		DebugPrint("Rules was null");
 		return;
 	}
 
 	CControls@ controls = getControls();
 	if (controls is null)
 	{
-		DebugPrint("Controls was null");
 		return;
 	}
 
@@ -50,7 +50,7 @@ void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f u
 	else if (mouse_pos.x > upper_left.x && mouse_pos.x < bottom_right.x
 		&& mouse_pos.y > upper_left.y && mouse_pos.y < bottom_right.y)  // Inside the button
 	{ 
-		if (button_state == ButtonStates::hovered && rules.get_u8("multichar_ui_action_cooldown") == 0 && controls.mousePressed1)  // Clicking on the button
+		if (button_state == ButtonStates::hovered && rules.get_u8(UI_ACTION_COOLDOWN_STRING) == 0 && controls.mousePressed1)  // Clicking on the button
 		{ 
 			if (button_state != ButtonStates::pressed)  // Only play the sound once
 			{
@@ -58,7 +58,6 @@ void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f u
 			}
 
 			button_state = ButtonStates::pressed;
-			GUI::DrawButtonPressed(upper_left, bottom_right);
 			execute_on_press(player, char_networkID, claimed);
 		}
 		else  // Hovering over the button
@@ -83,26 +82,50 @@ void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, Vec2f u
 	rules.set_u8(button_state_string, button_state);
 	
 	// Draw the buttom
-	u8 frame_offset = row_offset * frames_per_row;
-	if (button_state == ButtonStates::idle)
+	if (icon_filename != "")
 	{
-		// GUI::DrawButton(upper_left, bottom_right);
-		GUI::DrawIcon(icon_filename, frame_offset, Vec2f(button_width / 2, button_height / 2), upper_left);
+		// Button has an icon
+		u8 frame_offset = row_offset * frames_per_row;
+		if (button_state == ButtonStates::idle)
+		{
+			GUI::DrawIcon(icon_filename, frame_offset, Vec2f(button_width / 2, button_height / 2), upper_left);
+		}
+		else if (button_state == ButtonStates::hovered)
+		{
+			GUI::DrawIcon(icon_filename, frame_offset + 1, Vec2f(button_width / 2, button_height / 2), upper_left);
+		}
+		else if (button_state == ButtonStates::pressed)
+		{
+			GUI::DrawIcon(icon_filename, frame_offset + 2, Vec2f(button_width / 2, button_height / 2), upper_left);
+		}
+		else if (button_state == ButtonStates::locked)
+		{
+			// 
+			GUI::DrawIcon(icon_filename, frame_offset + 2, Vec2f(button_width / 2, button_height / 2), upper_left);
+		}
 	}
-	else if (button_state == ButtonStates::hovered)
+	else
 	{
-		// GUI::DrawButtonHover(upper_left, bottom_right);
-		GUI::DrawIcon(icon_filename, frame_offset + 1, Vec2f(button_width / 2, button_height / 2), upper_left);
-	}
-	else if (button_state == ButtonStates::pressed)
-	{
-		// GUI::DrawButtonPressed(upper_left, bottom_right);
-		GUI::DrawIcon(icon_filename, frame_offset + 2, Vec2f(button_width / 2, button_height / 2), upper_left);
-	}
-	else if (button_state == ButtonStates::locked)
-	{
-		// GUI::DrawButtonPressed(upper_left, bottom_right);
-		GUI::DrawIcon(icon_filename, frame_offset + 2, Vec2f(button_width / 2, button_height / 2), upper_left);
+		// Use default button with text
+		if (button_state == ButtonStates::idle)
+		{
+			GUI::DrawButton(upper_left, bottom_right);
+		}
+		else if (button_state == ButtonStates::hovered)
+		{
+			GUI::DrawButtonHover(upper_left, bottom_right);
+		}
+		else if (button_state == ButtonStates::pressed)
+		{
+			GUI::DrawButtonPressed(upper_left, bottom_right);
+		}
+		else if (button_state == ButtonStates::locked)
+		{
+			GUI::DrawButtonPressed(upper_left, bottom_right);
+		}
+
+		// Draw text
+		GUI::DrawShadowedTextCentered(button_text, Vec2f(upper_left.x + button_width / 2, upper_left.y + button_height / 2), SColor(255, 255, 255, 255));
 	}
 }
 
@@ -163,7 +186,7 @@ void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("swap_player"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
 void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
@@ -181,7 +204,7 @@ void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("transfer_char"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
 // claimed is just to match the function signature at the top so I can pass functions around
@@ -198,7 +221,7 @@ void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("move_up_char"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
 // claimed is just to match the function signature at the top so I can pass functions around
@@ -215,5 +238,17 @@ void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_netid(char_networkID);
 
 	rules.SendCommand(rules.getCommandID("move_down_char"), params);
-	rules.set_u8("multichar_ui_action_cooldown", getTicksASecond() / 2);
+	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
+}
+
+// parameters are just to match the function signature at the top so I can pass functions around
+void CloseBindingsMenu(CPlayer@ player, u16 char_networkID, bool claimed)
+{
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
+	rules.set_bool(RENDER_BINDINGS_MENU_STRING, false);
 }

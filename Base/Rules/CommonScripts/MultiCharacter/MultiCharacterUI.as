@@ -2,12 +2,33 @@
 #define CLIENT_ONLY
 
 #include "MultiCharacterCommon.as"
-#include "MultiCharacterButtons.as"
+#include "MultiCharacterButtonLogic.as"
 #include "RunnerTextures.as"
+
+string SWAP_ON_MOUSE_STRING = "swap_on_mouse_key";
+string CLAIM_ON_MOUSE_STRING = "claim_on_mouse_key";
+string SWAP_ON_NUMBER_MODIFIER_STRING = "swap_on_number_modifier_key";
+string TOGGLE_DISPLAY_MODE_STRING = "toggle_display_mode_key";
+string TOGGLE_SCOREBOARD_STRING = "toggle_scoreboard_key";
 
 void onInit(CRules@ this)
 {
-	this.set_u8("multichar_ui_action_cooldown", 0);
+	// Safety checks
+	if (this is null)
+	{
+		return;
+	}
+
+	this.set_u8(UI_ACTION_COOLDOWN_STRING, 0);
+
+	// Load key bindings from the configfile
+	ConfigFile@ cfg = openMultiCharacterKeyBindingsConfig();
+
+	this.set_s32(SWAP_ON_MOUSE_STRING, read_key_binding(cfg, SWAP_ON_MOUSE_STRING, KEY_KEY_R));
+	this.set_s32(CLAIM_ON_MOUSE_STRING, read_key_binding(cfg, CLAIM_ON_MOUSE_STRING, KEY_KEY_G));
+	this.set_s32(SWAP_ON_NUMBER_MODIFIER_STRING, read_key_binding(cfg, SWAP_ON_NUMBER_MODIFIER_STRING, KEY_LCONTROL));
+	this.set_s32(TOGGLE_DISPLAY_MODE_STRING, read_key_binding(cfg, TOGGLE_DISPLAY_MODE_STRING, KEY_COMMA));
+	this.set_s32(TOGGLE_SCOREBOARD_STRING, read_key_binding(cfg, TOGGLE_SCOREBOARD_STRING, KEY_TAB));
 }
 
 void onRender(CRules@ this)
@@ -37,14 +58,14 @@ void onRender(CRules@ this)
 	}
 
 	// Update cooldowns if active
-	u8 cooldown = this.get_u8("multichar_ui_action_cooldown");
+	u8 cooldown = this.get_u8(UI_ACTION_COOLDOWN_STRING);
 	if (cooldown > 0)
 	{
-		this.set_u8("multichar_ui_action_cooldown", --cooldown);
+		this.set_u8(UI_ACTION_COOLDOWN_STRING, --cooldown);
 	}
 
 	// Check if the player is trying to swap to another char
-	if (controls.isKeyPressed(KEY_KEY_R) && cooldown == 0)
+	if (controls.isKeyPressed(this.get_s32(SWAP_ON_MOUSE_STRING)) && cooldown == 0)
 	{
 		CBlob@[] blobsInRadius;
 		map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
@@ -59,8 +80,8 @@ void onRender(CRules@ this)
 	}
 
 	// Draw player's char list in the top right
-	u8 frame_width = 124;
-	u8 move_list_button_height = 24;
+	u16 frame_width = 124;
+	u16 move_list_button_height = 24;
 	Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
 	DrawCharacterList(player, upper_left, frame_width);
 
@@ -69,7 +90,7 @@ void onRender(CRules@ this)
 	if (readCharList(player.getUsername(), @player_char_networkIDs))
 	{
 		// Check if the player is trying to use hotkeys to swap to another char
-		if (cooldown == 0 && controls.isKeyPressed(KEY_LCONTROL))
+		if (cooldown == 0 && controls.isKeyPressed(this.get_s32(SWAP_ON_NUMBER_MODIFIER_STRING)))
 		{
 			int[] hotkeys = {KEY_KEY_1, KEY_KEY_2, KEY_KEY_3, KEY_KEY_4, KEY_KEY_5, KEY_KEY_6, KEY_KEY_7, KEY_KEY_8, KEY_KEY_9, KEY_KEY_0};
 			for (u8 i = 0; i < Maths::Min(player_char_networkIDs.length(), hotkeys.length()); i++)
@@ -83,7 +104,7 @@ void onRender(CRules@ this)
 		}
 
 		// Check if the player is trying to claim/unclaim to another char
-		if (controls.isKeyPressed(KEY_KEY_G) && cooldown == 0)
+		if (controls.isKeyPressed(this.get_s32(CLAIM_ON_MOUSE_STRING)) && cooldown == 0)
 		{
 			CBlob@[] blobsInRadius;
 			map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
@@ -105,6 +126,12 @@ void onRender(CRules@ this)
 	// Draw unclaimed char list in the top left
 	upper_left = Vec2f(0, 0);
 	DrawCharacterList(null, upper_left, frame_width);
+
+	// Draw Bindings Menu
+	if (this.get_bool(RENDER_BINDINGS_MENU_STRING))
+	{
+		DrawMultiCharBindingsMenu();
+	}
 
 	// temp
 	// DrawScoreboard();
@@ -157,7 +184,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 // Renders a player list from top to bottom as far as possible from the start position
 // Renders the unclaimed list if player list is null
-void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
+void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width)
 {
 	// Safety checks
 	CRules@ rules = getRules();
@@ -172,14 +199,14 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
 		return;
 	}
 
-	u8 move_list_button_height = 24;
+	u16 move_list_button_height = 24;
 
 	// Get player's char list
 	u16[] char_networkIDs;
 	if (readCharList(player !is null ? player.getUsername() : "", @char_networkIDs))
 	{
 		// Render the player's name
-		u8 name_box_height = 28;
+		u16 name_box_height = 28;
 		Vec2f bottom_right = Vec2f(upper_left.x + frame_width, upper_left.y + name_box_height);
 		Vec2f name_middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
 		GUI::DrawFramedPane(upper_left, bottom_right);
@@ -193,6 +220,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
 			player,
 			0,
 			(player !is null ? player.getUsername() : "unclaimed") + "_move_up_list",
+			"x",
 			upper_left,
 			frame_width,
 			move_list_button_height,
@@ -203,6 +231,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
 			0,
 			3
 		);
+
 		upper_left.y += move_list_button_height;
 
 		// Render claimed players starting from the top right corner under the button
@@ -229,6 +258,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
 			player,
 			0,
 			(player !is null ? player.getUsername() : "unclaimed") + "_move_down_list",
+			"x",
 			upper_left,
 			frame_width,
 			move_list_button_height,
@@ -242,7 +272,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u8 frame_width)
 	}
 }
 
-void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u16 char_networkID, bool claimed, bool lock_swap, bool lock_claim, bool lock_up, bool lock_down)
+void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, u16 char_networkID, bool claimed, bool lock_swap, bool lock_claim, bool lock_up, bool lock_down)
 {
 	CRules@ rules = getRules();
 	if (rules is null)
@@ -372,11 +402,10 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 				RenderHPBar(char, middle);
 
 				// Draw Buttons
-				u8 button_width = 24;
+				u16 button_width = 24;
 				u8 frame_offset = 4;
 
 				string[] button_names = {"move_up_char", "move_down_char", "swap_player", "claim_char"};
-				// string[] button_names = {"swap_player", "claim_char", "move_up_char", "move_down_char"};
 				Vec2f[] button_upper_lefts = {
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - 2 * button_width - frame_offset),
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - button_width - frame_offset),
@@ -397,6 +426,7 @@ void DrawCharacterFrame(u8 frame_width, Vec2f upper_left, f32 character_scale, u
 						player,
 						char_networkID,
 						button_names[i],
+						"x",
 						button_upper_lefts[i],
 						button_width,
 						button_width,
@@ -782,7 +812,7 @@ void DrawScoreboard()
 		}
 	}
 
-	u8 frame_width = 124;
+	u16 frame_width = 124;
 	s32 min_y = 0;
 
 	// Middle of the screen shifted by player count
@@ -879,4 +909,201 @@ void DrawFancyCopiedText(string username, Vec2f mousePos, uint duration)
 	int col = (255 - duration * 3);
 
 	GUI::DrawTextCentered(text, pos, SColor((255 - duration * 4), col, col, col));
+}
+
+// Add mod bindings menu
+void onMainMenuCreated(CRules@ this, CContextMenu@ menu)
+{
+	// CContextMenu@ bindingsMenu = Menu::addContextMenu(menu, getTranslatedString("Mod Settings"));
+	Menu::addContextItem(menu, getTranslatedString("Mod Settings"), "MultiCharacterUI.as", "void TurnOnMultiCharacterBindingsMenu()");
+	// Menu::addContextItem(bindingsMenu, getTranslatedString("Bind Builder Blocks"), "BuilderBinderMenu.as", "void NewBuilderMenu()");
+}
+
+void TurnOnMultiCharacterBindingsMenu()
+{
+	// Safety check
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
+	// Hide main menu and other gui
+	Menu::CloseAllMenus();
+	getHUD().ClearMenus(true);
+
+	// Tell the client to render the menu
+	rules.set_bool(RENDER_BINDINGS_MENU_STRING, true);
+}
+
+ConfigFile@ openMultiCharacterKeyBindingsConfig()
+{
+	ConfigFile cfg = ConfigFile();
+	if (!cfg.loadFile("../Cache/MultiCharacterKeyBindings.cfg"))
+	{
+		// Save the config to the cache if it doesn't exist already
+		cfg.saveFile("MultiCharacterKeyBindings.cfg");
+	}
+
+	return cfg;
+}
+
+int read_key_binding(ConfigFile@ cfg, string name, int default_value)
+{
+	return cfg.read_s32(name, default_value);
+}
+
+void DrawMultiCharBindingsMenu()
+{
+	CRules@ rules = getRules();
+	Vec2f center = getDriver().getScreenCenterPos();
+	// string description = getTranslatedString("Builder Block Hotkey Binder");
+	u16 width = 324;
+	u16 vertical_margin = 95;
+	u16 spacing = 6;
+	u16 button_horizontal_margin = 10;
+	u16 button_height = 20;
+
+	// Check if the player is trying to close the menu with escape
+	CControls@ controls = getControls();
+	if (controls !is null && controls.isKeyPressed(KEY_ESCAPE))
+	{
+		rules.set_bool(RENDER_BINDINGS_MENU_STRING, false);
+
+		// hide main menu and other gui
+		Menu::CloseAllMenus();
+		getHUD().ClearMenus(true);
+	}
+
+	Vec2f upper_left = Vec2f(center.x - width / 2, vertical_margin);
+	Vec2f bottom_right = Vec2f(center.x + width / 2, vertical_margin + 30);
+
+	// Draw the bounding box for the top
+	GUI::DrawFramedPane(upper_left, bottom_right);
+
+	// Draw the x button in the top right
+	u16 x_button_width = 20;
+	
+	DrawButton(
+		null,
+		0,
+		"CloseBindingsMenuButton",
+		"x",
+		Vec2f(bottom_right.x - 4 - x_button_width, upper_left.y + 4),
+		x_button_width,
+		x_button_width,
+		false,
+		false,
+		@CloseBindingsMenu,
+		"",
+		0,
+		0
+	);
+
+	// Draw the title at the top
+	center.y = upper_left.y + 14;
+	GUI::DrawShadowedTextCentered("Mod Settings", center, SColor(255, 255, 255, 255));
+
+	// Draw the bounding box for the bottom
+	upper_left.y = bottom_right.y - 2;
+	center.y = upper_left.y + spacing;
+	bottom_right.y = getScreenHeight() - vertical_margin;
+	GUI::DrawFramedPane(upper_left, bottom_right);
+
+	// Draw config buttons
+	center.y += spacing + button_height;
+	
+	DrawButton(
+		null,
+		0,
+		"CloseBindingsMenuButton",
+		"x",
+		Vec2f(upper_left.x + button_horizontal_margin, center.y),
+		width - button_horizontal_margin * 2,
+		button_height,
+		false,
+		false,
+		@CloseBindingsMenu,
+		"",
+		0,
+		0
+	);
+
+	/*
+	CGridMenu@ menu = CreateGridMenu(center, null, Vec2f(MENU_WIDTH, MENU_HEIGHT), description);
+	if (menu !is null)
+	{
+		menu.deleteAfterClick = false;
+
+		CBitStream params;
+
+		params.write_u8(CLOSE_MENU);
+		params.write_string(player.getUsername());
+
+		menu.AddKeyCommand(KEY_ESCAPE, rules.getCommandID(BUILD_CMD), params);
+		menu.SetDefaultCommand(rules.getCommandID(BUILD_CMD), params);
+
+		for (uint i = 0; i < blocks[0].length; i++)
+		{
+			BuildBlock@ b = blocks[0][i];
+			string block_desc = getTranslatedString(b.description);
+
+			CBitStream params;
+			params.write_u8(BIND_BLOCK);
+			params.write_string(player.getUsername());
+			params.write_u8(i);
+
+			CGridButton@ button = menu.AddButton(b.icon, block_desc, rules.getCommandID(BUILD_CMD), Vec2f(1, 1), params);
+
+		}
+
+		if (menu.getButtonsCount() % MENU_WIDTH != 0)
+		{
+			menu.FillUpRow();
+		}
+
+		CGridButton@ separator = menu.AddTextButton(getTranslatedString("Select a keybind below, then select the block you want"), Vec2f(MENU_WIDTH, 1));
+		if (separator !is null)
+		{
+			separator.clickable = false;
+			separator.SetEnabled(false);
+		}
+
+		//get current block keybinds
+		ConfigFile@ cfg = openBlockBindingsConfig();
+
+		array<u8> blockBinds = {
+			read_block(cfg, "block_1", 0),
+			read_block(cfg, "block_2", 1),
+			read_block(cfg, "block_3", 2),
+			read_block(cfg, "block_4", 3),
+			read_block(cfg, "block_5", 4),
+			read_block(cfg, "block_6", 5),
+			read_block(cfg, "block_7", 6),
+			read_block(cfg, "block_8", 7),
+			read_block(cfg, "block_9", 8)
+		};
+
+		string propname = SELECTED_PROP + player.getUsername();
+		u8 selected = rules.get_u8(propname);
+
+		for (int i = 0; i < 9; i++)
+		{
+			CBitStream params;
+			params.write_u8(SELECT_KEYBIND);
+			params.write_string(player.getUsername());
+			params.write_u8(i);
+
+			BuildBlock@ b = blocks[0][blockBinds[i]];
+
+			CGridButton@ button = menu.AddButton(b.icon, getTranslatedString("Select key {KEY_NUM}").replace("{KEY_NUM}", (i + 1) + ""), rules.getCommandID(BUILD_CMD), Vec2f(1, 1), params);
+			button.selectOneOnClick = true;
+
+			if (selected == i)
+			{
+				button.SetSelected(1);
+			}
+		}
+	}
+	*/
 }

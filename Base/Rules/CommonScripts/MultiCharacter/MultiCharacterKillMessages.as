@@ -7,7 +7,7 @@
 #include "Hitters.as";
 #include "TeamColour.as";
 #include "HoverMessage.as";
-#include "MultiCharacterButtons.as";
+#include "MultiCharacterButtonLogic.as";
 
 int fade_time = 300;
 // Offset to compensate for the player's char list.
