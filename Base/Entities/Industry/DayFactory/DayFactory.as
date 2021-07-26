@@ -159,11 +159,19 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 		// Select tech or refund button
 		if (hasTech(this))
 		{
-			CButton@ selectItem = caller.CreateGenericButton(12, Vec2f(0, 0), this, this.getCommandID("refund"), getTranslatedString("Refund Item Selection"), params);
+			CButton@ refund_button = caller.CreateGenericButton(12, Vec2f(0, 0), this, this.getCommandID("refund"), getTranslatedString("Refund Item Selection"), params);
+			if (refund_button !is null)
+			{
+				refund_button.enableRadius = 32.0f;
+			}
 		}
 		else
 		{
-			CButton@ selectItem = caller.CreateGenericButton(12, Vec2f(0, 0), this, this.getCommandID("select item menu"), getTranslatedString("Select Item to Produce"), params);
+			CButton@ select_button = caller.CreateGenericButton(12, Vec2f(0, 0), this, this.getCommandID("select item menu"), getTranslatedString("Select Item to Produce"), params);
+			if (select_button !is null)
+			{
+				select_button.enableRadius = 32.0f;
+			}
 		}
 	}
 }

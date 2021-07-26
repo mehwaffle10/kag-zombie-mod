@@ -15,7 +15,7 @@ void onInit(CBlob@ this)
 	CSprite@ sprite = this.getSprite();
 	if (sprite !is null)
 	{
-		// Give the pot a random texture, calculted the same on all clients, taken from Bush.as
+		// Give the pot a random texture, calculated the same on all clients, taken from Bush.as
 		sprite.SetFrameIndex(this.getNetworkID() % sprite.animation.getFramesCount());
 	}
 }
