@@ -32,9 +32,9 @@ void onDie(CBlob@ this)
 	server_CreateLoot(this, this.getPosition(), this.getTeamNum());
 
 	// Spawn a body or rarely a zombie
-	if (XORRandom(1) == 0)  // 50% chance to spawn a body/enemy
+	if (XORRandom(2) == 0)  // 50% chance to spawn a body/enemy
 	{
-		if (XORRandom(1) == 1)  // 10% chance to spawn an enemy
+		if (XORRandom(10) == 0)  // 10% chance to spawn an enemy
 		{
 			// Spawn an enemy
 			string[] enemies = {"skeleton", "skeleton", "skeleton", "skeleton", "skeleton", "log", "log", "log", "zombie_arm"};

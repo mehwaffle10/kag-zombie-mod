@@ -915,7 +915,7 @@ void DrawFancyCopiedText(string username, Vec2f mousePos, uint duration)
 void onMainMenuCreated(CRules@ this, CContextMenu@ menu)
 {
 	// CContextMenu@ bindingsMenu = Menu::addContextMenu(menu, getTranslatedString("Mod Settings"));
-	Menu::addContextItem(menu, getTranslatedString("Mod Settings"), "MultiCharacterUI.as", "void TurnOnMultiCharacterBindingsMenu()");
+	Menu::addContextItem(menu, getTranslatedString("Mod Bindings"), "MultiCharacterUI.as", "void TurnOnMultiCharacterBindingsMenu()");
 	// Menu::addContextItem(bindingsMenu, getTranslatedString("Bind Builder Blocks"), "BuilderBinderMenu.as", "void NewBuilderMenu()");
 }
 
@@ -1011,23 +1011,51 @@ void DrawMultiCharBindingsMenu()
 	GUI::DrawFramedPane(upper_left, bottom_right);
 
 	// Draw config buttons
-	center.y += spacing + button_height;
-	
-	DrawButton(
-		null,
-		0,
-		"CloseBindingsMenuButton",
-		"x",
-		Vec2f(upper_left.x + button_horizontal_margin, center.y),
-		width - button_horizontal_margin * 2,
-		button_height,
-		false,
-		false,
-		@CloseBindingsMenu,
-		"",
-		0,
-		0
-	);
+	string[] button_names = {
+		SWAP_ON_MOUSE_STRING,
+		CLAIM_ON_MOUSE_STRING,
+		SWAP_ON_NUMBER_MODIFIER_STRING,
+		TOGGLE_DISPLAY_MODE_STRING,
+		TOGGLE_SCOREBOARD_STRING
+	};
+
+	string[] display_text = {
+		"Swap On Mouse Key",
+		"Claim/Unclaim On Mouse Key",
+		"Swap to Number Modifier",
+		"Toggle Display Mode",
+		"Toggle Scoreboard"
+	};
+
+	// TODO check if any button is selected to lock all buttons
+
+	for (u8 i = 0; i < button_names.length; i++)
+	{
+		// See if this button is pressed
+		string selected_string = button_names[i] + "_selected";
+		bool selected = rules.exists(selected_string) && rules.get_bool(selected_string);
+
+		// Move down for the next button
+		center.y += spacing + button_height;
+
+		// Draw the button
+		if (selected)
+		DrawButton(
+			null,
+			0,
+			button_names[i],
+			display_text[i],
+			Vec2f(upper_left.x + button_horizontal_margin, center.y),
+			width - button_horizontal_margin * 2,
+			button_height,
+			false,
+			false,
+			@CloseBindingsMenu,
+			"",
+			0,
+			0
+		);
+	}
 
 	/*
 	CGridMenu@ menu = CreateGridMenu(center, null, Vec2f(MENU_WIDTH, MENU_HEIGHT), description);
