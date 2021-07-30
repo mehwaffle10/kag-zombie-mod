@@ -4,6 +4,7 @@
 
 string RENDER_BINDINGS_MENU_STRING = "render_bindings_menu";
 string BINDINGS_MENU_OFFSET_STRING = "bindings_menu_offset";
+string DRAGGING_BINDING_MENU_STRING = "dragging_binding_menu";
 string UI_ACTION_COOLDOWN_STRING = "multichar_ui_action_cooldown";
 
 funcdef void fxn(CPlayer@ player, u16 char_networkID, bool claimed);
@@ -43,7 +44,7 @@ bool DrawButton(string button_name, string button_text, Vec2f upper_left,
 	Vec2f bottom_right = Vec2f(upper_left.x + button_width, upper_left.y + button_height);
 	Vec2f mouse_pos = controls.getMouseScreenPos();
 	// Had to attach this to rules instead of the player, as it didn't work on the player for some reason
-	string button_state_string = upper_left.x + "_" + upper_left.y + "_" + button_name + "_button_state";
+	string button_state_string = button_name + "_button_state";
 	u8 button_state = rules.get_u8(button_state_string);
 
 	// Update state and make the button interactive

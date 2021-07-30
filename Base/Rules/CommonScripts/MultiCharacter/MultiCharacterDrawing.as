@@ -240,7 +240,7 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 				for (u8 i = 0; i < button_names.length(); i++)
 				{
 					if (DrawButton(
-						button_names[i],
+						button_names[i] + "_" + char.getNetworkID(),
 						"x",
 						button_upper_lefts[i],
 						button_width,

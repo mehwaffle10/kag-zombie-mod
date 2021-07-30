@@ -387,7 +387,8 @@ void TurnOnMultiCharacterBindingsMenu()
 	rules.set_bool(RENDER_BINDINGS_MENU_STRING, true);
 
 	// Reset the offset
-	rules.set_Vec2f(BINDINGS_MENU_OFFSET_STRING, getDriver().getScreenCenterPos());
+	u16 vertical_margin = 95;
+	rules.set_Vec2f(BINDINGS_MENU_OFFSET_STRING, Vec2f(getDriver().getScreenCenterPos().x, vertical_margin));
 }
 
 ConfigFile@ openMultiCharacterKeyBindingsConfig()
@@ -418,10 +419,10 @@ void DrawMultiCharBindingsMenu()
 	// string description = getTranslatedString("Builder Block Hotkey Binder");
 	Vec2f center = rules.get_Vec2f(BINDINGS_MENU_OFFSET_STRING);
 	u16 width = 324;
-	u16 vertical_margin = 95;
 	u16 spacing = 6;
 	u16 button_horizontal_margin = 10;
 	u16 button_height = 20;
+	u16 x_button_width = 20;
 
 	// Check if the player is trying to close the menu with escape
 	CControls@ controls = getControls();
@@ -439,15 +440,44 @@ void DrawMultiCharBindingsMenu()
 		getHUD().ClearMenus(true);
 	}
 
-	Vec2f upper_left = Vec2f(center.x - width / 2, vertical_margin);
-	Vec2f bottom_right = Vec2f(center.x + width / 2, vertical_margin + 30);
+	u8 mouse_centering = 15;
+	Vec2f upper_left = Vec2f(center.x - width / 2, center.y - mouse_centering);
+	Vec2f bottom_right = Vec2f(center.x + width / 2, center.y - mouse_centering + 30);
+
+	// Check if we need to move the menu
+	bool left_clicking = controls.isKeyPressed(KEY_LBUTTON);
+	Vec2f mouse_pos = controls.getMouseScreenPos();
+	if (rules.get_bool(DRAGGING_BINDING_MENU_STRING))
+	{
+		if (!left_clicking)
+		{
+			rules.set_bool(DRAGGING_BINDING_MENU_STRING, false);
+		}
+	}
+	else
+	{
+		// Check if we are trying to drag the menu
+		if (left_clicking
+			&& mouse_pos.x > upper_left.x && mouse_pos.x < bottom_right.x - x_button_width
+			&& mouse_pos.y > upper_left.y && mouse_pos.y < bottom_right.y)
+		{
+			rules.set_bool(DRAGGING_BINDING_MENU_STRING, true);
+		}
+	}
+	
+	// Move the menu
+	if (rules.get_bool(DRAGGING_BINDING_MENU_STRING) && left_clicking)
+	{
+		center = mouse_pos;
+		rules.set_Vec2f(BINDINGS_MENU_OFFSET_STRING, center);
+		upper_left = Vec2f(center.x - width / 2, center.y - mouse_centering);
+		bottom_right = Vec2f(center.x + width / 2, center.y - mouse_centering + 30);
+	}
 
 	// Draw the bounding box for the top
 	GUI::DrawFramedPane(upper_left, bottom_right);
 
 	// Draw the x button in the top right
-	u16 x_button_width = 20;
-	
 	if (DrawButton(
 		"CloseBindingsMenuButton",
 		"x",
