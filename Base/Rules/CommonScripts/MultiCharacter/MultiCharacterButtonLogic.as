@@ -142,7 +142,7 @@ void MoveUpPlayerList(CPlayer@ player)
 {
 	// Safety checks
 	CRules@ rules = getRules();
-	if (rules is null)
+	if (rules is null || rules.get_u8(UI_ACTION_COOLDOWN_STRING) > 0)
 	{
 		return;
 	}
@@ -156,13 +156,16 @@ void MoveUpPlayerList(CPlayer@ player)
 	{
 		rules.set_u8(char_display_index_string, char_display_index - 1);
 	}
+
+	// Add cooldown
+	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
 void MoveDownPlayerList(CPlayer@ player)
 {
 	// Safety checks
 	CRules@ rules = getRules();
-	if (rules is null)
+	if (rules is null || rules.get_u8(UI_ACTION_COOLDOWN_STRING) > 0)
 	{
 		return;
 	}
@@ -176,6 +179,9 @@ void MoveDownPlayerList(CPlayer@ player)
 	{
 		rules.set_u8(char_display_index_string, char_display_index + 1);
 	}
+
+	// Add cooldown
+	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
 void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID)
