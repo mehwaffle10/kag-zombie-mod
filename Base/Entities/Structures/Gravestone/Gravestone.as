@@ -33,6 +33,7 @@ void onInit(CBlob@ this)
 		return;
 	}
 
+	this.Tag("builder always hit");
 	this.addCommandID("dig");
 	this.server_setTeamNum(3);
 	this.set_bool(DUG_FLAG_STRING, false);
@@ -42,12 +43,23 @@ void onInit(CBlob@ this)
 	addLoot(this, INDEX_KNIGHT, 1, 0);
 
 	// Add the shovel icon
-	AddIconToken(SHOVEL_ICON_STRING, "Entities/Structures/Gravestone/ShovelIcon.png", Vec2f(32, 32), 1);
+	AddIconToken(SHOVEL_ICON_STRING, "Entities/Structures/Gravestone/ShovelIcon.png", Vec2f(32, 32), 3);
 }
 
 void onDie(CBlob@ this)
 {
-	
+	if (this is null)
+	{
+		return;
+	}
+
+	MakeMaterial(this, "mat_stone", 15);
+
+	CSprite@ sprite = this.getSprite();
+	if (sprite !is null)
+	{
+		sprite.Gib();
+	}
 }
 
 void GetButtonsFor(CBlob@ this, CBlob@ caller)
@@ -74,12 +86,11 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 
 void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 {
-	/*
-	if (!isServer())
+	// Safety Check
+	if (this is null)
 	{
 		return;
 	}
-	*/
 
 	if (cmd == this.getCommandID("dig") && !this.get_bool(DUG_FLAG_STRING))
 	{
@@ -136,6 +147,13 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 				}
 			}
 		}
+		else
+		{
+			for (u8 i = 0; i < 5; i++)
+			{
+				makeGibParticle("GenericGibs", this.getPosition(), getRandomVelocity(90.0f, 2.0f, 45.0f), 5, XORRandom(8), Vec2f(8, 8), 2.0f, 0, XORRandom(2) == 0 ? "bone_fall1.ogg" : "bone_fall2.ogg", this.getTeamNum());
+			}
+		}
 
 		// Play a sound and change animation when dug
 		CSprite@ sprite = this.getSprite();
@@ -144,7 +162,33 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			SetAnimation(this, true);
 			sprite.PlaySound("sand_fall.ogg", 3.0f);
 		}
+
+		// Spray dirt particles
+		for (u8 i = 0; i < 10; i++)
+		{
+			ParticlePixel(this.getPosition(), getRandomVelocity(90.0f, 2.0f + 2.0f / (1 + XORRandom(4)), 45.0f), SColor(0xff3b1406), false);
+		}
 	}	
+}
 
+CBlob@ MakeMaterial(CBlob@ this, const string &in name, const int quantity)
+{
+	// Safety Check
+	if (this is null || !isServer())
+	{
+		return null;
+	}
 
+	CBlob@ mat = server_CreateBlobNoInit(name);
+
+	if (mat !is null)
+	{
+		mat.setPosition(this.getPosition());
+		mat.Tag('custom quantity');
+		mat.Init();
+
+		mat.server_SetQuantity(quantity);		
+	}
+
+	return mat;
 }
