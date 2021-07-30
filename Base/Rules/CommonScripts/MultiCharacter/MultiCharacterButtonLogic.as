@@ -3,6 +3,7 @@
 #define CLIENT_ONLY
 
 string RENDER_BINDINGS_MENU_STRING = "render_bindings_menu";
+string BINDINGS_MENU_OFFSET_STRING = "bindings_menu_offset";
 string UI_ACTION_COOLDOWN_STRING = "multichar_ui_action_cooldown";
 
 funcdef void fxn(CPlayer@ player, u16 char_networkID, bool claimed);
@@ -259,15 +260,4 @@ void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 
 	rules.SendCommand(rules.getCommandID("move_down_char"), params);
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
-}
-
-void CloseBindingsMenu()
-{
-	CRules@ rules = getRules();
-	if (rules is null)
-	{
-		return;
-	}
-
-	rules.set_bool(RENDER_BINDINGS_MENU_STRING, false);
 }

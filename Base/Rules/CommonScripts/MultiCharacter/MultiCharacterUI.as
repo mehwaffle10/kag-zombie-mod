@@ -7,13 +7,14 @@
 #include "RunnerTextures.as"
 
 string CONFIG_FILE_NAME = "MultiCharacterKeyBindings.cfg";
+string LOAD_CONFIG_DELAY_STRING = "load_config_delay";
 string SWAP_ON_MOUSE_STRING = "swap_on_mouse_key";
 string CLAIM_ON_MOUSE_STRING = "claim_on_mouse_key";
 string SWAP_ON_NUMBER_MODIFIER_STRING = "swap_on_number_modifier_key";
 string TOGGLE_DISPLAY_MODE_STRING = "toggle_display_mode_key";
-string TOGGLE_SCOREBOARD_STRING = "toggle_scoreboard_key";
-string RENDER_SCOREBOARD_STRING = "render_scoreboard";
-string CAN_TOGGLE_SCOREBOARD_STRING = "can_toggle_scoreboard";
+string TOGGLE_OTHER_PLAYERCARDS_STRING = "toggle_other_playercards_key";
+string RENDER_OTHER_PLAYERCARDS_STRING = "render_other_playercards";
+string CAN_TOGGLE_OTHER_PLAYERCARDS_STRING = "can_toggle_other_playercards";
 
 void onInit(CRules@ this)
 {
@@ -24,9 +25,13 @@ void onInit(CRules@ this)
 	}
 
 	this.set_u8(UI_ACTION_COOLDOWN_STRING, 0);
-	this.set_bool(RENDER_SCOREBOARD_STRING, false);
-	this.set_bool(CAN_TOGGLE_SCOREBOARD_STRING, true);
+	this.set_bool(RENDER_OTHER_PLAYERCARDS_STRING, false);
+	this.set_bool(CAN_TOGGLE_OTHER_PLAYERCARDS_STRING, true);
+	this.set_u8(LOAD_CONFIG_DELAY_STRING, 1);
+}
 
+void LoadConfig(CRules@ this)
+{
 	// Load key bindings from the configfile
 	ConfigFile@ cfg = openMultiCharacterKeyBindingsConfig();
 
@@ -34,7 +39,7 @@ void onInit(CRules@ this)
 	this.set_s32(CLAIM_ON_MOUSE_STRING, read_key_binding(cfg, CLAIM_ON_MOUSE_STRING, KEY_KEY_G));
 	this.set_s32(SWAP_ON_NUMBER_MODIFIER_STRING, read_key_binding(cfg, SWAP_ON_NUMBER_MODIFIER_STRING, KEY_LCONTROL));
 	this.set_s32(TOGGLE_DISPLAY_MODE_STRING, read_key_binding(cfg, TOGGLE_DISPLAY_MODE_STRING, KEY_COMMA));
-	this.set_s32(TOGGLE_SCOREBOARD_STRING, read_key_binding(cfg, TOGGLE_SCOREBOARD_STRING, KEY_TAB));
+	this.set_s32(TOGGLE_OTHER_PLAYERCARDS_STRING, read_key_binding(cfg, TOGGLE_OTHER_PLAYERCARDS_STRING, KEY_PERIOD));
 }
 
 void onRender(CRules@ this)
@@ -63,6 +68,17 @@ void onRender(CRules@ this)
 		return;
 	}
 
+	// Load the config shortly after init
+	u8 config_delay = this.get_u8(LOAD_CONFIG_DELAY_STRING);
+	if (config_delay > 0)
+	{
+		this.set_u8(LOAD_CONFIG_DELAY_STRING, --config_delay);
+	}
+	else
+	{
+		LoadConfig(this);
+	}
+
 	// Update cooldowns if active
 	u8 cooldown = this.get_u8(UI_ACTION_COOLDOWN_STRING);
 	if (cooldown > 0)
@@ -70,17 +86,83 @@ void onRender(CRules@ this)
 		this.set_u8(UI_ACTION_COOLDOWN_STRING, --cooldown);
 	}
 
-	// Check if the player is trying to swap to another char
-	if (controls.isKeyPressed(this.get_s32(SWAP_ON_MOUSE_STRING)) && cooldown == 0)
+	// Draw Bindings Menu
+	if (this.get_bool(RENDER_BINDINGS_MENU_STRING))
 	{
-		CBlob@[] blobsInRadius;
-		map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
-		for (u16 i = 0; i < blobsInRadius.length(); i++)
+		DrawMultiCharBindingsMenu();
+	}
+	else
+	{
+		// Toggle Other Player Cards
+		if (this.get_bool(CAN_TOGGLE_OTHER_PLAYERCARDS_STRING) && controls.isKeyPressed(this.get_s32(TOGGLE_OTHER_PLAYERCARDS_STRING)))
 		{
-			if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
+			this.set_bool(RENDER_OTHER_PLAYERCARDS_STRING, !this.get_bool(RENDER_OTHER_PLAYERCARDS_STRING));
+			this.set_bool(CAN_TOGGLE_OTHER_PLAYERCARDS_STRING, false);
+		}
+		else
+		{
+			if (!controls.isKeyPressed(this.get_s32(TOGGLE_OTHER_PLAYERCARDS_STRING)))
 			{
-				SendSwapPlayerCmd(player, blobsInRadius[i].getNetworkID());
-				break;
+				this.set_bool(CAN_TOGGLE_OTHER_PLAYERCARDS_STRING, true);
+			}
+		}
+
+		// Render Other Player Cards
+		if (this.get_bool(RENDER_OTHER_PLAYERCARDS_STRING))
+		{
+			RenderOtherPlayerCards();
+		}
+
+		// Check if the player is trying to swap to another char
+		if (controls.isKeyPressed(this.get_s32(SWAP_ON_MOUSE_STRING)) && cooldown == 0)
+		{
+			CBlob@[] blobsInRadius;
+			map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
+			for (u16 i = 0; i < blobsInRadius.length(); i++)
+			{
+				if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
+				{
+					SendSwapPlayerCmd(player, blobsInRadius[i].getNetworkID());
+					break;
+				}
+			}
+		}
+
+		// Get player's char list
+		u16[] player_char_networkIDs;
+		if (readCharList(player.getUsername(), @player_char_networkIDs))
+		{
+			// Check if the player is trying to use hotkeys to swap to another char
+			if (cooldown == 0 && controls.isKeyPressed(this.get_s32(SWAP_ON_NUMBER_MODIFIER_STRING)))
+			{
+				int[] hotkeys = {KEY_KEY_1, KEY_KEY_2, KEY_KEY_3, KEY_KEY_4, KEY_KEY_5, KEY_KEY_6, KEY_KEY_7, KEY_KEY_8, KEY_KEY_9, KEY_KEY_0};
+				for (u8 i = 0; i < Maths::Min(player_char_networkIDs.length(), hotkeys.length()); i++)
+				{
+					if (controls.isKeyPressed(hotkeys[i]))
+					{
+						SendSwapPlayerCmd(player, player_char_networkIDs[i]);
+						break;
+					}
+				}
+			}
+
+			// Check if the player is trying to claim/unclaim to another char
+			if (controls.isKeyPressed(this.get_s32(CLAIM_ON_MOUSE_STRING)) && cooldown == 0)
+			{
+				CBlob@[] blobsInRadius;
+				map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
+				for (u16 i = 0; i < blobsInRadius.length(); i++)
+				{
+					if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
+					{
+						SendClaimCharCmd(
+							player,
+							blobsInRadius[i].getNetworkID(),
+							player_char_networkIDs.find(blobsInRadius[i].getNetworkID()) >= 0
+						);
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -91,73 +173,9 @@ void onRender(CRules@ this)
 	Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
 	DrawCharacterList(player, upper_left, frame_width);
 
-	// Get player's char list
-	u16[] player_char_networkIDs;
-	if (readCharList(player.getUsername(), @player_char_networkIDs))
-	{
-		// Check if the player is trying to use hotkeys to swap to another char
-		if (cooldown == 0 && controls.isKeyPressed(this.get_s32(SWAP_ON_NUMBER_MODIFIER_STRING)))
-		{
-			int[] hotkeys = {KEY_KEY_1, KEY_KEY_2, KEY_KEY_3, KEY_KEY_4, KEY_KEY_5, KEY_KEY_6, KEY_KEY_7, KEY_KEY_8, KEY_KEY_9, KEY_KEY_0};
-			for (u8 i = 0; i < Maths::Min(player_char_networkIDs.length(), hotkeys.length()); i++)
-			{
-				if (controls.isKeyPressed(hotkeys[i]))
-				{
-					SendSwapPlayerCmd(player, player_char_networkIDs[i]);
-					break;
-				}
-			}
-		}
-
-		// Check if the player is trying to claim/unclaim to another char
-		if (controls.isKeyPressed(this.get_s32(CLAIM_ON_MOUSE_STRING)) && cooldown == 0)
-		{
-			CBlob@[] blobsInRadius;
-			map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
-			for (u16 i = 0; i < blobsInRadius.length(); i++)
-			{
-				if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
-				{
-					SendClaimCharCmd(
-						player,
-						blobsInRadius[i].getNetworkID(),
-						player_char_networkIDs.find(blobsInRadius[i].getNetworkID()) >= 0
-					);
-					break;
-				}
-			}
-		}
-	}
-
 	// Draw unclaimed char list in the top left
 	upper_left = Vec2f(0, 0);
 	DrawCharacterList(null, upper_left, frame_width);
-
-	// Draw Bindings Menu
-	if (this.get_bool(RENDER_BINDINGS_MENU_STRING))
-	{
-		DrawMultiCharBindingsMenu();
-	}
-
-	// Toggle Scoreboard
-	if (this.get_bool(CAN_TOGGLE_SCOREBOARD_STRING) && controls.isKeyPressed(this.get_s32(TOGGLE_SCOREBOARD_STRING)))
-	{
-		this.set_bool(RENDER_SCOREBOARD_STRING, !this.get_bool(RENDER_SCOREBOARD_STRING));
-		this.set_bool(CAN_TOGGLE_SCOREBOARD_STRING, false);
-	}
-	else
-	{
-		if (!controls.isKeyPressed(this.get_s32(TOGGLE_SCOREBOARD_STRING)))
-		{
-			this.set_bool(CAN_TOGGLE_SCOREBOARD_STRING, true);
-		}
-	}
-
-	// Render Scoreboard
-	if (this.get_bool(RENDER_SCOREBOARD_STRING))
-	{
-		DrawScoreboard();
-	}
 }
 
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
@@ -205,7 +223,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 }
 
-void DrawScoreboard()
+void RenderOtherPlayerCards()
 {
 	// Safety checks
 	CRules@ rules = getRules();
@@ -308,14 +326,14 @@ void DrawScoreboard()
 		topleft.y += 52;
 	}
 
-	float scoreboardHeight = topleft.y + scrollOffset;
+	float other_playercardsHeight = topleft.y + scrollOffset;
 	float screenHeight = getScreenHeight();
 	CControls@ controls = getControls();
 
-	if(scoreboardHeight > screenHeight) {
+	if(other_playercardsHeight > screenHeight) {
 		Vec2f mousePos = controls.getMouseScreenPos();
 
-		float fullOffset = (scoreboardHeight + scoreboardMargin) - screenHeight;
+		float fullOffset = (other_playercardsHeight + other_playercardsMargin) - screenHeight;
 
 		if(scrollOffset < fullOffset && mousePos.y > screenHeight*0.83f) {
 			scrollOffset += scrollSpeed;
@@ -367,6 +385,9 @@ void TurnOnMultiCharacterBindingsMenu()
 
 	// Tell the client to render the menu
 	rules.set_bool(RENDER_BINDINGS_MENU_STRING, true);
+
+	// Reset the offset
+	rules.set_Vec2f(BINDINGS_MENU_OFFSET_STRING, getDriver().getScreenCenterPos());
 }
 
 ConfigFile@ openMultiCharacterKeyBindingsConfig()
@@ -389,8 +410,13 @@ int read_key_binding(ConfigFile@ cfg, string name, int default_value)
 void DrawMultiCharBindingsMenu()
 {
 	CRules@ rules = getRules();
-	Vec2f center = getDriver().getScreenCenterPos();
+	if (rules is null)
+	{
+		return;
+	}
+	
 	// string description = getTranslatedString("Builder Block Hotkey Binder");
+	Vec2f center = rules.get_Vec2f(BINDINGS_MENU_OFFSET_STRING);
 	u16 width = 324;
 	u16 vertical_margin = 95;
 	u16 spacing = 6;
@@ -448,7 +474,7 @@ void DrawMultiCharBindingsMenu()
 		CLAIM_ON_MOUSE_STRING,
 		SWAP_ON_NUMBER_MODIFIER_STRING,
 		TOGGLE_DISPLAY_MODE_STRING,
-		TOGGLE_SCOREBOARD_STRING
+		TOGGLE_OTHER_PLAYERCARDS_STRING
 	};
 
 	upper_left.y = bottom_right.y - 2;
@@ -462,7 +488,7 @@ void DrawMultiCharBindingsMenu()
 		"Claim/Unclaim On Mouse Key",
 		"Swap to Number Modifier",
 		"Toggle Display Mode",
-		"Toggle Scoreboard"
+		"Toggle Other Player Cards"
 	};
 
 	// Check if any button is selected to lock all buttons
@@ -485,9 +511,10 @@ void DrawMultiCharBindingsMenu()
 		bool selected = rules.exists(selected_string) && rules.get_bool(selected_string);
 
 		// Draw the button
+		s32 index = key_enums.find(rules.get_s32(button_names[i]));
 		if (DrawButton(
 			button_names[i],
-			selected ? "***Press a new key***" : display_text[i] + " [" + key_names[key_enums.find(rules.get_s32(button_names[i]))] + "]",
+			selected ? "***Press a new key***" : display_text[i] + " [" + (index < 0 || index >= key_names.length ? index + "" : key_names[index]) + "]",
 			Vec2f(upper_left.x + button_horizontal_margin, center.y),
 			width - button_horizontal_margin * 2,
 			button_height,
@@ -610,6 +637,22 @@ void DrawMultiCharBindingsMenu()
 		}
 	}
 	*/
+}
+
+void CloseBindingsMenu()
+{
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
+	// Hide the bindings menu
+	rules.set_bool(RENDER_BINDINGS_MENU_STRING, false);
+
+	// Hide the other player cards
+	rules.set_bool(RENDER_OTHER_PLAYERCARDS_STRING, false);
+	rules.set_bool(CAN_TOGGLE_OTHER_PLAYERCARDS_STRING, true);
 }
 
 s32[] key_enums = {
