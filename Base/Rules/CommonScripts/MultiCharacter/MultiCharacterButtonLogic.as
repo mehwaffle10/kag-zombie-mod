@@ -61,6 +61,7 @@ bool DrawButton(string button_name, string button_text, Vec2f upper_left,
 			}
 
 			button_state = ButtonStates::pressed;
+			// rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 			// execute_on_press(player, char_networkID, claimed);
 		}
 		else  // Hovering over the button
@@ -184,7 +185,7 @@ void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID)
 void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	CRules@ rules = getRules();
-	if (rules is null || player is null)
+	if (rules is null || player is null || rules.get_u8(UI_ACTION_COOLDOWN_STRING) > 0)
 	{
 		return;
 	}
@@ -201,7 +202,7 @@ void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	CRules@ rules = getRules();
-	if (rules is null || player is null)
+	if (rules is null || player is null || rules.get_u8(UI_ACTION_COOLDOWN_STRING) > 0)
 	{
 		return;
 	}
@@ -225,7 +226,7 @@ void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID)
 void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	CRules@ rules = getRules();
-	if (rules is null || player is null)
+	if (rules is null || player is null || rules.get_u8(UI_ACTION_COOLDOWN_STRING) > 0)
 	{
 		return;
 	}
@@ -247,7 +248,7 @@ void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID)
 void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
 	CRules@ rules = getRules();
-	if (rules is null || player is null)
+	if (rules is null || player is null || rules.get_u8(UI_ACTION_COOLDOWN_STRING) > 0)
 	{
 		return;
 	}

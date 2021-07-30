@@ -4,6 +4,7 @@
 #include "GenericButtonCommon.as";
 
 string DUG_FLAG_STRING = "dug_flag";
+string SHOVEL_ICON_STRING = "shovel_icon";
 
 void SetAnimation(CBlob@ this, bool dug)
 {
@@ -39,6 +40,9 @@ void onInit(CBlob@ this)
 
 	// Drop loot when destroyed
 	addLoot(this, INDEX_KNIGHT, 1, 0);
+
+	// Add the shovel icon
+	AddIconToken(SHOVEL_ICON_STRING, "Entities/Structures/Gravestone/ShovelIcon.png", Vec2f(32, 32), 1);
 }
 
 void onDie(CBlob@ this)
@@ -59,7 +63,8 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 		CBitStream params, missing;
 		params.write_u16(caller.getNetworkID());
 
-		CButton@ dig_button = caller.CreateGenericButton(12, Vec2f(0, 0), this, this.getCommandID("dig"), getTranslatedString("Dig Up Grave"), params);
+		// CButton@ dig_button = caller.CreateGenericButton(12, Vec2f(0, 0), this, this.getCommandID("dig"), getTranslatedString("Dig Up Grave"), params);
+		CButton@ dig_button = caller.CreateGenericButton(SHOVEL_ICON_STRING, Vec2f(0, 0), this, this.getCommandID("dig"), getTranslatedString("Dig Up Grave"));
 		if (dig_button !is null)
 		{
 			dig_button.enableRadius = 16.0f;
