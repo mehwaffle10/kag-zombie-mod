@@ -6,6 +6,7 @@
 #include "MakeSeed.as";
 #include "MakeCrate.as";
 #include "MakeScroll.as";
+#include "MultiCharacterCommon.as";
 
 const bool chatCommandCooldown = false; // enable if you want cooldown on your server
 const uint chatCommandDelay = 3 * 30; // Cooldown in seconds
@@ -56,7 +57,9 @@ bool onServerProcessChat(CRules@ this, const string& in text_in, string& out tex
 	// cannot do commands while dead
 
 	if (player is null)
+	{
 		return true;
+	}
 
 	CBlob@ blob = player.getBlob(); // now, when the code references "blob," it means the player who called the command
 
@@ -126,7 +129,20 @@ bool onServerProcessChat(CRules@ this, const string& in text_in, string& out tex
 
 	if (sv_test)
 	{
-		if (text_in == "!tree") // pine tree (seed)
+		// Waffle: Zombie Additions
+		if (text_in == "!gravestone")
+		{
+			server_CreateBlob('gravestone', 3, pos);
+		}
+		else if (text_in == "!survivor")
+		{
+			CBlob@ survivor = server_CreateBlobNoInit(this.get_string("default class"));
+			survivor.server_setTeamNum(team);
+			survivor.setPosition(pos);
+			survivor.Init();
+			TransferCharToPlayerList(survivor, "", -1);
+		}
+		else if (text_in == "!tree") // pine tree (seed)
 		{
 			server_MakeSeed(pos, "tree_pine", 600, 1, 16);
 		}
