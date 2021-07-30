@@ -254,7 +254,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 		if (victim !is null && victim.hasTag("player") && victim.exists("owning_player"))
 		{
 			// Move up the corresponding player list
-			MoveUpPlayerList(player_list_to_move_up == "" ? null : getPlayerByUsername(player_list_to_move_up), 0, false);
+			MoveUpPlayerList(player_list_to_move_up == "" ? null : getPlayerByUsername(player_list_to_move_up));
 
 			// Add to the kill feed
 			MultiCharacterKillFeed@ feed;

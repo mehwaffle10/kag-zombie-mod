@@ -18,28 +18,31 @@ namespace ButtonStates
 	};
 };
 
-void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, string button_text, Vec2f upper_left,
-	u16 button_width, u16 button_height, bool locked, bool claimed, fxn@ execute_on_press,
+// void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, string button_text, Vec2f upper_left,
+// 	u16 button_width, u16 button_height, bool locked, bool claimed, fxn@ execute_on_press,
+//	string icon_filename, u8 row_offset, u8 frames_per_row)
+bool DrawButton(string button_name, string button_text, Vec2f upper_left,
+	u16 button_width, u16 button_height, bool locked, bool claimed,
 	string icon_filename, u8 row_offset, u8 frames_per_row)
 {
 	// Safety checks. Intentionally does not check if player is null
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
-		return;
+		return false;
 	}
 
 	CControls@ controls = getControls();
 	if (controls is null)
 	{
-		return;
+		return false;
 	}
 
 	// Create buttons
 	Vec2f bottom_right = Vec2f(upper_left.x + button_width, upper_left.y + button_height);
 	Vec2f mouse_pos = controls.getMouseScreenPos();
 	// Had to attach this to rules instead of the player, as it didn't work on the player for some reason
-	string button_state_string = upper_left.x + "_" + upper_left.y + "_" + char_networkID + "_" + button_name + "_button_state";
+	string button_state_string = upper_left.x + "_" + upper_left.y + "_" + button_name + "_button_state";
 	u8 button_state = rules.get_u8(button_state_string);
 
 	// Update state and make the button interactive
@@ -58,7 +61,7 @@ void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, string 
 			}
 
 			button_state = ButtonStates::pressed;
-			execute_on_press(player, char_networkID, claimed);
+			// execute_on_press(player, char_networkID, claimed);
 		}
 		else  // Hovering over the button
 		{
@@ -127,10 +130,12 @@ void DrawButton(CPlayer@ player, u16 char_networkID, string button_name, string 
 		// Draw text
 		GUI::DrawShadowedTextCentered(button_text, Vec2f(upper_left.x + button_width / 2, upper_left.y + button_height / 2), SColor(255, 255, 255, 255));
 	}
+
+	// Return true if pressed
+	return button_state == ButtonStates::pressed;
 }
 
-// char_networkID and claimed are just to match the function signature at the top so I can pass functions around
-void MoveUpPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
+void MoveUpPlayerList(CPlayer@ player)
 {
 	// Safety checks
 	CRules@ rules = getRules();
@@ -150,8 +155,7 @@ void MoveUpPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
 	}
 }
 
-// char_networkID and claimed are just to match the function signature at the top so I can pass functions around
-void MoveDownPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
+void MoveDownPlayerList(CPlayer@ player)
 {
 	// Safety checks
 	CRules@ rules = getRules();
@@ -169,6 +173,11 @@ void MoveDownPlayerList(CPlayer@ player, u16 char_networkID, bool claimed)
 	{
 		rules.set_u8(char_display_index_string, char_display_index + 1);
 	}
+}
+
+void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID)
+{
+	SendSwapPlayerCmd(player, char_networkID, false);
 }
 
 // claimed is just to match the function signature at the top so I can pass functions around
@@ -207,6 +216,11 @@ void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
+void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID)
+{
+	SendMoveUpCharCmd(player, char_networkID, false);
+}
+
 // claimed is just to match the function signature at the top so I can pass functions around
 void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 {
@@ -222,6 +236,11 @@ void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 
 	rules.SendCommand(rules.getCommandID("move_up_char"), params);
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
+}
+
+void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID)
+{
+	SendMoveDownCharCmd(player, char_networkID, false);
 }
 
 // claimed is just to match the function signature at the top so I can pass functions around
@@ -241,8 +260,7 @@ void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
-// parameters are just to match the function signature at the top so I can pass functions around
-void CloseBindingsMenu(CPlayer@ player, u16 char_networkID, bool claimed)
+void CloseBindingsMenu()
 {
 	CRules@ rules = getRules();
 	if (rules is null)
