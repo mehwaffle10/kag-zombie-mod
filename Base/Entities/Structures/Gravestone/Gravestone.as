@@ -35,15 +35,27 @@ void onInit(CBlob@ this)
 
 	this.Tag("builder always hit");
 	this.addCommandID("dig");
-	this.server_setTeamNum(3);
 	this.set_bool(DUG_FLAG_STRING, false);
 	SetAnimation(this, false);
+
+	// Set the team number to the same team as the survivors so that it will not play a sound when hit in OnHitFailed.as
+	this.server_setTeamNum(0);
 
 	// Drop loot when destroyed
 	addLoot(this, INDEX_KNIGHT, 1, 0);
 
 	// Add the shovel icon
 	AddIconToken(SHOVEL_ICON_STRING, "Entities/Structures/Gravestone/ShovelIcon.png", Vec2f(32, 32), 3);
+}
+
+void onInit(CSprite@ this)
+{
+	if (this is null)
+	{
+		return;
+	} 
+
+	this.SetZ(-4.0f);
 }
 
 void onDie(CBlob@ this)
@@ -75,7 +87,6 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 		CBitStream params, missing;
 		params.write_u16(caller.getNetworkID());
 
-		// CButton@ dig_button = caller.CreateGenericButton(12, Vec2f(0, 0), this, this.getCommandID("dig"), getTranslatedString("Dig Up Grave"), params);
 		CButton@ dig_button = caller.CreateGenericButton(SHOVEL_ICON_STRING, Vec2f(0, 0), this, this.getCommandID("dig"), getTranslatedString("Dig Up Grave"));
 		if (dig_button !is null)
 		{
@@ -103,11 +114,13 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		// Spawn a body or rarely a zombie
 		if (XORRandom(2) == 0)  // 50% chance to spawn a body/enemy
 		{
-			if (XORRandom(10) == 0)  // 10% chance to spawn an enemy
+			Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
+			if (XORRandom(5) == 0)  // 20% chance to spawn an enemy
 			{
 				// Spawn an enemy
 				string[] enemies = {"skeleton", "skeleton", "skeleton", "skeleton", "skeleton", "log", "log", "log", "zombie_arm"};
-				server_CreateBlob(enemies[XORRandom(enemies.length)], 3, this.getPosition());
+				server_CreateBlob(enemies[XORRandom(enemies.length)], 3, this.getPosition() + spawn_offset);
+				ParticleZombieLightning(this.getPosition() + spawn_offset);
 			}
 			else
 			{
@@ -119,9 +132,12 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 					body.Tag("dead");
 					body.server_SetHealth(0.0f);
 					body.server_setTeamNum(3);
-					body.setPosition(this.getPosition());
-					//body.setVelocity(Vec2f(2 - XORRandom(5), -2));
+					body.setPosition(this.getPosition() + spawn_offset);
+					body.setVelocity(Vec2f(1 - XORRandom(3), -2));
 					body.Init();
+
+					// Prevent the corpse from showing up on the minimap
+					body.UnsetMinimapVars();
 
 					// Prevent the corpse from taunting
 					body.RemoveScript("TauntAI.as");
@@ -160,7 +176,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		if (sprite !is null)
 		{
 			SetAnimation(this, true);
-			sprite.PlaySound("sand_fall.ogg", 3.0f);
+			sprite.PlaySound("destroy_dirt.ogg", 3.0f);
 		}
 
 		// Spray dirt particles
@@ -191,4 +207,23 @@ CBlob@ MakeMaterial(CBlob@ this, const string &in name, const int quantity)
 	}
 
 	return mat;
+}
+
+f32 onHit(CBlob@ this, Vec2f worldPoint, Vec2f velocity, f32 damage, CBlob@ hitterBlob, u8 customData)
+{
+	if (this is null)
+	{
+		return 0.0f;
+	}
+
+	CSprite@ sprite = this.getSprite();
+	if (sprite !is null)
+	{
+		string[] sounds = {"rock_hit1.ogg", "rock_hit2.ogg", "rock_hit3.ogg"};
+		sprite.PlaySound(sounds[XORRandom(sounds.length)], 3.0f);
+	
+		makeGibParticle("GenericGibs", this.getPosition(), getRandomVelocity(90.0f, 2.0f, 45.0f), 2, XORRandom(8), Vec2f(8, 8), 2.0f, 0, sounds[XORRandom(sounds.length)], this.getTeamNum());
+	}
+
+	return damage;
 }
