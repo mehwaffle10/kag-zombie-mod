@@ -2,9 +2,12 @@
 
 #include "LootCommon.as";
 #include "GenericButtonCommon.as";
+#include "Hitters.as";
 
 string DUG_FLAG_STRING = "dug_flag";
 string SHOVEL_ICON_STRING = "shovel_icon";
+
+u8[] GRAVESTONE_LOOT_TABLE = INDEX_KNIGHT;
 
 void SetAnimation(CBlob@ this, bool dug)
 {
@@ -41,8 +44,8 @@ void onInit(CBlob@ this)
 	// Set the team number to the same team as the survivors so that it will not play a sound when hit in OnHitFailed.as
 	this.server_setTeamNum(0);
 
-	// Drop loot when destroyed
-	addLoot(this, INDEX_KNIGHT, 1, 0);
+	// Drop loot when dug
+	addLoot(this, GRAVESTONE_LOOT_TABLE, 1, 0);
 
 	// Add the shovel icon
 	AddIconToken(SHOVEL_ICON_STRING, "Entities/Structures/Gravestone/ShovelIcon.png", Vec2f(32, 32), 3);
@@ -108,9 +111,6 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		// Flag that this grave has been dug
 		this.set_bool(DUG_FLAG_STRING, true);
 
-		// Drop loot when destroyed
-		server_CreateLoot(this, this.getPosition(), this.getTeamNum());
-
 		// Spawn a body or rarely a zombie
 		if (XORRandom(2) == 0)  // 50% chance to spawn a body/enemy
 		{
@@ -119,7 +119,12 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			{
 				// Spawn an enemy
 				string[] enemies = {"skeleton", "skeleton", "skeleton", "skeleton", "skeleton", "log", "log", "log", "zombie_arm"};
-				server_CreateBlob(enemies[XORRandom(enemies.length)], 3, this.getPosition() + spawn_offset);
+				CBlob@ enemy = server_CreateBlob(enemies[XORRandom(enemies.length)], 3, this.getPosition() + spawn_offset);
+				if (enemy !is null)
+				{
+					addLoot(enemy, GRAVESTONE_LOOT_TABLE, 1, 0);
+					enemy.AddScript("DropLootOnDeath.as");
+				}
 				ParticleZombieLightning(this.getPosition() + spawn_offset);
 			}
 			else
@@ -135,6 +140,10 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 					body.setPosition(this.getPosition() + spawn_offset);
 					body.setVelocity(Vec2f(1 - XORRandom(3), -2));
 					body.Init();
+
+					// Make corpse drop loot when destroyed
+					addLoot(body, GRAVESTONE_LOOT_TABLE, 1, 0);
+					body.AddScript("DropLootOnDeath.as");
 
 					// Prevent the corpse from showing up on the minimap
 					body.UnsetMinimapVars();
@@ -165,6 +174,10 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		}
 		else
 		{
+			// Drop loot directly when dug if no body is dug up
+			server_CreateLoot(this, this.getPosition(), 0);
+
+			// Spawn bone gibs as if there was a decayed corpse
 			for (u8 i = 0; i < 5; i++)
 			{
 				makeGibParticle("GenericGibs", this.getPosition(), getRandomVelocity(90.0f, 2.0f, 45.0f), 5, XORRandom(8), Vec2f(8, 8), 2.0f, 0, XORRandom(2) == 0 ? "bone_fall1.ogg" : "bone_fall2.ogg", this.getTeamNum());
@@ -211,7 +224,7 @@ CBlob@ MakeMaterial(CBlob@ this, const string &in name, const int quantity)
 
 f32 onHit(CBlob@ this, Vec2f worldPoint, Vec2f velocity, f32 damage, CBlob@ hitterBlob, u8 customData)
 {
-	if (this is null)
+	if (this is null || customData == Hitters::bite)
 	{
 		return 0.0f;
 	}
