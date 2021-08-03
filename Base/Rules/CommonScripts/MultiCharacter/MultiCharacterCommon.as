@@ -70,8 +70,13 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	}
 
 	// Set the player to control the target blob
+	// Need to store the characters attributes and reapply them when swapping for some reason
 	DebugPrint("Transferring control");
+	u8 sex = target_blob.getSexNum();
+	u8 head = target_blob.getHeadNum();
 	target_blob.server_SetPlayer(player);
+	target_blob.setSexNum(sex);
+	target_blob.setHeadNum(head);
 
 	// I added a check in EmoteHotkeys.as so swapping using hotkeys wouldn't emote
 	// Unfortunately everything I tried here didn't work, wasn't clean, or wasn't robust
