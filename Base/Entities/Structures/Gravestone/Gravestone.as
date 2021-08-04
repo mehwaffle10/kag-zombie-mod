@@ -74,6 +74,7 @@ void onDie(CBlob@ this)
 	if (sprite !is null)
 	{
 		sprite.Gib();
+		sprite.PlaySound("destroy_wall.ogg", .75f);
 	}
 }
 
@@ -102,6 +103,12 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 {
 	// Safety Check
 	if (this is null)
+	{
+		return;
+	}
+
+	CSprite@ sprite = this.getSprite();
+	if (sprite is null)
 	{
 		return;
 	}
@@ -168,9 +175,12 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 					body.getShape().getVars().isladder = false;
 					body.getShape().getVars().onladder = false;
 					body.getShape().checkCollisionsAgain = true;
-					body.getShape().SetGravityScale(1.0f);	
+					body.getShape().SetGravityScale(1.0f);
 				}
 			}
+
+			// Play a wet sound for digging up bodies
+			sprite.PlaySound("destroy_dirt.ogg", 3.0f);
 		}
 		else
 		{
@@ -182,15 +192,15 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			{
 				makeGibParticle("GenericGibs", this.getPosition(), getRandomVelocity(90.0f, 2.0f, 45.0f), 5, XORRandom(8), Vec2f(8, 8), 2.0f, 0, XORRandom(2) == 0 ? "bone_fall1.ogg" : "bone_fall2.ogg", this.getTeamNum());
 			}
+
+			// Play a dry sound for digging up bones
+			sprite.PlaySound("sand_fall.ogg", 3.0f);
 		}
 
-		// Play a sound and change animation when dug
-		CSprite@ sprite = this.getSprite();
-		if (sprite !is null)
-		{
-			SetAnimation(this, true);
-			sprite.PlaySound("destroy_dirt.ogg", 3.0f);
-		}
+		// Play shovel sound and change animation when dug
+		SetAnimation(this, true);
+		string[] dig_sounds = {"dig_dirt1.ogg", "dig_dirt2.ogg", "dig_dirt3.ogg"};
+		sprite.PlaySound(dig_sounds[XORRandom(dig_sounds.length)], 3.0f);
 
 		// Spray dirt particles
 		for (u8 i = 0; i < 10; i++)
@@ -232,10 +242,13 @@ f32 onHit(CBlob@ this, Vec2f worldPoint, Vec2f velocity, f32 damage, CBlob@ hitt
 	CSprite@ sprite = this.getSprite();
 	if (sprite !is null)
 	{
-		string[] sounds = {"rock_hit1.ogg", "rock_hit2.ogg", "rock_hit3.ogg"};
-		sprite.PlaySound(sounds[XORRandom(sounds.length)], 3.0f);
+		string[] rubble_sounds = {"rock_hit1.ogg", "rock_hit2.ogg", "rock_hit3.ogg"};
+		// {"dig_stone1.ogg", "dig_stone2.ogg", "dig_stone3.ogg", "Kick.ogg", "Kick.ogg", "Kick.ogg", "Kick.ogg", "Kick.ogg", "Kick.ogg"};
+		// {"Kick.ogg"};
+		string[] dig_sounds = {"PickStone1.ogg", "PickStone2.ogg", "PickStone3.ogg"};
+		sprite.PlaySound(dig_sounds[XORRandom(dig_sounds.length)], .75f);
 	
-		makeGibParticle("GenericGibs", this.getPosition(), getRandomVelocity(90.0f, 2.0f, 45.0f), 2, XORRandom(8), Vec2f(8, 8), 2.0f, 0, sounds[XORRandom(sounds.length)], this.getTeamNum());
+		makeGibParticle("GenericGibs", this.getPosition(), getRandomVelocity(90.0f, 2.0f, 45.0f), 2, XORRandom(8), Vec2f(8, 8), 2.0f, 0, rubble_sounds[XORRandom(rubble_sounds.length)], this.getTeamNum());
 	}
 
 	return damage;
