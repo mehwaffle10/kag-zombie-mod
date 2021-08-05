@@ -38,8 +38,9 @@ void onInit(CBlob@ this)
 
 	this.Tag("builder always hit");
 	this.addCommandID("dig");
+	this.addCommandID("dig_sound");
 	this.set_bool(DUG_FLAG_STRING, false);
-	SetAnimation(this, false);
+	SetAnimation(this, this.get_bool(DUG_FLAG_STRING));
 
 	// Set the team number to the same team as the survivors so that it will not play a sound when hit in OnHitFailed.as
 	this.server_setTeamNum(0);
@@ -108,20 +109,19 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 	}
 
 	CSprite@ sprite = this.getSprite();
-	if (sprite is null)
-	{
-		return;
-	}
 
-	if (cmd == this.getCommandID("dig") && !this.get_bool(DUG_FLAG_STRING))
+	Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
+
+	if (isServer() && cmd == this.getCommandID("dig") && !this.get_bool(DUG_FLAG_STRING))
 	{
 		// Flag that this grave has been dug
 		this.set_bool(DUG_FLAG_STRING, true);
 
 		// Spawn a body or rarely a zombie
+		CBitStream body_params;
 		if (XORRandom(2) == 0)  // 50% chance to spawn a body/enemy
 		{
-			Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
+			bool lightning = false;
 			if (XORRandom(5) == 0)  // 20% chance to spawn an enemy
 			{
 				// Spawn an enemy
@@ -131,8 +131,13 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 				{
 					addLoot(enemy, GRAVESTONE_LOOT_TABLE, 1, 0);
 					enemy.AddScript("DropLootOnDeath.as");
+					body_params.write_netid(enemy.getNetworkID());
 				}
-				ParticleZombieLightning(this.getPosition() + spawn_offset);
+				else
+				{
+					body_params.write_netid(0);
+				}
+				lightning = true;
 			}
 			else
 			{
@@ -176,17 +181,60 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 					body.getShape().getVars().onladder = false;
 					body.getShape().checkCollisionsAgain = true;
 					body.getShape().SetGravityScale(1.0f);
+
+					body_params.write_netid(body.getNetworkID());
+				}
+				else
+				{
+					body_params.write_netid(0);
 				}
 			}
 
-			// Play a wet sound for digging up bodies
-			sprite.PlaySound("destroy_dirt.ogg", 3.0f);
+			// Tell the client a body was spawned
+			body_params.write_bool(lightning);	// Lightning
 		}
 		else
 		{
 			// Drop loot directly when dug if no body is dug up
 			server_CreateLoot(this, this.getPosition(), 0);
 
+			// Tell the client no body was spawned	
+			body_params.write_netid(0);  	// No body
+			body_params.write_bool(false);  // No lightning
+		}
+
+		this.SendCommand(this.getCommandID("dig_sound"), body_params);
+	}
+	else if (isClient() && cmd == this.getCommandID("dig_sound"))
+	{
+		u16 spawn_networkID;
+		if (!params.saferead_netid(spawn_networkID))
+		{
+			return;
+		}
+
+		bool lightning;
+		if (!params.saferead_bool(lightning))
+		{
+			return;
+		}
+
+		CBlob@ spawn = getBlobByNetworkID(spawn_networkID);
+
+		// Flag that this grave has been dug
+		this.set_bool(DUG_FLAG_STRING, true);
+
+		// Play the correct soil sound
+		if (spawn !is null)
+		{
+			// Play a wet sound for digging up bodies
+			sprite.PlaySound("destroy_dirt.ogg", 3.0f);
+
+			// Prevent the corpse from showing up on the minimap
+			spawn.UnsetMinimapVars();
+		}
+		else
+		{
 			// Spawn bone gibs as if there was a decayed corpse
 			for (u8 i = 0; i < 5; i++)
 			{
@@ -207,7 +255,13 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		{
 			ParticlePixel(this.getPosition(), getRandomVelocity(90.0f, 2.0f + 2.0f / (1 + XORRandom(4)), 45.0f), SColor(0xff3b1406), false);
 		}
-	}	
+
+		// Spawn lightning if necessary
+		if (lightning)
+		{
+			ParticleZombieLightning(this.getPosition() + spawn_offset);
+		}
+	}
 }
 
 CBlob@ MakeMaterial(CBlob@ this, const string &in name, const int quantity)
