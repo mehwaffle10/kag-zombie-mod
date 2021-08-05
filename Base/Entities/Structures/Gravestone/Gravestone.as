@@ -32,7 +32,6 @@ void onInit(CBlob@ this)
 {
 	this.Tag("builder always hit");
 	this.addCommandID("dig");
-	this.addCommandID("dig_sound");
 	this.set_bool(DUG_FLAG_STRING, false);
 	SetAnimation(this, this.get_bool(DUG_FLAG_STRING));
 
@@ -88,137 +87,102 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 {
 	CSprite@ sprite = this.getSprite();
 
-	Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
-
-	if (isServer() && cmd == this.getCommandID("dig") && !this.get_bool(DUG_FLAG_STRING))
+	if (cmd == this.getCommandID("dig") && !this.get_bool(DUG_FLAG_STRING))
 	{
 		// Flag that this grave has been dug
 		this.set_bool(DUG_FLAG_STRING, true);
 
+		// Randomly spawn something identically across clients and server
+		u8 body_chance = 2;  // 50% chance to spawn a body/enemy
+		u8 enemy_chance = 5;  // 20% chance to spawn an enemy
+		u8 total_outcomes = body_chance * enemy_chance;
+		u8 outcome = this.getNetworkID() % total_outcomes;
+
 		// Spawn a body or rarely a zombie
-		CBitStream body_params;
-		if (XORRandom(2) == 0)  // 50% chance to spawn a body/enemy
+		if (outcome < total_outcomes / body_chance)
 		{
-			bool lightning = false;
-			if (XORRandom(5) == 0)  // 20% chance to spawn an enemy
+			Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
+			if (outcome < (total_outcomes / body_chance) / enemy_chance)
 			{
 				// Spawn an enemy
-				string[] enemies = {"skeleton", "skeleton", "skeleton", "skeleton", "skeleton", "log", "log", "log", "zombie_arm"};
-				CBlob@ enemy = server_CreateBlob(enemies[XORRandom(enemies.length)], 3, this.getPosition() + spawn_offset);
-				if (enemy !is null)
+				if (isServer())
 				{
-					addLoot(enemy, GRAVESTONE_LOOT_TABLE, 1, 0);
-					enemy.AddScript("DropLootOnDeath.as");
-					body_params.write_netid(enemy.getNetworkID());
+					string[] enemies = {"skeleton", "skeleton", "skeleton", "skeleton", "skeleton", "log", "log", "log", "zombie_arm"};
+					CBlob@ enemy = server_CreateBlob(enemies[XORRandom(enemies.length)], 3, this.getPosition() + spawn_offset);
+					if (enemy !is null)
+					{
+						addLoot(enemy, GRAVESTONE_LOOT_TABLE, 1, 0);
+						enemy.AddScript("DropLootOnDeath.as");
+					}
 				}
-				else
-				{
-					body_params.write_netid(0);
-				}
-				lightning = true;
+				
+				ParticleZombieLightning(this.getPosition() + spawn_offset);
 			}
 			else
 			{
 				// Spawn a body (X_X) Death physics taken from RunnerDeath.as
-				string[] bodies = {"archer", "knight", "builder"};
-				CBlob@ body = server_CreateBlobNoInit(bodies[XORRandom(bodies.length)]);
-				if (body !is null)
-				{				
-					body.Tag("dead");
-					body.server_SetHealth(0.0f);
-					body.server_setTeamNum(3);
-					body.setPosition(this.getPosition() + spawn_offset);
-					body.setVelocity(Vec2f(1 - XORRandom(3), -2));
-					body.Init();
-
-					// Make corpse drop loot when destroyed
-					addLoot(body, GRAVESTONE_LOOT_TABLE, 1, 0);
-					body.AddScript("DropLootOnDeath.as");
-
-					// Prevent the corpse from showing up on the minimap
-					body.UnsetMinimapVars();
-
-					// Prevent the corpse from taunting
-					body.RemoveScript("TauntAI.as");
-
-					// add pickup attachment so we can pickup body
-					CAttachment@ a = body.getAttachments();
-					if (a !is null)
-					{
-						AttachmentPoint@ ap = a.AddAttachmentPoint("PICKUP", false);
-					}
-					
-					// new physics vars so bodies don't slide
-					body.getShape().setFriction(0.75f);
-					body.getShape().setElasticity(0.2f);
-
-					// disable tags
-					body.Untag("shielding");
-					body.Untag("player");
-					body.getShape().getVars().isladder = false;
-					body.getShape().getVars().onladder = false;
-					body.getShape().checkCollisionsAgain = true;
-					body.getShape().SetGravityScale(1.0f);
-
-					body_params.write_netid(body.getNetworkID());
-				}
-				else
+				if (isServer())
 				{
-					body_params.write_netid(0);
+					string[] bodies = {"archer", "knight", "builder"};
+					CBlob@ body = server_CreateBlobNoInit(bodies[XORRandom(bodies.length)]);
+					if (body !is null)
+					{				
+						body.Tag("dead");
+						body.server_SetHealth(0.0f);
+						body.server_setTeamNum(3);
+						body.setPosition(this.getPosition() + spawn_offset);
+						body.setVelocity(Vec2f(1 - XORRandom(3), -2));
+						body.Init();
+
+						// Make corpse drop loot when destroyed
+						addLoot(body, GRAVESTONE_LOOT_TABLE, 1, 0);
+						body.AddScript("DropLootOnDeath.as");
+
+						// Prevent the corpse from showing up on the minimap
+						body.UnsetMinimapVars();
+
+						// Prevent the corpse from taunting
+						body.RemoveScript("TauntAI.as");
+
+						// add pickup attachment so we can pickup body
+						CAttachment@ a = body.getAttachments();
+						if (a !is null)
+						{
+							AttachmentPoint@ ap = a.AddAttachmentPoint("PICKUP", false);
+						}
+						
+						// new physics vars so bodies don't slide
+						body.getShape().setFriction(0.75f);
+						body.getShape().setElasticity(0.2f);
+
+						// disable tags
+						body.Untag("shielding");
+						body.Untag("player");
+						body.getShape().getVars().isladder = false;
+						body.getShape().getVars().onladder = false;
+						body.getShape().checkCollisionsAgain = true;
+						body.getShape().SetGravityScale(1.0f);
+					}
 				}
 			}
-
-			// Tell the client a body was spawned
-			body_params.write_bool(lightning);	// Lightning
+			
+			// Play a wet sound for digging up bodies
+			sprite.PlaySound("destroy_dirt.ogg", 3.0f);
 		}
 		else
 		{
 			// Drop loot directly when dug if no body is dug up
-			server_CreateLoot(this, this.getPosition(), 0);
-
-			// Tell the client no body was spawned	
-			body_params.write_netid(0);  	// No body
-			body_params.write_bool(false);  // No lightning
-		}
-
-		this.SendCommand(this.getCommandID("dig_sound"), body_params);
-	}
-	else if (isClient() && cmd == this.getCommandID("dig_sound"))
-	{
-		u16 spawn_networkID;
-		if (!params.saferead_netid(spawn_networkID))
-		{
-			return;
-		}
-
-		bool lightning;
-		if (!params.saferead_bool(lightning))
-		{
-			return;
-		}
-
-		CBlob@ spawn = getBlobByNetworkID(spawn_networkID);
-
-		// Flag that this grave has been dug
-		this.set_bool(DUG_FLAG_STRING, true);
-
-		// Play the correct soil sound
-		if (spawn !is null)
-		{
-			// Play a wet sound for digging up bodies
-			sprite.PlaySound("destroy_dirt.ogg", 3.0f);
-
-			// Prevent the corpse from showing up on the minimap
-			spawn.UnsetMinimapVars();
-		}
-		else
-		{
+			if (isServer())
+			{
+				server_CreateLoot(this, this.getPosition(), 0);
+			}
+			
 			// Spawn bone gibs as if there was a decayed corpse
 			for (u8 i = 0; i < 5; i++)
 			{
 				makeGibParticle("GenericGibs", this.getPosition(), getRandomVelocity(90.0f, 2.0f, 45.0f), 5, XORRandom(8), Vec2f(8, 8), 2.0f, 0, XORRandom(2) == 0 ? "bone_fall1.ogg" : "bone_fall2.ogg", this.getTeamNum());
 			}
-
+			
 			// Play a dry sound for digging up bones
 			sprite.PlaySound("sand_fall.ogg", 3.0f);
 		}
@@ -232,12 +196,6 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		for (u8 i = 0; i < 10; i++)
 		{
 			ParticlePixel(this.getPosition(), getRandomVelocity(90.0f, 2.0f + 2.0f / (1 + XORRandom(4)), 45.0f), SColor(0xff3b1406), false);
-		}
-
-		// Spawn lightning if necessary
-		if (lightning)
-		{
-			ParticleZombieLightning(this.getPosition() + spawn_offset);
 		}
 	}
 }

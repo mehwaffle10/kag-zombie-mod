@@ -1,4 +1,6 @@
 
+#define SERVER_ONLY
+
 #include "LootCommon.as";
 
 void onDie(CBlob@ this)
