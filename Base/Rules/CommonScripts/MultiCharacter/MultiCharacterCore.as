@@ -128,29 +128,44 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 
 			// Replace the blob with the new one if possible
 			// It should never be in both lists at once, the second one wouldn't update otherwise
-			if (player_char_list_index >= 0)  // Found in player char list
+			if (player_char_list_index >= 0 || unclaimed_char_list_index >= 0)  // Found in player char list or unclaimed char list
 			{
-				// Copy the character's name if possible
-				if (previous_char !is null && previous_char.exists("forename") && previous_char.exists("surname"))
+				// Copy the character's traits if possible
+				if (previous_char !is null)
 				{
-					blob.set_string("forename", previous_char.get_string("forename"));
-					blob.set_string("surname", previous_char.get_string("surname"));
+					// Name
+					if (previous_char.exists("forename") || previous_char.exists("surname"))
+					{
+						blob.set_string("forename", previous_char.get_string("forename"));
+						blob.set_string("surname", previous_char.get_string("surname"));
+					}
+
+					// Appearance
+					u8 sex = previous_char.getSexNum();
+					blob.setSexNum(sex);
+					blob.setHeadNum(previous_char.getHeadNum());
+
+					CSprite@ new_sprite = blob.getSprite();
+					CSprite@ previous_sprite = previous_char.getSprite();
+					if (new_sprite !is null && previous_sprite !is null)
+					{
+						bool gold = previous_sprite.getFilename().find("Gold") >= 0;
+						bool cape = previous_sprite.getFilename().find("Cape") >= 0;
+						string class_name = blob.getName();
+						SetBody(new_sprite, class_name.substr(0, 1).toUpper() + class_name.substr(1), sex == 0, gold, cape);
+					}
 				}
 
-				// Replace the old character in the player's char list
-				TransferCharToPlayerList(blob, player.getUsername(), player_char_list_index);
-			}
-			else if (unclaimed_char_list_index >= 0)  // Found in unclaimed char list
-			{
-				// Copy the character's name if possible
-				if (previous_char !is null && previous_char.exists("forename") && previous_char.exists("surname"))
+				if (player_char_list_index >= 0)
 				{
-					blob.set_string("forename", previous_char.get_string("forename"));
-					blob.set_string("surname", previous_char.get_string("surname"));
+					// Replace the old character in the player's char list
+					TransferCharToPlayerList(blob, player.getUsername(), player_char_list_index);	
 				}
-
-				// Replace the old character in the unclaimed char list
-				TransferCharToPlayerList(blob, "", unclaimed_char_list_index);
+				else
+				{
+					// Replace the old character in the unclaimed char list
+					TransferCharToPlayerList(blob, "", unclaimed_char_list_index);
+				}
 			}
 			else  // Wasn't in either list, respawning most likely
 			{

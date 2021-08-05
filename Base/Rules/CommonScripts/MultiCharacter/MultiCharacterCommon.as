@@ -461,3 +461,49 @@ bool hasCharList(string player_name)
 		return rules.exists("unclaimed_char_list_length");
 	}
 }
+
+// Sets the sprite to the appropriate files based on 
+void SetBody(CSprite@ sprite, string char_class, bool male, bool gold, bool cape)
+{
+	if (sprite is null)
+	{
+		return;
+	}
+
+	string filename = char_class;
+
+	if (gold)
+	{
+		filename += "Gold";
+	}
+	else
+	{
+		filename += "Cape";
+	}
+
+	filename += male ? "Male" : "Female";
+	filename += ".png";
+	sprite.ReloadSprite(filename);
+
+	// Need to reload special spritelayers for archers and knights
+	string[] sprite_layers;
+	if (char_class == "Archer")
+	{
+		sprite_layers.push_back("frontarm");
+		sprite_layers.push_back("quiver");
+		sprite_layers.push_back("hook");
+	}
+	else if (char_class == "Knight")
+	{
+		sprite_layers.push_back("chop");
+	}
+
+	for (u8 i = 0; i < sprite_layers.length; i++)
+	{
+		CSpriteLayer@ sprite_layer = sprite.getSpriteLayer(sprite_layers[i]);
+		if (sprite_layer !is null)
+		{
+			sprite_layer.ReloadSprite(filename);
+		}
+	}
+}

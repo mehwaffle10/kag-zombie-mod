@@ -132,6 +132,8 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 				string gender = char.getSexNum() == 0 ? "Male" : "Female";
 				string player_class = char.getName();  // sprite.getFilename().split("_")[2];
 				player_class = player_class.substr(0, 1).toUpper() + player_class.substr(1, -1);
+				bool gold = sprite.getFilename().find("Gold") >= 0;
+				bool cape = sprite.getFilename().find("Cape") >= 0;
 
 				// Tuning variables
 				middle.y += sprite.getFrameHeight() * character_scale * 0.65f;
@@ -162,24 +164,25 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 				head_offset *= character_scale;
 
 				// Draw the head and body in the correct order based on the frame
+				string filename = player_class + (cape ? "Cape" : "") + gender + ".png";
 				if (head_layer == 0)  // Only draw the body 
 				{
 					// Draw character's body
-					DrawBody(player_class + gender + ".png", sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class);
+					DrawBody(filename, sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class, gold);
 				}
 				else if (head_layer == -1)  // Draw Head First
 				{
 					DrawHead(head, middle, head_offset, scale_x, scale_y, char);
-					DrawBody(player_class + gender + ".png", sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class);
+					DrawBody(filename, sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class, gold);
 				}
 				else if (head_layer == 1)  // Draw body first
 				{
-					DrawBody(player_class + gender + ".png", sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class);
+					DrawBody(filename, sprite, middle, body_offset, head_offset, scale_x, scale_y, char, player_class, gold);
 					DrawHead(head, middle, head_offset, scale_x, scale_y, char);
 				}
 
 				// Always draw bow on top
-				DrawBow(sprite, middle, body_offset, scale_x, scale_y, char, player_class);
+				DrawBow(sprite, middle, body_offset, scale_x, scale_y, char, player_class, gold);
 
 				// Print character's name
 				// I moved this down to make it always draw the name over the character,
@@ -286,7 +289,7 @@ void DrawHead(CSpriteLayer@ head, Vec2f middle, Vec2f head_offset, f32 scale_x, 
 }
 
 // Draw a character's body. Draw's an archer's quiver and bow if needed
-void DrawBody(string filename, CSprite@ sprite, Vec2f middle, Vec2f body_offset, Vec2f head_offset, f32 scale_x, f32 scale_y, CBlob@ char, string player_class)
+void DrawBody(string filename, CSprite@ sprite, Vec2f middle, Vec2f body_offset, Vec2f head_offset, f32 scale_x, f32 scale_y, CBlob@ char, string player_class, bool gold)
 {
 	// Safety checks
 	if (sprite is null || char is null)
@@ -320,7 +323,7 @@ void DrawBody(string filename, CSprite@ sprite, Vec2f middle, Vec2f body_offset,
 			SColor default_color = SColor(255, 255, 255, 255);
 
 			GUI::DrawIcon(
-				"RotatedQuiver.png",
+				gold ? "RotatedQuiverGold.png" : "RotatedQuiver.png",
 				quiver.getFrame() - 66,
 				Vec2f(256, 256),
 				middle - head_offset + quiver_offset,
@@ -349,7 +352,7 @@ void DrawBody(string filename, CSprite@ sprite, Vec2f middle, Vec2f body_offset,
 				backarm_frame += bow_frames_per_row * row_offset;
 
 				GUI::DrawIcon(
-					"RotatedBow.png",
+					gold ? "RotatedBowGold.png" : "RotatedBow.png",
 					backarm_frame,
 					Vec2f(512, 512),
 					middle - body_offset + bow_offset,
@@ -375,7 +378,7 @@ void DrawBody(string filename, CSprite@ sprite, Vec2f middle, Vec2f body_offset,
 	);
 }
 
-void DrawBow(CSprite@ sprite, Vec2f middle, Vec2f body_offset, f32 scale_x, f32 scale_y, CBlob@ char, string player_class)
+void DrawBow(CSprite@ sprite, Vec2f middle, Vec2f body_offset, f32 scale_x, f32 scale_y, CBlob@ char, string player_class, bool gold)
 {
 	// Safety checks
 	if (sprite is null || char is null)
@@ -487,7 +490,7 @@ void DrawBow(CSprite@ sprite, Vec2f middle, Vec2f body_offset, f32 scale_x, f32 
 		
 			// Draw bow and frontarm
 			GUI::DrawIcon(
-				"RotatedBow.png",
+				gold ? "RotatedBowGold.png" : "RotatedBow.png",
 				frontarm_frame,
 				Vec2f(512, 512),
 				middle - body_offset + bow_offset,
