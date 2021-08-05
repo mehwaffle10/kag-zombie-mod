@@ -3,13 +3,6 @@
 
 void onInit(CRules@ this)
 {
-	// Safety check
-	if (this is null)
-	{
-		DebugPrint("Rules was null");
-		return;
-	}
-
 	// Server commands, issued by the client
 	this.addCommandID("swap_player");
 	this.addCommandID("transfer_char");
@@ -55,12 +48,6 @@ void onInit(CPlayer@ this)
 	}
 
 	DebugPrint("Initalizing player char list");
-	if (this is null)
-	{
-		DebugPrint("Player was null");
-		return;
-	}
-
 	// Initialize list of the player's characters if it doesn't exist yet
 	if (!hasCharList(this.getUsername()))
 	{
@@ -85,13 +72,6 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 	}
 
 	DebugPrint("Entering onSetPlayer");
-
-	// Safety checks
-	if (this is null)
-	{
-		DebugPrint("Rules was null");
-		return;
-	}
 
 	if (blob is null)
 	{
@@ -213,7 +193,7 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 void onBlobDie(CRules@ this, CBlob@ blob)
 {
 	// Safety Checks
-	if (!isServer() || this is null || blob is null)
+	if (!isServer() || blob is null)
 	{
 		return;
 	}
@@ -235,7 +215,7 @@ void onBlobDie(CRules@ this, CBlob@ blob)
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 {
 	// Only server responds to commands
-	if (!isServer() || this is null || params is null)
+	if (!isServer() || params is null)
 	{
 		return;
 	}

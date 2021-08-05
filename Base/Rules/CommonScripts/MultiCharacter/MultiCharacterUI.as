@@ -16,14 +16,16 @@ string TOGGLE_OTHER_PLAYERCARDS_STRING = "toggle_other_playercards_key";
 string RENDER_OTHER_PLAYERCARDS_STRING = "render_other_playercards";
 string CAN_TOGGLE_OTHER_PLAYERCARDS_STRING = "can_toggle_other_playercards";
 
+string[] mod_binding_button_names = {
+	SWAP_ON_MOUSE_STRING,
+	CLAIM_ON_MOUSE_STRING,
+	SWAP_ON_NUMBER_MODIFIER_STRING,
+	TOGGLE_DISPLAY_MODE_STRING,
+	TOGGLE_OTHER_PLAYERCARDS_STRING
+};
+
 void onInit(CRules@ this)
 {
-	// Safety checks
-	if (this is null)
-	{
-		return;
-	}
-
 	this.set_u8(UI_ACTION_COOLDOWN_STRING, 0);
 	this.set_bool(RENDER_OTHER_PLAYERCARDS_STRING, false);
 	this.set_bool(CAN_TOGGLE_OTHER_PLAYERCARDS_STRING, true);
@@ -44,12 +46,6 @@ void LoadConfig(CRules@ this)
 
 void onRender(CRules@ this)
 {
-	// Safety checks
-	if (this is null)
-	{
-		return;
-	}
-
 	CPlayer@ player = getLocalPlayer();
 	if (player is null)
 	{
@@ -180,11 +176,13 @@ void onRender(CRules@ this)
 
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 {
+	/*
 	// Safety checks
-	if (this is null || params is null)
+	if (params is null)
 	{
 		return;
 	}
+	*/
 
 	// Only client responds to these commands, but no need to check because of #define CLIENT_ONLY
 	DebugPrint("Client Received Command");
@@ -223,6 +221,12 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 }
 
+void onRenderScoreboard(CRules@ this)
+{
+	// Close the mod binding menu and stop rendering other player cards
+	CloseBindingsMenu();
+}
+
 void RenderOtherPlayerCards()
 {
 	// Safety checks
@@ -242,24 +246,14 @@ void RenderOtherPlayerCards()
 		if (teamNum == rules.getSpectatorTeamNum())
 		{
 			spectators.push_back(p);
-			continue;
 		}
 		else
 		{
-			// Temp for debugging
-			if (p is getLocalPlayer())
-			{
-				players.push_back(p);
-				players.push_back(p);
-				players.push_back(p);
-			}
-			/*
 			// Don't render local player
 			if (p !is getLocalPlayer())
 			{
 				players.push_back(p);
 			}
-			*/
 		}
 	}
 
@@ -365,9 +359,7 @@ void DrawFancyCopiedText(string username, Vec2f mousePos, uint duration)
 // Add mod bindings menu
 void onMainMenuCreated(CRules@ this, CContextMenu@ menu)
 {
-	// CContextMenu@ bindingsMenu = Menu::addContextMenu(menu, getTranslatedString("Mod Settings"));
 	Menu::addContextItem(menu, getTranslatedString("Mod Bindings"), "MultiCharacterUI.as", "void TurnOnMultiCharacterBindingsMenu()");
-	// Menu::addContextItem(bindingsMenu, getTranslatedString("Bind Builder Blocks"), "BuilderBinderMenu.as", "void NewBuilderMenu()");
 }
 
 void TurnOnMultiCharacterBindingsMenu()
@@ -499,17 +491,9 @@ void DrawMultiCharBindingsMenu()
 	GUI::DrawShadowedTextCentered("Mod Bindings", center, SColor(255, 255, 255, 255));
 
 	// Draw the bounding box for the bottom
-	string[] button_names = {
-		SWAP_ON_MOUSE_STRING,
-		CLAIM_ON_MOUSE_STRING,
-		SWAP_ON_NUMBER_MODIFIER_STRING,
-		TOGGLE_DISPLAY_MODE_STRING,
-		TOGGLE_OTHER_PLAYERCARDS_STRING
-	};
-
 	upper_left.y = bottom_right.y - 2;
 	center.y = upper_left.y + 2 * spacing;
-	bottom_right.y = upper_left.y + button_names.length * (spacing + button_height) + 3 * spacing;
+	bottom_right.y = upper_left.y + mod_binding_button_names.length * (spacing + button_height) + 3 * spacing;
 	GUI::DrawFramedPane(upper_left, bottom_right);
 
 	// Draw config buttons
@@ -523,9 +507,9 @@ void DrawMultiCharBindingsMenu()
 
 	// Check if any button is selected to lock all buttons
 	s8 selected_index = -1;
-	for (u8 i = 0; i < button_names.length; i++)
+	for (u8 i = 0; i < mod_binding_button_names.length; i++)
 	{
-		string selected_string = button_names[i] + "_selected";
+		string selected_string = mod_binding_button_names[i] + "_selected";
 		if (rules.exists(selected_string) && rules.get_bool(selected_string))
 		{
 			selected_index = i;
@@ -534,16 +518,16 @@ void DrawMultiCharBindingsMenu()
 	}
 
 	// Draw the buttons
-	for (u8 i = 0; i < button_names.length; i++)
+	for (u8 i = 0; i < mod_binding_button_names.length; i++)
 	{
 		// See if this button is pressed
-		string selected_string = button_names[i] + "_selected";
+		string selected_string = mod_binding_button_names[i] + "_selected";
 		bool selected = rules.exists(selected_string) && rules.get_bool(selected_string);
 
 		// Draw the button
-		s32 index = key_enums.find(rules.get_s32(button_names[i]));
+		s32 index = key_enums.find(rules.get_s32(mod_binding_button_names[i]));
 		if (DrawButton(
-			button_names[i],
+			mod_binding_button_names[i],
 			selected ? "***Press a new key***" : display_text[i] + " [" + (index < 0 || index >= key_names.length ? index + "" : key_names[index]) + "]",
 			Vec2f(upper_left.x + button_horizontal_margin, center.y),
 			width - button_horizontal_margin * 2,
@@ -575,14 +559,14 @@ void DrawMultiCharBindingsMenu()
 				Sound::Play("buttonclick.ogg");
 
 				// Deselect the button
-				rules.set_bool(button_names[selected_index] + "_selected", false);
+				rules.set_bool(mod_binding_button_names[selected_index] + "_selected", false);
 
 				// Set the hotkey in the current session
-				rules.set_s32(button_names[selected_index], key_enums[i]);
+				rules.set_s32(mod_binding_button_names[selected_index], key_enums[i]);
 
 				// Write the new key to the config
 				ConfigFile@ cfg = openMultiCharacterKeyBindingsConfig();
-				cfg.add_s32(button_names[selected_index], key_enums[i]);
+				cfg.add_s32(mod_binding_button_names[selected_index], key_enums[i]);
 				cfg.saveFile(CONFIG_FILE_NAME);
 
 				return;
@@ -679,6 +663,12 @@ void CloseBindingsMenu()
 
 	// Hide the bindings menu
 	rules.set_bool(RENDER_BINDINGS_MENU_STRING, false);
+
+	// Deselect any pressed buttons
+	for (u8 i = 0; i < mod_binding_button_names.length; i++)
+	{
+		rules.set_bool(mod_binding_button_names[i] + "_selected", false);
+	}
 
 	// Hide the other player cards
 	rules.set_bool(RENDER_OTHER_PLAYERCARDS_STRING, false);

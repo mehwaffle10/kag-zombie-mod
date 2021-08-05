@@ -30,12 +30,6 @@ void SetAnimation(CBlob@ this, bool dug)
 
 void onInit(CBlob@ this)
 {
-	// Safety Checks
-	if (this is null)
-	{
-		return;
-	}
-
 	this.Tag("builder always hit");
 	this.addCommandID("dig");
 	this.addCommandID("dig_sound");
@@ -54,21 +48,11 @@ void onInit(CBlob@ this)
 
 void onInit(CSprite@ this)
 {
-	if (this is null)
-	{
-		return;
-	} 
-
 	this.SetZ(-4.0f);
 }
 
 void onDie(CBlob@ this)
 {
-	if (this is null)
-	{
-		return;
-	}
-
 	MakeMaterial(this, "mat_stone", 15);
 
 	CSprite@ sprite = this.getSprite();
@@ -102,12 +86,6 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 
 void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 {
-	// Safety Check
-	if (this is null)
-	{
-		return;
-	}
-
 	CSprite@ sprite = this.getSprite();
 
 	Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
