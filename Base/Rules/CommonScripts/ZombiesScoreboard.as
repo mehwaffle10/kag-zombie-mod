@@ -14,7 +14,7 @@ bool draw_tier = false;
 float scoreboardMargin = 52.0f;
 float scrollOffset = 0.0f;
 float scrollSpeed = 4.0f;
-float maxMenuWidth = 700;
+float maxMenuWidth = 500;
 float screenMidX = getScreenWidth()/2;
 
 bool mouseWasPressed2 = false;
@@ -57,11 +57,10 @@ string[] tier_description = {
 };
 
 //returns the bottom
-float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CTeam@ team, Vec2f emblem)
+float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, string team_name, SColor team_color, Vec2f emblem)
 {
-	if (players.size() <= 0 || team is null)
+	if (players.size() <= 0)
 		return topleft.y;
-
 
 	CRules@ rules = getRules();
 	Vec2f orig = topleft; //save for later
@@ -70,7 +69,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 	f32 padheight = 6;
 	f32 stepheight = lineheight + padheight;
 	Vec2f bottomright(Maths::Min(getScreenWidth() - 100, screenMidX+maxMenuWidth), topleft.y + (players.length + 5.5) * stepheight);
-	GUI::DrawPane(topleft, bottomright, team.color);
+	GUI::DrawPane(topleft, bottomright, team_color);
 
 	//offset border
 	topleft.x += stepheight;
@@ -80,13 +79,16 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 	GUI::SetFont("menu");
 
 	//draw team info
-	GUI::DrawText(getTranslatedString(team.getName()), Vec2f(topleft.x, topleft.y), SColor(0xffffffff));
+	GUI::DrawText(getTranslatedString(team_name), Vec2f(topleft.x, topleft.y), SColor(0xffffffff));
 	GUI::DrawText(getTranslatedString("Players: {PLAYERCOUNT}").replace("{PLAYERCOUNT}", "" + players.length), Vec2f(bottomright.x - 400, topleft.y), SColor(0xffffffff));
 
 	topleft.y += stepheight * 2;
 
-	const int accolades_start = 770;
-	const int age_start = accolades_start + 80;
+	const int accolades_start = 520;
+	const int age_start = accolades_start + 60;
+
+	u16 ping_offset = 50;
+	u16 username_offset = 220;
 
 	draw_age = false;
 	for(int i = 0; i < players.length; i++) {
@@ -103,9 +105,14 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 			break;
 		}
 	}
-	const int tier_start = (draw_age ? age_start : accolades_start) + 70;
+	const int tier_start = (draw_age ? age_start : accolades_start) + 60;
 
 	//draw player table header
+
+	GUI::DrawText(getTranslatedString("Player"), Vec2f(topleft.x, topleft.y), SColor(0xffffffff));
+	GUI::DrawText(getTranslatedString("Username"), Vec2f(bottomright.x - username_offset, topleft.y), SColor(0xffffffff));
+	GUI::DrawText(getTranslatedString("Ping"), Vec2f(bottomright.x - ping_offset, topleft.y), SColor(0xffffffff));
+	/*
 	GUI::DrawText(getTranslatedString("Player"), Vec2f(topleft.x, topleft.y), SColor(0xffffffff));
 	GUI::DrawText(getTranslatedString("Username"), Vec2f(bottomright.x - 470, topleft.y), SColor(0xffffffff));
 	GUI::DrawText(getTranslatedString("Ping"), Vec2f(bottomright.x - 330, topleft.y), SColor(0xffffffff));
@@ -113,6 +120,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 	GUI::DrawText(getTranslatedString("Deaths"), Vec2f(bottomright.x - 190, topleft.y), SColor(0xffffffff));
 	GUI::DrawText(getTranslatedString("Assists"), Vec2f(bottomright.x - 120, topleft.y), SColor(0xffffffff));
 	GUI::DrawText(getTranslatedString("KDR"), Vec2f(bottomright.x - 50, topleft.y), SColor(0xffffffff));
+	*/
 	GUI::DrawText(getTranslatedString("Accolades"), Vec2f(bottomright.x - accolades_start, topleft.y), SColor(0xffffffff));
 	if(draw_age)
 	{
@@ -260,6 +268,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 		}
 
 		//draw account age indicator
+		
 		if (draw_age)
 		{
 			int regtime = p.getRegistrationTime();
@@ -379,7 +388,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 		//draw support tier
 		if(draw_tier)
 		{
-			int tier = p.getSupportTier();
+			int tier = 4; p.getSupportTier();
 
 			if(tier > 0)
 			{
@@ -486,12 +495,16 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 		}
 
 
+		GUI::DrawText("" + username, Vec2f(bottomright.x - username_offset, topleft.y), namecolour);
+		GUI::DrawText("" + ping_in_ms, Vec2f(bottomright.x - ping_offset, topleft.y), SColor(0xffffffff));
+		/*
 		GUI::DrawText("" + username, Vec2f(bottomright.x - 470, topleft.y), namecolour);
 		GUI::DrawText("" + ping_in_ms, Vec2f(bottomright.x - 330, topleft.y), SColor(0xffffffff));
 		GUI::DrawText("" + p.getKills(), Vec2f(bottomright.x - 260, topleft.y), SColor(0xffffffff));
 		GUI::DrawText("" + p.getDeaths(), Vec2f(bottomright.x - 190, topleft.y), SColor(0xffffffff));
 		GUI::DrawText("" + p.getAssists(), Vec2f(bottomright.x - 120, topleft.y), SColor(0xffffffff));
 		GUI::DrawText("" + formatFloat(getKDR(p), "", 0, 2), Vec2f(bottomright.x - 50, topleft.y), SColor(0xffffffff));
+		*/
 	}
 
 	// username copied text, goes at bottom to overlay above everything else
@@ -516,7 +529,7 @@ void onRenderScoreboard(CRules@ this)
 	{
 		CPlayer@ p = getPlayer(i);
 		int teamNum = p.getTeamNum();
-		if (teamNum == rules.getSpectatorTeamNum())
+		if (teamNum == this.getSpectatorTeamNum())
 		{
 			spectators.push_back(p);
 		}
@@ -546,12 +559,18 @@ void onRenderScoreboard(CRules@ this)
 	hovered_tier = -1;
 
 	// Draw the players
-	topleft.y = drawScoreboard(localPlayer, players, topleft, this.getTeam(0), Vec2f(0, 0));
-	topleft.y += 52;
+	if (players.length > 0)
+	{
+		topleft.y = drawScoreboard(localPlayer, players, topleft, "Survivors", SColor(255, 25, 94, 157), Vec2f(0, 0));
+		topleft.y += 52;
+	}
 	
 	// Draw the spectators
-	topleft.y = drawScoreboard(localPlayer, redplayers, topleft, this.getTeam(1), Vec2f(32, 0));
-	topleft.y += 52;
+	if (spectators.length > 0)
+	{
+		topleft.y = drawScoreboard(localPlayer, spectators, topleft, "Spectators", SColor(0xffc0c0c0), Vec2f(32, 0));
+		topleft.y += 52;
+	}
 
 	/*
 	if (spectators.length > 0)
@@ -591,7 +610,9 @@ void onRenderScoreboard(CRules@ this)
 
 		topleft.y += 52;
 	}
+	*/
 
+	// Make the menu scrollable
 	float scoreboardHeight = topleft.y + scrollOffset;
 	float screenHeight = getScreenHeight();
 	CControls@ controls = getControls();
@@ -611,12 +632,12 @@ void onRenderScoreboard(CRules@ this)
 		scrollOffset = Maths::Clamp(scrollOffset, 0.0f, fullOffset);
 	}
 
-	drawPlayerCard(hoveredPlayer, hoveredPos);
+	// Draw extra info
+	// drawPlayerCard(hoveredPlayer, hoveredPos);
 
-	drawHoverExplanation(hovered_accolade, hovered_age, hovered_tier, Vec2f(getScreenWidth() * 0.5, topleft.y));
+	drawHoverExplanation(hovered_accolade, hovered_age, hovered_tier, Vec2f(getScreenWidth() * 0.5, Maths::Min(topleft.y + 8, screenHeight - 70)));
 
 	mouseWasPressed2 = controls.mousePressed2;
-	*/
 }
 
 void drawHoverExplanation(int hovered_accolade, int hovered_age, int hovered_tier, Vec2f centre_top)
