@@ -1,7 +1,7 @@
 
 // Renders a player list from top to bottom as far as possible from the start position
 // Renders the unclaimed list if player list is null
-void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width)
+void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width, bool simple)
 {
 	// Safety checks
 	CRules@ rules = getRules();
@@ -23,11 +23,16 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width)
 	if (readCharList(player !is null ? player.getUsername() : "", @char_networkIDs))
 	{
 		// Render the player's name
+		// Draw the bounding box
 		u16 name_box_height = 28;
 		Vec2f bottom_right = Vec2f(upper_left.x + frame_width, upper_left.y + name_box_height);
 		Vec2f name_middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
 		GUI::DrawFramedPane(upper_left, bottom_right);
-		GUI::DrawShadowedTextCentered(player !is null ? player.getUsername() : "Unclaimed", name_middle, SColor(255, 255, 255, 255));
+		
+		// Draw as much of the name as fits
+		string name = fit_string(player !is null ? player.getUsername() : "Unclaimed", frame_width);
+		
+		GUI::DrawShadowedTextCentered(name, name_middle, SColor(255, 255, 255, 255));
 		upper_left.y += name_box_height;
 
 		// Render the move up in player's list button
@@ -41,7 +46,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width)
 			move_list_button_height,
 			char_display_index == 0,
 			player !is null,
-			"MultiCharacterButtonsWide.png",
+			simple ? "MultiCharacterButtonsMedium.png" : "MultiCharacterButtonsWide.png",
 			0,
 			3
 		))
@@ -64,7 +69,14 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width)
 			}
 
 			// Draw the frame
-			DrawCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i], player !is null, false, false, i == 0, i == char_networkIDs.length() - 1);
+			if (simple)
+			{
+				DrawSimpleCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i]);
+			}
+			else
+			{
+				DrawCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i], player !is null, false, false, i == 0, i == char_networkIDs.length() - 1);
+			}
 
 			// Move the top left corner down
 			upper_left.y += frame_width - 2;
@@ -79,12 +91,81 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width)
 			move_list_button_height,
 			!ended_early,
 			player !is null,
-			"MultiCharacterButtonsWide.png",
+			simple ? "MultiCharacterButtonsMedium.png" : "MultiCharacterButtonsWide.png",
 			1,
 			3
 		))
 		{
 			MoveDownPlayerList(player);
+		}
+	}
+}
+
+void DrawSimpleCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, u16 char_networkID)
+{
+	CRules@ rules = getRules();
+	if (rules is null)
+	{
+		return;
+	}
+
+	CControls@ controls = getControls();
+	if (controls is null)
+	{
+		return;
+	}
+
+	CPlayer@ player = getLocalPlayer();
+	if (player is null)
+	{
+		return;
+	}
+
+	CBlob@ char = getBlobByNetworkID(char_networkID);
+	if (char !is null)
+	{
+		CSprite@ sprite = char.getSprite();
+		if (sprite !is null)
+		{
+			CSpriteLayer@ head = sprite.getSpriteLayer("head");
+			if (head !is null)
+			{
+				// Calculate the bottom right corner
+				Vec2f bottom_right = upper_left + Vec2f(frame_width, frame_width);
+
+				// Draw Frame
+				GUI::DrawFramedPane(upper_left, bottom_right);
+				Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 40);
+
+				// Tuning variables
+				middle.y += head.getFrameHeight() * character_scale * 0.65f;
+				
+				int head_layer = 0;
+				Vec2f head_offset = Vec2f(head.getFrameWidth(), head.getFrameHeight() * 2.0f);
+				
+				f32 scale_x = character_scale;
+				f32 scale_y = character_scale;
+
+				// Handle facing left
+				if (char.isFacingLeft())
+				{
+					// Flip the sprite horizontally
+					scale_x = -scale_x;
+
+					// Reverse the offsets as well
+					head_offset.x = -head_offset.x;
+				}
+
+				// Scale up the offsets
+				head_offset *= character_scale;
+
+				// Draw the head
+				DrawHead(head, middle, head_offset, scale_x, scale_y, char);
+
+				// Draw health bar
+				middle.y = bottom_right.y - 24;
+				RenderHPBar(char, middle, .8f);
+			}
 		}
 	}
 }
@@ -123,8 +204,6 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 
 				// Draw Frame
 				GUI::DrawFramedPane(upper_left, bottom_right);
-
-				// Print character's name
 				Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 26);
 
 				// Draw character's sprite
@@ -219,7 +298,7 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 
 				// Draw health bar
 				middle.y = bottom_right.y - 27;
-				RenderHPBar(char, middle);
+				RenderHPBar(char, middle, 1.0f);
 
 				// Draw Buttons
 				u16 button_width = 24;
@@ -544,7 +623,7 @@ u8 getRotationOffsets(CBlob@ char, Vec2f &out bow_offset, f32 scale)
 }
 
 // Render the character's health centered on a point
-void RenderHPBar(CBlob@ blob, Vec2f middle)
+void RenderHPBar(CBlob@ blob, Vec2f middle, f32 scale)
 {
 	if (blob is null)
 	{
@@ -555,14 +634,13 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 	int segmentWidth = 18;
 	int iconWidth = 12;
 	int HPs = 0;
-	f32 scale = 1.0f;
 
 	for (f32 step = 0.0f; step < blob.getInitialHealth(); step += 0.5f)
 	{
 		f32 thisHP = blob.getHealth() - step;
 
 		Vec2f heartoffset = Vec2f(segmentWidth * -blob.getInitialHealth()/2 - 1, 0) * 2;
-		Vec2f heartpos = middle + Vec2f(segmentWidth * HPs, 0) + heartoffset;
+		Vec2f heartpos = middle + (Vec2f(segmentWidth * HPs, 0) + heartoffset) * scale;
 		Vec2f heartframe = Vec2f(iconWidth, iconWidth);
 
 		// Always render the heart's frame
@@ -590,4 +668,24 @@ void RenderHPBar(CBlob@ blob, Vec2f middle)
 
 		HPs++;
 	}
+}
+
+string fit_string(string str, u16 frame_width)
+{
+	Vec2f size;
+	string substring;
+	u8 index = str.length();
+	do
+	{
+		substring = str.substr(0, index);
+		if (index < str.length())
+		{
+			substring += "...";
+		}
+		GUI::GetTextDimensions(substring, size);
+		index--;
+	}
+	while (size.x > frame_width - 16);
+
+	return substring;
 }

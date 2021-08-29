@@ -12,9 +12,13 @@ string SWAP_ON_MOUSE_STRING = "swap_on_mouse_key";
 string CLAIM_ON_MOUSE_STRING = "claim_on_mouse_key";
 string SWAP_ON_NUMBER_MODIFIER_STRING = "swap_on_number_modifier_key";
 string TOGGLE_DISPLAY_MODE_STRING = "toggle_display_mode_key";
+string DISPLAY_MODE_STRING = "display_mode";
 string TOGGLE_OTHER_PLAYERCARDS_STRING = "toggle_other_playercards_key";
 string RENDER_OTHER_PLAYERCARDS_STRING = "render_other_playercards";
 string CAN_TOGGLE_OTHER_PLAYERCARDS_STRING = "can_toggle_other_playercards";
+
+u16 full_frame_width = 124;
+u16 simple_frame_width = 70;
 
 string[] mod_binding_button_names = {
 	SWAP_ON_MOUSE_STRING,
@@ -30,6 +34,13 @@ void onInit(CRules@ this)
 	this.set_bool(RENDER_OTHER_PLAYERCARDS_STRING, false);
 	this.set_bool(CAN_TOGGLE_OTHER_PLAYERCARDS_STRING, true);
 	this.set_u8(LOAD_CONFIG_DELAY_STRING, 1);
+	this.set_u8(DISPLAY_MODE_STRING, 0);
+
+	if (!GUI::isFontLoaded("snes"))
+	{
+		string snes = CFileMatcher("snes.png").getFirst();
+		GUI::LoadFont("snes", snes, 22, true);
+	}
 }
 
 void LoadConfig(CRules@ this)
@@ -81,6 +92,9 @@ void onRender(CRules@ this)
 	{
 		this.set_u8(UI_ACTION_COOLDOWN_STRING, --cooldown);
 	}
+
+	// Force the font for the UI
+	GUI::SetFont("snes");
 
 	// Draw Bindings Menu
 	if (this.get_bool(RENDER_BINDINGS_MENU_STRING))
@@ -163,15 +177,44 @@ void onRender(CRules@ this)
 		}
 	}
 
-	// Draw player's char list in the top right
-	u16 frame_width = 124;
-	u16 move_list_button_height = 24;
-	Vec2f upper_left = Vec2f(getScreenWidth() - frame_width, 0);
-	DrawCharacterList(player, upper_left, frame_width);
+	u8 display_mode = this.get_u8(DISPLAY_MODE_STRING);
+	if (controls.isKeyPressed(this.get_s32(TOGGLE_DISPLAY_MODE_STRING)) && cooldown == 0)
+	{
+		display_mode++;
+		if (display_mode > 2)
+		{
+			display_mode = 0;
+		}
+		this.set_u8(DISPLAY_MODE_STRING, display_mode);
+		this.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
+	}
 
-	// Draw unclaimed char list in the top left
-	upper_left = Vec2f(0, 0);
-	DrawCharacterList(null, upper_left, frame_width);
+	// Toggle which display to show
+	if (display_mode == 0)  // Full Display
+	{
+		// Draw player's char list in the top right
+		Vec2f upper_left = Vec2f(getScreenWidth() - full_frame_width, 0);
+		DrawCharacterList(player, upper_left, full_frame_width, false);
+
+		// Draw unclaimed char list in the top left
+		upper_left = Vec2f(0, 0);
+		DrawCharacterList(null, upper_left, full_frame_width, false);
+	}
+	else if (display_mode == 1)  // Small Display
+	{
+		// Draw player's char list in the top right
+		Vec2f upper_left = Vec2f(getScreenWidth() - simple_frame_width, 0);
+		DrawCharacterList(player, upper_left, simple_frame_width, true);
+
+		// Draw unclaimed char list in the top left
+		upper_left = Vec2f(0, 0);
+		DrawCharacterList(null, upper_left, simple_frame_width, true);
+	}
+	else  // No Display
+	{
+
+	}
+	
 }
 
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
@@ -257,7 +300,8 @@ void RenderOtherPlayerCards()
 		}
 	}
 
-	u16 frame_width = 124;
+	bool simple = rules.get_u8(DISPLAY_MODE_STRING) != 0;
+	u16 frame_width = simple ? simple_frame_width : full_frame_width;
 	s32 min_y = 0;
 
 	// Middle of the screen shifted by player count
@@ -274,7 +318,7 @@ void RenderOtherPlayerCards()
 		}
 
 		// Draw player's char list
-		DrawCharacterList(player, upper_left, frame_width);
+		DrawCharacterList(player, upper_left, frame_width, simple);
 
 		// Move over and to the top for the next player
 		upper_left.x += frame_width - 2;

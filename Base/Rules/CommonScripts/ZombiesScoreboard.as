@@ -69,7 +69,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, st
 	f32 padheight = 6;
 	f32 stepheight = lineheight + padheight;
 	Vec2f bottomright(Maths::Min(getScreenWidth() - 100, screenMidX+maxMenuWidth), topleft.y + (players.length + 5.5) * stepheight);
-	GUI::DrawPane(topleft, bottomright, team_color);
+	GUI::DrawFramedPane(topleft, bottomright);
 
 	//offset border
 	topleft.x += stepheight;
@@ -547,11 +547,13 @@ void onRenderScoreboard(CRules@ this)
 
 	@hoveredPlayer = null;
 
-	Vec2f topleft(Maths::Max( 100, screenMidX-maxMenuWidth), 150);
-	drawServerInfo(40);
+	Vec2f topleft(Maths::Max(100, screenMidX-maxMenuWidth), 40);
 
-	// start the scoreboard lower or higher.
+	// Start the scoreboard lower or higher
 	topleft.y -= scrollOffset;
+
+	// Draw the server information
+	topleft.y = drawZombieServerInfo(topleft.y) - 2;
 
 	//(reset)
 	hovered_accolade = -1;
@@ -562,14 +564,14 @@ void onRenderScoreboard(CRules@ this)
 	if (players.length > 0)
 	{
 		topleft.y = drawScoreboard(localPlayer, players, topleft, "Survivors", SColor(255, 25, 94, 157), Vec2f(0, 0));
-		topleft.y += 52;
+		topleft.y += 42;
 	}
 	
 	// Draw the spectators
 	if (spectators.length > 0)
 	{
 		topleft.y = drawScoreboard(localPlayer, spectators, topleft, "Spectators", SColor(0xffc0c0c0), Vec2f(32, 0));
-		topleft.y += 52;
+		topleft.y += 42;
 	}
 
 	/*
@@ -638,6 +640,59 @@ void onRenderScoreboard(CRules@ this)
 	drawHoverExplanation(hovered_accolade, hovered_age, hovered_tier, Vec2f(getScreenWidth() * 0.5, Maths::Min(topleft.y + 8, screenHeight - 70)));
 
 	mouseWasPressed2 = controls.mousePressed2;
+}
+
+float drawZombieServerInfo(float y)
+{
+	GUI::SetFont("menu");
+
+	Vec2f pos(getScreenWidth()/2, y);
+	float width = 200;
+
+	CNet@ net = getNet();
+	CMap@ map = getMap();
+	CRules@ rules = getRules();
+
+	string info = getTranslatedString(rules.gamemode_name) + ": " + getTranslatedString(rules.gamemode_info);
+	SColor white(0xffffffff);
+	string mapName = getTranslatedString("Map name : ")+rules.get_string("map_name");
+	Vec2f dim;
+	GUI::GetTextDimensions(info, dim);
+	if(dim.x + 15 > width)
+		width = dim.x + 15;
+
+	GUI::GetTextDimensions(net.joined_servername, dim);
+	if(dim.x + 15 > width)
+		width = dim.x + 15;
+
+	GUI::GetTextDimensions(mapName, dim);
+	if(dim.x + 15 > width)
+		width = dim.x + 15;
+
+
+	pos.x -= width/2;
+	Vec2f bot = pos;
+	bot.x += width;
+	bot.y += 95;
+
+	Vec2f mid(getScreenWidth()/2, y);
+
+	GUI::DrawFramedPane(pos, bot);
+
+	mid.y += 15;
+	GUI::DrawTextCentered(net.joined_servername, mid, white);
+	mid.y += 15;
+	GUI::DrawTextCentered(info, mid, white);
+	mid.y += 15;
+	GUI::DrawTextCentered(net.joined_ip, mid, white);
+	mid.y += 17;
+	GUI::DrawTextCentered(mapName, mid, white);
+	mid.y += 17;
+	GUI::DrawTextCentered(getTranslatedString("Match time: {TIME}").replace("{TIME}", "" + timestamp((getRules().exists("match_time") ? getRules().get_u32("match_time") : getGameTime())/getTicksASecond())), mid, white);
+
+
+	return bot.y;
+
 }
 
 void drawHoverExplanation(int hovered_accolade, int hovered_age, int hovered_tier, Vec2f centre_top)
