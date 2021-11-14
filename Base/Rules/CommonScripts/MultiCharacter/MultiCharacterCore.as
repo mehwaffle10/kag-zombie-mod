@@ -39,6 +39,20 @@ void onInit(CRules@ this)
 	}
 }
 
+void onRestart(CRules@ this)
+{
+	// Clear all character lists
+	u16[] empty_char_networkIDs;
+	for (u8 player_index = 0; player_index < getPlayersCount(); player_index++)
+	{
+		CPlayer@ player = getPlayer(player_index);
+		if (player !is null)
+		{
+			SaveCharList(player.getUsername(), empty_char_networkIDs);
+		}
+	}
+}
+
 void onInit(CPlayer@ this)
 {
 	// Only server can save + sync lists
