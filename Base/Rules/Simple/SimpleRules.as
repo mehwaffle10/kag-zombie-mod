@@ -3,6 +3,8 @@
 
 // #define SERVER_ONLY
 
+#include "RulesCore.as";
+
 // Used for setting the time on the map (the sky)
 const float DAWN = .07;
 const float DUSK = (1 - DAWN);
@@ -82,6 +84,40 @@ CBlob@ Respawn(CRules@ this, CPlayer@ player)
 	}
 
 	return null;
+}
+
+void onPlayerRequestTeamChange(CRules@ this, CPlayer@ player, u8 newTeam)
+{
+	RulesCore@ core;
+	this.get("core", @core);
+	if (core is null)
+	{
+		return;
+	}
+
+	int oldTeam = player.getTeamNum();
+	bool spect = (oldTeam == this.getSpectatorTeamNum());
+	// print("---request team change--- " + oldTeam + " -> " + newTeam);
+
+	print("before oldTeam: " + oldTeam);
+	print("before newTeam: " + oldTeam);
+
+	//if a player changes to team 255 (-1), auto-assign
+	if (newTeam == 255)
+	{
+		newTeam = getSmallestTeam(core.teams);
+	}
+	//if a player changing from team 255 (-1), auto-assign
+	if (oldTeam == 255)
+	{
+		oldTeam = getSmallestTeam(core.teams);
+		newTeam = oldTeam;
+	}
+
+	print("after oldTeam: " + oldTeam);
+	print("after newTeam: " + oldTeam);
+
+	core.ChangePlayerTeam(player, newTeam);
 }
 
 Vec2f getSpawnLocation(CPlayer@ player)
