@@ -32,7 +32,7 @@ void onRestart(CRules@ this)
 void Reset(CRules@ this)
 {
 	getMap().SetDayTime(DAWN);
-	if (getNet().isServer())
+	if (isServer())
 	{
 		// Set time to dawn (first day)
 		this.set_u16("ticks_left", DEFAULT_DAY_LENGTH);
@@ -183,7 +183,7 @@ void onTick(CRules@ this)
 	
 	if (ticks_left > 0)
 	{
-		if (getNet().isServer())
+		if (isServer())
 		{
 			this.set_u16("ticks_left", ticks_left - 1);
 			this.Sync("ticks_left", true);
@@ -193,7 +193,7 @@ void onTick(CRules@ this)
 	{
 		// Increment and update phase
 		phase += 1;
-		if (getNet().isServer())
+		if (isServer())
 		{
 			this.set_u16("phase", phase);
 			this.Sync("phase", true);
