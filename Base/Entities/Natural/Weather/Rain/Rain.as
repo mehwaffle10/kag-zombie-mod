@@ -269,7 +269,7 @@ void onDie(CBlob@ this)
 {
 	// Waffle: No jungle, just restore normal skygradient
 	getRules().set_bool("raining", false);
-	getMap().CreateSkyGradient("skygradient.png");
+	getMap().CreateSkyGradient("skygradient_normal.png");
 	/*
 	getRules().set_bool("raining", false);
 	CBlob@ jungle = getBlobByName('info_jungle');
