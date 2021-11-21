@@ -2,7 +2,9 @@
 // fileName is "" on client!
 
 #include "LoaderUtilities.as";
+#include "CustomBlocks.as";
 #include "MinimapHook.as";
+#include "PNGLoader.as";
 
 bool loadMap(CMap@ _map, const string& in filename)
 {
@@ -438,6 +440,11 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 	// Define the safezone in the middle of the map where players start
 	s32 middle = map.tilemapwidth / 2;
+
+	// Spawn random mineshafts
+	Vec2f mineshaft_seed = Vec2f(middle + 10, map.getLandYAtX(middle + 10) - 4);
+	PNGLoader@ png_loader = PNGLoader();
+	png_loader.loadStructure("mineshaft_entrance_1", mineshaft_seed);
 
 	// Generate portals
 	u8 portal_count = 0;
