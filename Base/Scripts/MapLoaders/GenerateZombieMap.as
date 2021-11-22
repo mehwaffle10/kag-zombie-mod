@@ -57,10 +57,10 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 	// Perturbation Variables
 	f32 perturb = cfg.read_f32("perturb", 3.0f);
-	f32 pert_scale = cfg.read_f32("pert_scale", 0.01);
-	f32 pert_width = cfg.read_f32("pert_width", deviation);
-	if (pert_width <= 0)
-		pert_width = deviation;
+	f32 perturb_scale = cfg.read_f32("perturb_scale", 0.01);
+	f32 perturb_width = cfg.read_f32("perturb_width", deviation);
+	if (perturb_width <= 0)
+		perturb_width = deviation;
 
 	// Cave Variables
 	Random@ cave_random = Random(map.getMapSeed() ^ 0xff00);
@@ -115,7 +115,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 	//gen heightmap
 	//(generate full width to avoid clamping strangeness)
-	array<int> heightmap(width);
+	int[] heightmap(width);
 	for (int x = 0; x < width; ++x)
 	{
 		heightmap[x] = baseline_tiles - deviation / 2 +
@@ -123,32 +123,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	}
 
 	//erode gradient
-
-	for (int erode_cycle = 0; erode_cycle < erode_cycles; ++erode_cycle) //cycles
-	{
-		for (int x = 1; x < width - 1; x++)
-		{
-			s32 diffleft = heightmap[x] - heightmap[x - 1];
-			s32 diffright = heightmap[x] - heightmap[x + 1];
-
-			if (diffleft > 0 && diffleft > diffright)
-			{
-				heightmap[x] -= (diffleft + 1) / 2;
-				heightmap[x - 1] += diffleft / 2;
-			}
-			else if (diffright > 0 && diffright > diffleft)
-			{
-				heightmap[x] -= (diffright + 1) / 2;
-				heightmap[x + 1] += diffright / 2;
-			}
-			else if (diffleft == diffright && diffleft > 0)
-			{
-				heightmap[x] -= (diffright + 1) / 2;
-				heightmap[x - 1] += (diffleft + 3) / 4;
-				heightmap[x + 1] += (diffleft + 3) / 4;
-			}
-		}
-	}
+	Erode(erode_cycles, heightmap);
 
 	//gen terrain
 	s32 bush_skip = 0;
@@ -156,7 +131,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	const s32 tree_limit = 2;
 	const s32 bush_limit = 3;
 
-	array<int> naturemap(width);
+	int[] naturemap(width);
 	for (int x = 0; x < width; ++x)
 	{
 		naturemap[x] = -1; //no nature
@@ -173,8 +148,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 			f32 midline_frac = (midline_dist + deviation / 2) / (deviation + 0.01f);
 
-			f32 amp = Maths::Max(0.0f, perturb * Maths::Min(1.0f, 1.0f - Maths::Abs(midline_dist) / (pert_width / 2 + 0.01f)));
-			f32 _n = map_noise.Fractal(x * pert_scale, y * pert_scale);
+			f32 amp = Maths::Max(0.0f, perturb * Maths::Min(1.0f, 1.0f - Maths::Abs(midline_dist) / (perturb_width / 2 + 0.01f)));
+			f32 _n = map_noise.Fractal(x * perturb_scale, y * perturb_scale);
 
 			f32 n = midline_frac * (1.0f + (_n - 0.5f) * amp);
 
@@ -441,10 +416,43 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// Define the safezone in the middle of the map where players start
 	s32 middle = map.tilemapwidth / 2;
 
-	// Spawn random mineshafts
-	Vec2f mineshaft_seed = Vec2f(middle + 10, map.getLandYAtX(middle + 10) - 4);
-	PNGLoader@ png_loader = PNGLoader();
-	png_loader.loadStructure("mineshaft_entrance_1", mineshaft_seed);
+	// Spawn mineshafts
+	for (u8 mineshaft_count = 1; mineshaft_count <= 10; mineshaft_count++)
+	{
+		s32 x = middle - 20 + mineshaft_count * 25;
+		Vec2f mineshaft_seed = Vec2f(x, map.getLandYAtX(x)- 8);
+		PNGLoader@ png_loader = PNGLoader();
+		png_loader.loadStructure("mineshaft_entrance_" + mineshaft_count, mineshaft_seed);
+
+		// Variables for tweaking
+		u8 edge_erode_width = 6, edge_erode_cycles = 3;
+		u8 structure_width = png_loader.image.getWidth();
+		s32 left_x = mineshaft_seed.x - edge_erode_width + 1, right_x = mineshaft_seed.x + structure_width - 1;
+
+		// Clear above the structure
+		Fill(map, mineshaft_seed.x, GetHeightmap(map, mineshaft_seed.x, structure_width, 0), GetHeightmap(map, mineshaft_seed.x, structure_width, mineshaft_seed.y));
+
+		// Fill below the structure
+		s32 structure_bottom = mineshaft_seed.y + png_loader.image.getHeight();
+		int[] original_heightmap(structure_width);
+		for (s32 x = 0; x < structure_width; x++)
+		{
+			original_heightmap[x] = Maths::Max(naturemap[mineshaft_seed.x + x], structure_bottom);
+		}
+		Fill(map, mineshaft_seed.x, original_heightmap, GetHeightmap(map, mineshaft_seed.x, structure_width, structure_bottom));
+
+		// Erode left of the structure
+		int[] starting_heightmap = GetHeightmap(map, left_x, edge_erode_width);
+		int[] ending_heightmap = GetHeightmap(map, left_x, edge_erode_width);
+		Erode(edge_erode_cycles, ending_heightmap, false);
+		Fill(map, left_x, starting_heightmap, ending_heightmap);
+
+		// Erode right of the structure
+		starting_heightmap = GetHeightmap(map, right_x, edge_erode_width);
+		ending_heightmap = GetHeightmap(map, right_x, edge_erode_width);
+		Erode(edge_erode_cycles, ending_heightmap, true);
+		Fill(map, right_x, starting_heightmap, ending_heightmap);
+	}
 
 	// Generate portals
 	u8 portal_count = 0;
@@ -579,4 +587,88 @@ bool LoadMap(CMap@ map, const string& in fileName)
 	print("GENERATING ZOMBIE MAP " + fileName);
 
 	return loadMap(map, fileName);
+}
+
+void Erode(s32 erode_cycles, int[]@ heightmap, bool fix_left)
+{
+	for (int erode_cycle = 0; erode_cycle < erode_cycles; ++erode_cycle) //cycles
+	{
+		if (fix_left)
+		{
+			for (int x = 0; x < heightmap.length() - 1; x++)
+			{
+				heightmap[x + 1] += (heightmap[x] - heightmap[x + 1]) / 2;
+			}
+		}
+		else
+		{
+			for (int x = heightmap.length() - 1; x > 0; x--)
+			{
+				heightmap[x - 1] += (heightmap[x] - heightmap[x - 1]) / 2;
+			}
+		}
+	}
+}
+
+void Erode(s32 erode_cycles, int[]@ heightmap)
+{
+	for (int erode_cycle = 0; erode_cycle < erode_cycles; ++erode_cycle) //cycles
+	{
+		for (int x = 1; x < heightmap.length() - 1; x++)
+		{
+			s32 diffleft = heightmap[x] - heightmap[x - 1];
+			s32 diffright = heightmap[x] - heightmap[x + 1];
+
+			if (diffleft > 0 && diffleft > diffright)  // If left is higher than this and higher than right
+			{
+				// Move this up and left down
+				heightmap[x] -= (diffleft + 1) / 2;
+				heightmap[x - 1] += diffleft / 2;
+			}
+			else if (diffright > 0 && diffright > diffleft)  // If right is higher than this and higher than left
+			{
+				// Move this up and right down
+				heightmap[x] -= (diffright + 1) / 2;
+				heightmap[x + 1] += diffright / 2;
+			}
+			else if (diffleft == diffright && diffleft > 0)  // If left and right are equal and left is higher than this
+			{
+				// Move this up, left down, and right down
+				heightmap[x] -= (diffright + 1) / 2;
+				heightmap[x - 1] += (diffleft + 3) / 4;
+				heightmap[x + 1] += (diffleft + 3) / 4;
+			}
+		}
+	}
+}
+
+int[] GetHeightmap(CMap@ map, s32 left_x, u16 width)
+{
+	return GetHeightmap(map, left_x, width, -1);
+}
+
+int[] GetHeightmap(CMap@ map, s32 left_x, u16 width, s32 y)
+{
+	int[] heightmap(width);
+	bool hard_set_y = y >= 0 && y <= map.tilemapheight;
+	for (s32 x = 0; x < width; x++)
+	{
+		heightmap[x] = hard_set_y ? y : map.getLandYAtX(left_x + x) - 1;
+	}
+	return heightmap;
+}
+
+void Fill(CMap@ map, s32 left_x, int[]@ starting_heightmap, int[]@ ending_heightmap)
+{
+	for (s32 x = 0; x < starting_heightmap.length(); x++)
+	{
+		// Fill up with dirt or clear with sky
+		Vec2f position = Vec2f(left_x + x, 0);
+		bool fill = starting_heightmap[x] > ending_heightmap[x];
+		for (position.y = (fill ? ending_heightmap[x] : starting_heightmap[x]); position.y < (fill ? starting_heightmap[x] : ending_heightmap[x]); position.y++)
+		{
+			map.server_SetTile(position * map.tilesize, fill ? CMap::tile_ground : CMap::tile_empty);
+		}
+		// TODO add grass on top
+	}
 }

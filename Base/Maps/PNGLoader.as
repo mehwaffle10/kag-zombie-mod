@@ -7,15 +7,16 @@
 #include "LoaderUtilities.as";
 #include "CustomBlocks.as";
 
-enum WAROffset
+enum world_positions_enums
 {
-	autotile_offset = 0,
-	tree_offset,
-	bush_offset,
-	grain_offset,
-	spike_offset,
-	ladder_offset,
-	offsets_count
+	autotile_index = 0,
+	tree_index,
+	bush_index,
+	grain_index,
+	flower_index,
+	spike_index,
+	ladder_index,
+	index_count
 };
 
 //global
@@ -32,13 +33,11 @@ class PNGLoader
 	CMap@ map;
 	Vec2f top_left;
 
-	int[][] offsets;
-
-	int current_offset_count;
+	Vec2f[][] world_positions;
 
 	void Reset()
 	{
-		offsets = int[][](offsets_count, int[](0));
+		world_positions = Vec2f[][](index_count, Vec2f[](0));
 	}
 
 	bool loadStructure(const string& in filename, Vec2f _top_left)
@@ -64,22 +63,25 @@ class PNGLoader
 
 				// Optimization: check if the pixel color is the sky color
 				// We do this before calling handlePixel because it is overriden, and to avoid a SColor copy
+				/*
 				if (pixel.color != map_colors::sky)
 				{
 					handlePixel(pixel, offset);
 				}
+				*/
+				handlePixel(pixel, offset);
 
 				getNet().server_KeepConnectionsAlive();
 			}
 
 			// late load - after placing tiles
-			for(uint i = 0; i < offsets.length; ++i)
+			for(uint i = 0; i < world_positions.length; ++i)
 			{
-				int[]@ offset_set = offsets[i];
-				current_offset_count = offset_set.length;
-				for(uint step = 0; step < current_offset_count; ++step)
+				Vec2f[]@ world_positions_set = world_positions[i];
+				u8 world_position_index = world_positions_set.length;
+				for(uint step = 0; step < world_position_index; ++step)
 				{
-					handleOffset(i, offset_set[step], step, current_offset_count);
+					handleOffset(i, world_positions_set[step]);
 					getNet().server_KeepConnectionsAlive();
 				}
 			}
@@ -89,9 +91,9 @@ class PNGLoader
 	}
 
 	// Queue an offset to be autotiled
-	void autotile(int offset)
+	void autotile(Vec2f world_postion)
 	{
-		offsets[autotile_offset].push_back(offset);
+		world_positions[autotile_index].push_back(world_postion);
 	}
 
 	void handlePixel(const SColor &in pixel, int offset)
@@ -112,45 +114,45 @@ class PNGLoader
 			switch (pixel.color | 0xFF000000)
 			{
 			// Alpha spawn and flag
-			case map_colors::alpha_spawn: autotile(offset); AddMarker(map, offset, (alpha & 0x01 == 0 ? "blue main spawn" : "red main spawn")); break;
-			case map_colors::alpha_flag:  autotile(offset); AddMarker(map, offset, (alpha & 0x01 == 0 ? "blue spawn"      : "red spawn"));      break;
+			case map_colors::alpha_spawn: autotile(position); AddMarker(map, offset, (alpha & 0x01 == 0 ? "blue main spawn" : "red main spawn")); break;
+			case map_colors::alpha_flag:  autotile(position); AddMarker(map, offset, (alpha & 0x01 == 0 ? "blue spawn"      : "red spawn"));      break;
 
 			// Alpha various structures
-			case map_colors::alpha_stalagmite:      autotile(offset); spawnBlob(map, "stalagmite",                            255, position, getAngleFromChannel(alpha), true).set_u8("state", 1); /*stabbing*/ break;
-			case map_colors::alpha_ladder:          autotile(offset); spawnBlob(map, "ladder",          getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_spikes:          autotile(offset); spawnBlob(map, "spikes",          getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_stone_door:      autotile(offset); spawnBlob(map, "stone_door",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_trap_block:      autotile(offset); spawnBlob(map, "trap_block",      getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_bridge:          autotile(offset); spawnBlob(map, "bridge",      getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_wooden_door:     autotile(offset); spawnBlob(map, "wooden_door",     getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_wooden_platform: autotile(offset); spawnBlob(map, "wooden_platform", getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_stalagmite:      autotile(position); spawnBlob(map, "stalagmite",                            255, position, getAngleFromChannel(alpha), true).set_u8("state", 1); /*stabbing*/ break;
+			case map_colors::alpha_ladder:          autotile(position); spawnBlob(map, "ladder",          getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_spikes:          autotile(position); spawnBlob(map, "spikes",          getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_stone_door:      autotile(position); spawnBlob(map, "stone_door",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_trap_block:      autotile(position); spawnBlob(map, "trap_block",      getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_bridge:          autotile(position); spawnBlob(map, "bridge",      getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_wooden_door:     autotile(position); spawnBlob(map, "wooden_door",     getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_wooden_platform: autotile(position); spawnBlob(map, "wooden_platform", getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
 
 			// Mechanisms
-			case map_colors::alpha_pressure_plate:  autotile(offset); spawnBlob(map, "pressure_plate",                        255, position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_push_button:     autotile(offset); spawnBlob(map, "push_button",     getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_coin_slot:       autotile(offset); spawnBlob(map, "coin_slot",       getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_sensor:          autotile(offset); spawnBlob(map, "sensor",          getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_diode:           autotile(offset); spawnBlob(map, "diode",           getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_elbow:           autotile(offset); spawnBlob(map, "elbow",           getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_emitter:         autotile(offset); spawnBlob(map, "emitter",         getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_inverter:        autotile(offset); spawnBlob(map, "inverter",        getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_junction:        autotile(offset); spawnBlob(map, "junction",        getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_oscillator:      autotile(offset); spawnBlob(map, "oscillator",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_randomizer:      autotile(offset); spawnBlob(map, "randomizer",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_receiver:        autotile(offset); spawnBlob(map, "receiver",        getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_resistor:        autotile(offset); spawnBlob(map, "resistor",        getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_tee:             autotile(offset); spawnBlob(map, "tee",             getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_toggle:          autotile(offset); spawnBlob(map, "toggle",          getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_transistor:      autotile(offset); spawnBlob(map, "transistor",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_wire:            autotile(offset); spawnBlob(map, "wire",            getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_bolter:          autotile(offset); spawnBlob(map, "bolter",                                255, position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_dispenser:       autotile(offset); spawnBlob(map, "dispenser",                             255, position, getAngleFromChannel(alpha), true); break;
-			case map_colors::alpha_lamp:            autotile(offset); spawnBlob(map, "lamp",                                  255, position,                             true); break;
-			case map_colors::alpha_obstructor:      autotile(offset); spawnBlob(map, "obstructor",                            255, position,                             true); break;
-			case map_colors::alpha_spiker:          autotile(offset); spawnBlob(map, "spiker",                                255, position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_pressure_plate:  autotile(position); spawnBlob(map, "pressure_plate",                        255, position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_push_button:     autotile(position); spawnBlob(map, "push_button",     getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_coin_slot:       autotile(position); spawnBlob(map, "coin_slot",       getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_sensor:          autotile(position); spawnBlob(map, "sensor",          getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_diode:           autotile(position); spawnBlob(map, "diode",           getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_elbow:           autotile(position); spawnBlob(map, "elbow",           getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_emitter:         autotile(position); spawnBlob(map, "emitter",         getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_inverter:        autotile(position); spawnBlob(map, "inverter",        getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_junction:        autotile(position); spawnBlob(map, "junction",        getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_oscillator:      autotile(position); spawnBlob(map, "oscillator",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_randomizer:      autotile(position); spawnBlob(map, "randomizer",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_receiver:        autotile(position); spawnBlob(map, "receiver",        getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_resistor:        autotile(position); spawnBlob(map, "resistor",        getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_tee:             autotile(position); spawnBlob(map, "tee",             getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_toggle:          autotile(position); spawnBlob(map, "toggle",          getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_transistor:      autotile(position); spawnBlob(map, "transistor",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_wire:            autotile(position); spawnBlob(map, "wire",            getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_bolter:          autotile(position); spawnBlob(map, "bolter",                                255, position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_dispenser:       autotile(position); spawnBlob(map, "dispenser",                             255, position, getAngleFromChannel(alpha), true); break;
+			case map_colors::alpha_lamp:            autotile(position); spawnBlob(map, "lamp",                                  255, position,                             true); break;
+			case map_colors::alpha_obstructor:      autotile(position); spawnBlob(map, "obstructor",                            255, position,                             true); break;
+			case map_colors::alpha_spiker:          autotile(position); spawnBlob(map, "spiker",                                255, position, getAngleFromChannel(alpha), true); break;
 			case map_colors::alpha_lever:
 			{
-				autotile(offset);
+				autotile(position);
 				CBlob@ blob = spawnBlob(map, "lever", getTeamFromChannel(alpha), position, true);
 
 				// | state          | binary    | hex  | dec |
@@ -167,7 +169,7 @@ class PNGLoader
 			break;
 			case map_colors::alpha_magazine:
 			{
-				autotile(offset);
+				autotile(position);
 				CBlob@ blob = spawnBlob(map, "magazine", 255, position, true);
 
 				const string[] items = {
@@ -203,6 +205,7 @@ class PNGLoader
 			switch (pixel.color)
 			{
 			// Tiles
+			case map_colors::sky:					map.server_SetTile(position, CMap::tile_empty);      	   break;
 			case map_colors::tile_ground:           map.server_SetTile(position, CMap::tile_ground);           break;
 			case map_colors::tile_ground_back:      map.server_SetTile(position, CMap::tile_ground_back);      break;
 			case map_colors::tile_stone:            map.server_SetTile(position, CMap::tile_stone);            break;
@@ -219,293 +222,316 @@ class PNGLoader
 
 			// Water
 			case map_colors::water_air:
-				map.server_setFloodWaterOffset(offset, true);
+				map.server_setFloodWaterWorldspace(position, true);
+				map.server_SetTile(position, CMap::tile_empty);
 			break;
 			case map_colors::water_backdirt:
-				map.server_setFloodWaterOffset(offset, true);
+				map.server_setFloodWaterWorldspace(position, true);
 				map.server_SetTile(position, CMap::tile_ground_back);
 			break;
 
 			// Princess & necromancer
-			case map_colors::princess:             autotile(offset); spawnBlob(map, "princess",    offset, 6); break;
-			case map_colors::necromancer:          autotile(offset); spawnBlob(map, "necromancer", offset, 3); break;
-			case map_colors::necromancer_teleport: autotile(offset); AddMarker(map, offset, "necromancer teleport"); break;
+			case map_colors::princess:             autotile(position); spawnBlob(map, "princess",    offset, 6); break;
+			case map_colors::necromancer:          autotile(position); spawnBlob(map, "necromancer", offset, 3); break;
+			case map_colors::necromancer_teleport: autotile(position); AddMarker(map, offset, "necromancer teleport"); break;
 
 			// Main spawns
-			case map_colors::blue_main_spawn:   autotile(offset); AddMarker(map, offset, "blue main spawn"); break;
-			case map_colors::red_main_spawn:    autotile(offset); AddMarker(map, offset, "red main spawn");  break;
-			case map_colors::green_main_spawn:  autotile(offset); spawnHall(map, offset, 2); break;
-			case map_colors::purple_main_spawn: autotile(offset); spawnHall(map, offset, 3); break;
-			case map_colors::orange_main_spawn: autotile(offset); spawnHall(map, offset, 4); break;
-			case map_colors::aqua_main_spawn:   autotile(offset); spawnHall(map, offset, 5); break;
-			case map_colors::teal_main_spawn:   autotile(offset); spawnHall(map, offset, 6); break;
-			case map_colors::gray_main_spawn:   autotile(offset); spawnHall(map, offset, 7); break;
+			case map_colors::blue_main_spawn:   autotile(position); AddMarker(map, offset, "blue main spawn"); break;
+			case map_colors::red_main_spawn:    autotile(position); AddMarker(map, offset, "red main spawn");  break;
+			case map_colors::green_main_spawn:  autotile(position); spawnHall(map, offset, 2); break;
+			case map_colors::purple_main_spawn: autotile(position); spawnHall(map, offset, 3); break;
+			case map_colors::orange_main_spawn: autotile(position); spawnHall(map, offset, 4); break;
+			case map_colors::aqua_main_spawn:   autotile(position); spawnHall(map, offset, 5); break;
+			case map_colors::teal_main_spawn:   autotile(position); spawnHall(map, offset, 6); break;
+			case map_colors::gray_main_spawn:   autotile(position); spawnHall(map, offset, 7); break;
 
 			// Red Barrier
-			case map_colors::redbarrier:     autotile(offset); AddMarker(map, offset, "red barrier");  break;
+			case map_colors::redbarrier:     autotile(position); AddMarker(map, offset, "red barrier");  break;
 
 			// Normal spawns
-			case map_colors::blue_spawn:     autotile(offset); AddMarker(map, offset, "blue spawn");   break;
-			case map_colors::red_spawn:      autotile(offset); AddMarker(map, offset, "red spawn");    break;
-			/*case map_colors::green_spawn:  autotile(offset); AddMarker(map, offset, "green spawn");  break;*/ // same as grass...?
-			case map_colors::purple_spawn:   autotile(offset); AddMarker(map, offset, "purple spawn"); break;
-			/*case map_colors::orange_spawn: autotile(offset); AddMarker(map, offset, "orange spawn"); break;*/ // same as dirt...?
-			case map_colors::aqua_spawn:     autotile(offset); AddMarker(map, offset, "aqua spawn");   break;
-			case map_colors::teal_spawn:     autotile(offset); AddMarker(map, offset, "teal spawn");   break;
-			case map_colors::gray_spawn:     autotile(offset); AddMarker(map, offset, "gray spawn");   break;
+			case map_colors::blue_spawn:     autotile(position); AddMarker(map, offset, "blue spawn");   break;
+			case map_colors::red_spawn:      autotile(position); AddMarker(map, offset, "red spawn");    break;
+			/*case map_colors::green_spawn:  autotile(position); AddMarker(map, offset, "green spawn");  break;*/ // same as grass...?
+			case map_colors::purple_spawn:   autotile(position); AddMarker(map, offset, "purple spawn"); break;
+			/*case map_colors::orange_spawn: autotile(position); AddMarker(map, offset, "orange spawn"); break;*/ // same as dirt...?
+			case map_colors::aqua_spawn:     autotile(position); AddMarker(map, offset, "aqua spawn");   break;
+			case map_colors::teal_spawn:     autotile(position); AddMarker(map, offset, "teal spawn");   break;
+			case map_colors::gray_spawn:     autotile(position); AddMarker(map, offset, "gray spawn");   break;
 
 			// Workshops
-			case map_colors::knight_shop:     autotile(offset); spawnBlob(map, "knightshop",  offset); break;
-			case map_colors::builder_shop:    autotile(offset); spawnBlob(map, "buildershop", offset); break;
-			case map_colors::archer_shop:     autotile(offset); spawnBlob(map, "archershop",  offset); break;
-			case map_colors::boat_shop:       autotile(offset); spawnBlob(map, "boatshop",    offset); break;
-			case map_colors::vehicle_shop:    autotile(offset); spawnBlob(map, "vehicleshop", offset); break;
-			case map_colors::quarters:        autotile(offset); spawnBlob(map, "quarters",    offset); break;
-			case map_colors::storage_noteam:  autotile(offset); spawnBlob(map, "storage",     offset); break;
-			case map_colors::barracks_noteam: autotile(offset); spawnBlob(map, "barracks",    offset); break;
-			case map_colors::factory_noteam:  autotile(offset); spawnBlob(map, "factory",     offset); break;
-			case map_colors::tunnel_blue:     autotile(offset); spawnBlob(map, "tunnel",      offset, 0); break;
-			case map_colors::tunnel_red:      autotile(offset); spawnBlob(map, "tunnel",      offset, 1); break;
-			case map_colors::tunnel_noteam:   autotile(offset); spawnBlob(map, "tunnel",      offset); break;
-			case map_colors::kitchen:         autotile(offset); spawnBlob(map, "kitchen",     offset); break;
-			case map_colors::nursery:         autotile(offset); spawnBlob(map, "nursery",     offset); break;
-			case map_colors::research:        autotile(offset); spawnBlob(map, "research",    offset); break;
+			case map_colors::knight_shop:     autotile(position); spawnBlob(map, "knightshop",  offset); break;
+			case map_colors::builder_shop:    autotile(position); spawnBlob(map, "buildershop", offset); break;
+			case map_colors::archer_shop:     autotile(position); spawnBlob(map, "archershop",  offset); break;
+			case map_colors::boat_shop:       autotile(position); spawnBlob(map, "boatshop",    offset); break;
+			case map_colors::vehicle_shop:    autotile(position); spawnBlob(map, "vehicleshop", offset); break;
+			case map_colors::quarters:        autotile(position); spawnBlob(map, "quarters",    offset); break;
+			case map_colors::storage_noteam:  autotile(position); spawnBlob(map, "storage",     offset); break;
+			case map_colors::barracks_noteam: autotile(position); spawnBlob(map, "barracks",    offset); break;
+			case map_colors::factory_noteam:  autotile(position); spawnBlob(map, "factory",     offset); break;
+			case map_colors::tunnel_blue:     autotile(position); spawnBlob(map, "tunnel",      offset, 0); break;
+			case map_colors::tunnel_red:      autotile(position); spawnBlob(map, "tunnel",      offset, 1); break;
+			case map_colors::tunnel_noteam:   autotile(position); spawnBlob(map, "tunnel",      offset); break;
+			case map_colors::kitchen:         autotile(position); spawnBlob(map, "kitchen",     offset); break;
+			case map_colors::nursery:         autotile(position); spawnBlob(map, "nursery",     offset); break;
+			case map_colors::research:        autotile(position); spawnBlob(map, "research",    offset); break;
 
-			case map_colors::workbench:       autotile(offset); spawnBlob(map, "workbench",   offset, 255, true); break;
-			case map_colors::campfire:        autotile(offset); spawnBlob(map, "fireplace",   offset, 255); break;
-			case map_colors::saw:             autotile(offset); spawnBlob(map, "saw",         offset); break;
+			case map_colors::workbench:       autotile(position); spawnBlob(map, "workbench",   offset, 255, true); break;
+			case map_colors::campfire:        autotile(position); spawnBlob(map, "fireplace",   offset, 255); break;
+			case map_colors::saw:             autotile(position); spawnBlob(map, "saw",         offset); break;
 
 			// Flora
 			case map_colors::tree:
 			case map_colors::tree + (1 << 4):
 			case map_colors::tree + (2 << 4):
 			case map_colors::tree + (3 << 4):
-				autotile(offset);
-				offsets[tree_offset].push_back(offset);
+				autotile(position);
+				world_positions[tree_index].push_back(position);
 			break;
-			case map_colors::bush:    autotile(offset); offsets[bush_offset].push_back(offset); break;
-			case map_colors::grain:   autotile(offset); offsets[grain_offset].push_back(offset); break;
-			case map_colors::flowers: autotile(offset); spawnBlob(map, "flowers", offset); break;
-			case map_colors::log:     autotile(offset); spawnBlob(map, "log",     offset); break;
+			case map_colors::bush:    autotile(position); world_positions[bush_index].push_back(position); break;
+			case map_colors::grain:   autotile(position); world_positions[grain_index].push_back(position); break;
+			case map_colors::flowers: autotile(position); world_positions[flower_index].push_back(position); break;
+			case map_colors::log:     autotile(position); spawnBlob(map, "log",     offset); break;
 
 			// Fauna
-			case map_colors::shark:   autotile(offset); spawnBlob(map, "shark",   offset); break;
-			case map_colors::fish:    autotile(offset); spawnBlob(map, "fishy",   offset).set_u8("age", (offset * 997) % 4); break;
-			case map_colors::bison:   autotile(offset); spawnBlob(map, "bison",   offset); break;
-			case map_colors::chicken: autotile(offset); spawnBlob(map, "chicken", offset, 255, false, Vec2f(0,-8)); break;
+			case map_colors::shark:   autotile(position); spawnBlob(map, "shark",   offset); break;
+			case map_colors::fish:    autotile(position); spawnBlob(map, "fishy",   offset).set_u8("age", (offset * 997) % 4); break;
+			case map_colors::bison:   autotile(position); spawnBlob(map, "bison",   offset); break;
+			case map_colors::chicken: autotile(position); spawnBlob(map, "chicken", offset, 255, false, Vec2f(0,-8)); break;
 
 			// Ladders
 			case map_colors::ladder:
 			//case map_colors::tile_ladder_ground: // same as map_colors::ladder
 			case map_colors::tile_ladder_castle:
 			case map_colors::tile_ladder_wood:
-				autotile(offset);
-				offsets[ladder_offset].push_back( offset );
+				autotile(position);
+				world_positions[ladder_index].push_back(position);
 			break;
 
 			// Platforms
-			case map_colors::platform_up:    autotile(offset); spawnBlob(map, "wooden_platform", offset, 255, true); break;
-			case map_colors::platform_right: autotile(offset); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero,  90); break;
-			case map_colors::platform_down:  autotile(offset); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero, 180); break;
-			case map_colors::platform_left:  autotile(offset); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero, -90); break;
+			case map_colors::platform_up:    autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true); break;
+			case map_colors::platform_right: autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero,  90); break;
+			case map_colors::platform_down:  autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero, 180); break;
+			case map_colors::platform_left:  autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero, -90); break;
 
 			// Doors
-			case map_colors::wooden_door_h_blue:   autotile(offset); spawnBlob(map, "wooden_door", offset,   0, true); break;
-			case map_colors::wooden_door_v_blue:   autotile(offset); spawnBlob(map, "wooden_door", offset,   0, true, Vec2f_zero, 90); break;
-			case map_colors::wooden_door_h_red:    autotile(offset); spawnBlob(map, "wooden_door", offset,   1, true); break;
-			case map_colors::wooden_door_v_red:    autotile(offset); spawnBlob(map, "wooden_door", offset,   1, true, Vec2f_zero, 90); break;
-			case map_colors::wooden_door_h_noteam: autotile(offset); spawnBlob(map, "wooden_door", offset, 255, true); break;
-			case map_colors::wooden_door_v_noteam: autotile(offset); spawnBlob(map, "wooden_door", offset, 255, true, Vec2f_zero, 90); break;
-			case map_colors::stone_door_h_blue:    autotile(offset); spawnBlob(map, "stone_door",  offset,   0, true); break;
-			case map_colors::stone_door_v_blue:    autotile(offset); spawnBlob(map, "stone_door",  offset,   0, true, Vec2f_zero, 90); break;
-			case map_colors::stone_door_h_red:     autotile(offset); spawnBlob(map, "stone_door",  offset,   1, true); break;
-			case map_colors::stone_door_v_red:     autotile(offset); spawnBlob(map, "stone_door",  offset,   1, true, Vec2f_zero, 90); break;
-			case map_colors::stone_door_h_noteam:  autotile(offset); spawnBlob(map, "stone_door",  offset, 255, true); break;
-			case map_colors::stone_door_v_noteam:  autotile(offset); spawnBlob(map, "stone_door",  offset, 255, true, Vec2f_zero, 90); break;
+			case map_colors::wooden_door_h_blue:   autotile(position); spawnBlob(map, "wooden_door", offset,   0, true); break;
+			case map_colors::wooden_door_v_blue:   autotile(position); spawnBlob(map, "wooden_door", offset,   0, true, Vec2f_zero, 90); break;
+			case map_colors::wooden_door_h_red:    autotile(position); spawnBlob(map, "wooden_door", offset,   1, true); break;
+			case map_colors::wooden_door_v_red:    autotile(position); spawnBlob(map, "wooden_door", offset,   1, true, Vec2f_zero, 90); break;
+			case map_colors::wooden_door_h_noteam: autotile(position); spawnBlob(map, "wooden_door", offset, 255, true); break;
+			case map_colors::wooden_door_v_noteam: autotile(position); spawnBlob(map, "wooden_door", offset, 255, true, Vec2f_zero, 90); break;
+			case map_colors::stone_door_h_blue:    autotile(position); spawnBlob(map, "stone_door",  offset,   0, true); break;
+			case map_colors::stone_door_v_blue:    autotile(position); spawnBlob(map, "stone_door",  offset,   0, true, Vec2f_zero, 90); break;
+			case map_colors::stone_door_h_red:     autotile(position); spawnBlob(map, "stone_door",  offset,   1, true); break;
+			case map_colors::stone_door_v_red:     autotile(position); spawnBlob(map, "stone_door",  offset,   1, true, Vec2f_zero, 90); break;
+			case map_colors::stone_door_h_noteam:  autotile(position); spawnBlob(map, "stone_door",  offset, 255, true); break;
+			case map_colors::stone_door_v_noteam:  autotile(position); spawnBlob(map, "stone_door",  offset, 255, true, Vec2f_zero, 90); break;
 
 			// Trapblocks
-			case map_colors::trapblock_blue:   autotile(offset); spawnBlob(map, "trap_block", offset,   0, true); break;
-			case map_colors::trapblock_red:    autotile(offset); spawnBlob(map, "trap_block", offset,   1, true); break;
-			case map_colors::trapblock_noteam: autotile(offset); spawnBlob(map, "trap_block", offset, 255, true); break;
+			case map_colors::trapblock_blue:   autotile(position); spawnBlob(map, "trap_block", offset,   0, true); break;
+			case map_colors::trapblock_red:    autotile(position); spawnBlob(map, "trap_block", offset,   1, true); break;
+			case map_colors::trapblock_noteam: autotile(position); spawnBlob(map, "trap_block", offset, 255, true); break;
 
 			// Trap Bridges
-			case map_colors::bridge_blue:   autotile(offset); spawnBlob(map, "bridge", offset,   0, true); break;
-			case map_colors::bridge_red:    autotile(offset); spawnBlob(map, "bridge", offset,   1, true); break;
-			case map_colors::bridge_noteam: autotile(offset); spawnBlob(map, "bridge", offset, 255, true); break;
+			case map_colors::bridge_blue:   autotile(position); spawnBlob(map, "bridge", offset,   0, true); break;
+			case map_colors::bridge_red:    autotile(position); spawnBlob(map, "bridge", offset,   1, true); break;
+			case map_colors::bridge_noteam: autotile(position); spawnBlob(map, "bridge", offset, 255, true); break;
 
 			// Spikes
-			case map_colors::spikes:  offsets[spike_offset].push_back(offset); break;
-			case map_colors::spikes_ground: offsets[spike_offset].push_back(offset); map.server_SetTile(position, CMap::tile_ground_back); break;
-			case map_colors::spikes_castle: offsets[spike_offset].push_back(offset); map.server_SetTile(position, CMap::tile_castle_back); break;
-			case map_colors::spikes_wood:   offsets[spike_offset].push_back(offset); map.server_SetTile(position, CMap::tile_wood_back);   break;
+			case map_colors::spikes:  world_positions[spike_index].push_back(position); break;
+			case map_colors::spikes_ground: world_positions[spike_index].push_back(position); map.server_SetTile(position, CMap::tile_ground_back); break;
+			case map_colors::spikes_castle: world_positions[spike_index].push_back(position); map.server_SetTile(position, CMap::tile_castle_back); break;
+			case map_colors::spikes_wood:   world_positions[spike_index].push_back(position); map.server_SetTile(position, CMap::tile_wood_back);   break;
 
 			// Misc stuff
-			case map_colors::drill: autotile(offset); spawnBlob(map, "drill", offset, -1); break;
+			case map_colors::drill: autotile(position); spawnBlob(map, "drill", offset, -1); break;
 			case map_colors::trampoline:
 			{
-				autotile(offset);
+				autotile(position);
 				CBlob@ trampoline = server_CreateBlobNoInit("trampoline");
 				if (trampoline !is null)
 				{
 					trampoline.Tag("invincible");
 					trampoline.Tag("static");
 					trampoline.Tag("no pickup");
-					trampoline.setPosition(getSpawnPosition(map, offset));
+					trampoline.setPosition(position);
 					trampoline.Init();
 				}
 			}
 			break;
-			case map_colors::lantern:     autotile(offset); spawnBlob(map, "lantern", offset, 255, true); break;
-			case map_colors::crate:       autotile(offset); spawnBlob(map, "crate",   offset); break;
-			case map_colors::bucket:      autotile(offset); spawnBlob(map, "bucket",  offset); break;
-			case map_colors::sponge:      autotile(offset); spawnBlob(map, "sponge",  offset); break;
+			case map_colors::lantern:     autotile(position); spawnBlob(map, "lantern", offset, 255, true); break;
+			case map_colors::crate:       autotile(position); spawnBlob(map, "crate",   offset); break;
+			case map_colors::bucket:      autotile(position); spawnBlob(map, "bucket",  offset); break;
+			case map_colors::sponge:      autotile(position); spawnBlob(map, "sponge",  offset); break;
 			case map_colors::alpha_chest:
-			case map_colors::chest:       autotile(offset); spawnBlob(map, "chest",   offset); break;
+			case map_colors::chest:       autotile(position); spawnBlob(map, "chest",   offset); break;
 
 			// Food
-			case map_colors::steak:       autotile(offset); spawnBlob(map, "steak", offset); break;
-			case map_colors::burger:      autotile(offset); spawnBlob(map, "food",  offset); break;
-			case map_colors::heart:       autotile(offset); spawnBlob(map, "heart", offset); break;
+			case map_colors::steak:       autotile(position); spawnBlob(map, "steak", offset); break;
+			case map_colors::burger:      autotile(position); spawnBlob(map, "food",  offset); break;
+			case map_colors::heart:       autotile(position); spawnBlob(map, "heart", offset); break;
 
 			// Ground siege
-			case map_colors::catapult:    autotile(offset); spawnVehicle(map, "catapult", offset, 0); break; // HACK: team for Challenge
-			case map_colors::ballista:    autotile(offset); spawnVehicle(map, "ballista", offset); break;
-			case map_colors::mountedbow:  autotile(offset); spawnBlob(map, "mounted_bow", offset, 255, true, Vec2f(0.0f, 4.0f)); break;
+			case map_colors::catapult:    autotile(position); spawnVehicle(map, "catapult", offset, 0); break; // HACK: team for Challenge
+			case map_colors::ballista:    autotile(position); spawnVehicle(map, "ballista", offset); break;
+			case map_colors::mountedbow:  autotile(position); spawnBlob(map, "mounted_bow", offset, 255, true, Vec2f(0.0f, 4.0f)); break;
 
 			// Water/air vehicles
-			case map_colors::longboat:    autotile(offset); spawnVehicle(map, "longboat", offset); break;
-			case map_colors::warboat:     autotile(offset); spawnVehicle(map, "warboat",  offset); break;
-			case map_colors::dinghy:      autotile(offset); spawnVehicle(map, "dinghy",   offset); break;
-			case map_colors::raft:        autotile(offset); spawnVehicle(map, "raft",     offset); break;
-			case map_colors::airship:     autotile(offset); spawnVehicle(map, "airship",  offset); break;
-			case map_colors::bomber:      autotile(offset); spawnVehicle(map, "bomber",   offset); break;
+			case map_colors::longboat:    autotile(position); spawnVehicle(map, "longboat", offset); break;
+			case map_colors::warboat:     autotile(position); spawnVehicle(map, "warboat",  offset); break;
+			case map_colors::dinghy:      autotile(position); spawnVehicle(map, "dinghy",   offset); break;
+			case map_colors::raft:        autotile(position); spawnVehicle(map, "raft",     offset); break;
+			case map_colors::airship:     autotile(position); spawnVehicle(map, "airship",  offset); break;
+			case map_colors::bomber:      autotile(position); spawnVehicle(map, "bomber",   offset); break;
 
 			// Ammo
-			case map_colors::bombs:       autotile(offset); AddMarker(map, offset, "mat_bombs"); break;
-			case map_colors::waterbombs:  autotile(offset); spawnBlob(map, "mat_waterbombs",  offset); break;
-			case map_colors::arrows:      autotile(offset); spawnBlob(map, "mat_arrows",      offset); break;
-			case map_colors::bombarrows:  autotile(offset); spawnBlob(map, "mat_bombarrows",  offset); break;
-			case map_colors::waterarrows: autotile(offset); spawnBlob(map, "mat_waterarrows", offset); break;
-			case map_colors::firearrows:  autotile(offset); spawnBlob(map, "mat_firearrows",  offset); break;
-			case map_colors::bolts:       autotile(offset); spawnBlob(map, "mat_bolts",       offset); break;
+			case map_colors::bombs:       autotile(position); AddMarker(map, offset, "mat_bombs"); break;
+			case map_colors::waterbombs:  autotile(position); spawnBlob(map, "mat_waterbombs",  offset); break;
+			case map_colors::arrows:      autotile(position); spawnBlob(map, "mat_arrows",      offset); break;
+			case map_colors::bombarrows:  autotile(position); spawnBlob(map, "mat_bombarrows",  offset); break;
+			case map_colors::waterarrows: autotile(position); spawnBlob(map, "mat_waterarrows", offset); break;
+			case map_colors::firearrows:  autotile(position); spawnBlob(map, "mat_firearrows",  offset); break;
+			case map_colors::bolts:       autotile(position); spawnBlob(map, "mat_bolts",       offset); break;
 
 			// Mines, explosives
-			case map_colors::blue_mine:   autotile(offset); spawnBlob(map, "mine", offset, 0); break;
-			case map_colors::red_mine:    autotile(offset); spawnBlob(map, "mine", offset, 1); break;
-			case map_colors::mine_noteam: autotile(offset); spawnBlob(map, "mine", offset); break;
-			case map_colors::boulder:     autotile(offset); spawnBlob(map, "boulder", offset, -1, false, Vec2f(8.0f, -8.0f)); break;
-			case map_colors::satchel:     autotile(offset); spawnBlob(map, "satchel", offset); break;
-			case map_colors::keg:         autotile(offset); spawnBlob(map, "keg", offset); break;
+			case map_colors::blue_mine:   autotile(position); spawnBlob(map, "mine", offset, 0); break;
+			case map_colors::red_mine:    autotile(position); spawnBlob(map, "mine", offset, 1); break;
+			case map_colors::mine_noteam: autotile(position); spawnBlob(map, "mine", offset); break;
+			case map_colors::boulder:     autotile(position); spawnBlob(map, "boulder", offset, -1, false, Vec2f(8.0f, -8.0f)); break;
+			case map_colors::satchel:     autotile(position); spawnBlob(map, "satchel", offset); break;
+			case map_colors::keg:         autotile(position); spawnBlob(map, "keg", offset); break;
 
 			// Materials
-			case map_colors::gold:        autotile(offset); spawnBlob(map, "mat_gold", offset); break;
-			case map_colors::stone:       autotile(offset); spawnBlob(map, "mat_stone", offset); break;
-			case map_colors::wood:        autotile(offset); spawnBlob(map, "mat_wood", offset); break;
+			case map_colors::gold:        autotile(position); spawnBlob(map, "mat_gold", offset); break;
+			case map_colors::stone:       autotile(position); spawnBlob(map, "mat_stone", offset); break;
+			case map_colors::wood:        autotile(position); spawnBlob(map, "mat_wood", offset); break;
 
 			// Mooks
-			case map_colors::mook_knight:     autotile(offset); AddMarker(map, offset, "mook knight"); break;
-			case map_colors::mook_archer:     autotile(offset); AddMarker(map, offset, "mook archer"); break;
-			case map_colors::mook_spawner:    autotile(offset); AddMarker(map, offset, "mook spawner"); break;
-			case map_colors::mook_spawner_10: autotile(offset); AddMarker(map, offset, "mook spawner 10"); break;
-			case map_colors::dummy:           autotile(offset); spawnBlob(map, "dummy", offset, 1, true); break;
+			case map_colors::mook_knight:     autotile(position); AddMarker(map, offset, "mook knight"); break;
+			case map_colors::mook_archer:     autotile(position); AddMarker(map, offset, "mook archer"); break;
+			case map_colors::mook_spawner:    autotile(position); AddMarker(map, offset, "mook spawner"); break;
+			case map_colors::mook_spawner_10: autotile(position); AddMarker(map, offset, "mook spawner 10"); break;
+			case map_colors::dummy:           autotile(position); spawnBlob(map, "dummy", offset, 1, true); break;
 			default:
-				HandleCustomTile( map, offset, pixel );
+				HandleCustomTile(map, offset, pixel);
 			};
 		}
 	}
 
 	//override this to add post-load offset types.
-	void handleOffset(int type, int offset, int position, int count)
+	void handleOffset(int type, Vec2f world_position)
 	{
 		switch (type)
 		{
-		case autotile_offset:
-			PlaceMostLikelyTile(map, getSpawnPosition(map, offset));
-		break;
-		case tree_offset:
-		{
-			// load trees only at the ground
-			if(!map.isTileSolid(map.getTile(offset + map.tilemapwidth))) return;
+			case autotile_index:
+			{
+				PlaceMostLikelyTile(world_position);
+				break;
+			}
+			case tree_index:
+			{
+				// load trees only at the ground
+				if(!map.isTileSolid(world_position + Vec2f(0, map.tilesize))) return;
 
-			CBlob@ tree = server_CreateBlobNoInit( map_random.NextRanged(35) < 21 ? "tree_pine" : "tree_bushy" );
-			if(tree !is null)
-			{
-				tree.Tag("startbig");
-				tree.setPosition(getSpawnPosition(map, offset));
-				tree.Init();
-				if (map.getTile(offset).type == CMap::tile_empty)
+				CBlob@ tree = server_CreateBlobNoInit(map_random.NextRanged(35) < 21 ? "tree_pine" : "tree_bushy" );
+				if(tree !is null)
 				{
-					map.server_SetTile(getSpawnPosition(map, offset), CMap::tile_grass + map_random.NextRanged(3));
+					tree.Tag("startbig");
+					tree.setPosition(world_position);
+					tree.Init();
+					if (map.getTile(world_position).type == CMap::tile_empty)
+					{
+						map.server_SetTile(world_position, CMap::tile_grass + map_random.NextRanged(3));
+					}
 				}
+				break;
 			}
-		}
-		break;
-		case bush_offset:
-			server_CreateBlob("bush", -1, map.getTileWorldPosition(offset) + Vec2f(4, 4));
-		break;
-		case grain_offset:
-		{
-			CBlob@ grain = server_CreateBlobNoInit("grain_plant");
-			if(grain !is null)
+			case bush_index:
 			{
-				grain.Tag("instant_grow");
-				grain.setPosition(map.getTileWorldPosition(offset) + Vec2f(4, 4));
-				grain.Init();
+				Vec2f pos = world_position + Vec2f(4, 4);
+				server_CreateBlob("bush", -1, world_position);
+				break;
 			}
-		}
-		break;
-		case spike_offset:
-			spawnBlob(map, "spikes", -1, map.getTileWorldPosition(offset) + Vec2f(4, 4), true);
-		break;
-		case ladder_offset:
-			spawnLadder(map, offset);
-		break;
+			case grain_index:
+			{
+				CBlob@ grain = server_CreateBlobNoInit("grain_plant");
+				if(grain !is null)
+				{
+					grain.Tag("instant_grow");
+					grain.setPosition(world_position);
+					grain.Init();
+				}
+				break;
+			}
+			case flower_index:
+			{
+				CBlob@ flower = server_CreateBlobNoInit("flowers");
+				if(flower !is null)
+				{
+					flower.Tag("instant_grow");
+					flower.setPosition(world_position);
+					flower.Init();
+				}
+				break;
+			}
+			case spike_index:
+			{
+				spawnBlob(map, "spikes", -1, world_position, true);
+				break;
+			}
+			case ladder_index:
+			{
+				spawnLadder(map, world_position);
+				break;
+			}
 		};
 	}
 
-	CBlob@ spawnLadder(CMap@ map, int offset)
+	CBlob@ spawnLadder(CMap@ map, Vec2f world_position)
 	{
 		bool up = false, down = false, right = false, left = false;
-		int[]@ ladders = offsets[ladder_offset];
+		Vec2f[]@ ladders = world_positions[ladder_index];
 		for (uint step = 0; step < ladders.length; ++step)
 		{
-			const int lof = ladders[step];
-			if (lof == offset-map.tilemapwidth) {
+			const Vec2f other_ladder_position = ladders[step];
+			if (other_ladder_position == world_position + Vec2f(0, -map.tilesize))
+			{
 				up = true;
 			}
-			if (lof == offset+map.tilemapwidth) {
+			if (other_ladder_position == world_position + Vec2f(0, map.tilesize))
+			{
 				down = true;
 			}
-			if (lof == offset+1) {
+			if (other_ladder_position == world_position + Vec2f(map.tilesize, 0))
+			{
 				right = true;
 			}
-			if (lof == offset-1) {
+			if (other_ladder_position == world_position + Vec2f(-map.tilesize, 0))
+			{
 				left = true;
 			}
 		}
-		if ( offset % 2 == 0 && ((left && right) || (up && down)) )
+
+		bool vertical = up && down, horizontal = left && right;
+		if (!vertical && !horizontal)
 		{
 			return null;
 		}
 
-		CBlob@ blob = server_CreateBlob( "ladder", -1, getSpawnPosition(map, offset));
-		if (blob !is null)
+		CBlob@ ladder = server_CreateBlob("ladder", -1, world_position);
+		if (ladder !is null)
 		{
 			// check for horizontal placement
-			for (uint step = 0; step < ladders.length; ++step)
+			if (!vertical)
 			{
-				if (ladders[step] == offset-1 || ladders[step] == offset+1)
-				{
-					blob.setAngleDegrees( 90.0f );
-					break;
-				}
+				ladder.setAngleDegrees( 90.0f );
 			}
-			blob.getShape().SetStatic( true );
+			ladder.getShape().SetStatic( true );
 		}
-		return blob;
+		return ladder;
 	}
 
-	void PlaceMostLikelyTile(CMap@ map, Vec2f position)
+	void PlaceMostLikelyTile(Vec2f position)
 	{
 		const TileType up = map.getTile(position + Vec2f(0, -map.tilesize)).type;
 		const TileType down = map.getTile(position + Vec2f(0, map.tilesize)).type;
