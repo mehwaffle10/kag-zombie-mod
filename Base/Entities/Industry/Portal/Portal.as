@@ -114,14 +114,7 @@ void Summon(CBlob@ this, string spawn, u8 cost)
 		this.Sync("points", true);
 		this.set_u16("spawn_timer", this.get_u16("spawn_delay"));
 
-		if (XORRandom(2) == 0)
-		{
-			this.getSprite().PlaySound("Thunder1.ogg");
-		}
-		else
-		{
-			this.getSprite().PlaySound("Thunder2.ogg");
-		}
+		this.getSprite().PlaySound("Thunder" + (XORRandom(2) + 1) + ".ogg");
 
 		CBlob@ b = server_CreateBlob(spawn, this.getTeamNum(), this.getPosition());
 		b.AddScript("DieOnDayBreak.as");

@@ -3,21 +3,22 @@
 
 u16 ticks_left = 0;
 u16 phase = 0;
+bool rain = false;
 
 // Used for setting the time on the map (the sky)
 const float DAWN = .07;
 const float MAX_DAY = .12;
 
 // Actual game time
-const u16 DEFAULT_DAY_LENGTH = 1 * 60 * getTicksASecond();
-const u16 DEFAULT_NIGHT_LENGTH = 1 * 60 * getTicksASecond();
+const u16 DEFAULT_DAY_LENGTH = 1 * 3 * getTicksASecond();
+const u16 DEFAULT_NIGHT_LENGTH = 1 * 3 * getTicksASecond();
 
 void onInit(CRules@ this)
 {
 	this.addCommandID("set_phase");
 	this.addCommandID("do_laugh");
 	Reset(this);
-}
+} 
 
 void onRestart(CRules@ this)
 {
@@ -86,7 +87,7 @@ void onTick(CRules@ this)
 			// Update things that trigger at dusk
 			CBlob@[] tagged;
 			getBlobsByTag("night", @tagged);
-			for (u16 i = 0; i < tagged.length; i++)
+			for (u16 i = 0; i < tagged.length(); i++)
 			{
 				tagged[i].SendCommand(tagged[i].getCommandID("night"));
 			}
@@ -101,9 +102,20 @@ void onTick(CRules@ this)
 			// Update things that trigger at dawn
 			CBlob@[] tagged;
 			getBlobsByTag("day", @tagged);
-			for (u16 i = 0; i < tagged.length; i++)
+			for (u16 i = 0; i < tagged.length(); i++)
 			{
 				tagged[i].SendCommand(tagged[i].getCommandID("day"));
+			}
+
+			// Chance of rain
+			if (!rain && XORRandom(7) == 0)
+			{
+				rain = true;
+				server_CreateBlob("rain");
+			}
+			else
+			{
+				rain = false;
 			}
 		}
 	}

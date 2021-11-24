@@ -20,7 +20,8 @@ void onInit(CBlob@ this)
 
 	if (isServer())
 	{
-		this.server_SetTimeToDie(150 + XORRandom(300));
+		CRules@ rules = getRules();
+		this.server_SetTimeToDie((rules.get_u16("day_length") + rules.get_u16("night_length")) / getTicksASecond());
 	}
 	
 	if (isClient())
