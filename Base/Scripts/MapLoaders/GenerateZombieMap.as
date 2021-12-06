@@ -357,13 +357,85 @@ bool loadMap(CMap@ _map, const string& in filename)
 		}
 	}
 
+	// Define the safezone in the middle of the map where players start
+	s32 middle = map.tilemapwidth / 2;
+
+	// Spawn mineshafts
+	for (u8 mineshaft_count = 1; mineshaft_count <= 15; mineshaft_count++)
+	{
+		s32 x = middle - 20 + mineshaft_count * 25;
+		Vec2f mineshaft_seed = Vec2f(x, map.getLandYAtX(x)- 8);
+		PNGLoader@ png_loader = PNGLoader();
+		png_loader.loadStructure("portal_" + mineshaft_count, mineshaft_seed);
+
+		// Variables for tweaking
+		u8 edge_erode_width = 6, edge_erode_cycles = 3;
+		u8 structure_width = png_loader.image.getWidth();
+		s32 left_x = mineshaft_seed.x - edge_erode_width + 1, right_x = mineshaft_seed.x + structure_width - 1;
+
+		// Clear above the structure
+		Fill(map, mineshaft_seed.x, GetHeightmap(map, mineshaft_seed.x, structure_width, 0), GetHeightmap(map, mineshaft_seed.x, structure_width, mineshaft_seed.y));
+
+		// Fill below the structure
+		s32 structure_bottom = mineshaft_seed.y + png_loader.image.getHeight();
+		int[] original_heightmap(structure_width);
+		for (s32 x = 0; x < structure_width; x++)
+		{
+			original_heightmap[x] = Maths::Max(naturemap[mineshaft_seed.x + x], structure_bottom);
+		}
+		Fill(map, mineshaft_seed.x, original_heightmap, GetHeightmap(map, mineshaft_seed.x, structure_width, structure_bottom));
+
+		// Erode left of the structure
+		int[] starting_heightmap = GetHeightmap(map, left_x, edge_erode_width);
+		int[] ending_heightmap = GetHeightmap(map, left_x, edge_erode_width);
+		Erode(edge_erode_cycles, ending_heightmap, false);
+		Fill(map, left_x, starting_heightmap, ending_heightmap);
+
+		// Erode right of the structure
+		starting_heightmap = GetHeightmap(map, right_x, edge_erode_width);
+		ending_heightmap = GetHeightmap(map, right_x, edge_erode_width);
+		Erode(edge_erode_cycles, ending_heightmap, true);
+		Fill(map, right_x, starting_heightmap, ending_heightmap);
+
+		// Update naturemap
+		ending_heightmap = GetHeightmap(map, left_x, 2 * edge_erode_width + structure_width);
+		for (u16 x_offset = 0; x_offset < ending_heightmap.length(); x_offset++)
+		{
+			naturemap[left_x + x_offset] = ending_heightmap[x_offset];
+		}
+	}
+
+	/*
+	// Generate portals
+	u8 portal_count = 0;
+
+	// To the left of the safezone
+	u8 portal_edge_distance = 20;  // How close can a portal get to the edge of the map in tiles
+	for (s32 x = middle - (safezone_width / 2 + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation));
+		x > portal_edge_distance;
+		x -= (portal_distance_baseline + map_random.NextRanged(portal_distance_deviation))
+	)
+	{
+		SpawnPortal(x);
+		portal_count++;
+	}
+
+	// To the right of the safezone
+	for (s32 x = middle + safezone_width / 2 + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation);
+		x < map.tilemapwidth - portal_edge_distance;
+		x += portal_distance_baseline + map_random.NextRanged(portal_distance_deviation)
+	)
+	{
+		SpawnPortal(x);
+		portal_count++;
+	}
+	*/
 
 	//START generating blobs
 	for (int x = 0; x < width; ++x)
 	{
 		if (naturemap[x] == -1)
 			continue;
-
 
 		int y = naturemap[x];
 
@@ -372,10 +444,10 @@ bool loadMap(CMap@ _map, const string& in filename)
 			continue;
 
 		u32 offset = x + y * width;
-		u32 mirror_offset = (width - 1 - x) + y * width;
 
 		f32 grass_frac = material_noise.Fractal(x * 0.02f, y * 0.02f);
-		if (grass_frac > 0.5f)
+		Vec2f coords(x * map.tilesize, y * map.tilesize);
+		if (map.isTileGround(map.getTile(coords).type) && map.getTile(coords - Vec2f(0, map.tilesize)).type == CMap::tile_empty && grass_frac > 0.5f)
 		{
 			bool spawned = false;
 			//generate vegetation
@@ -413,71 +485,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 		}
 	}
 
-	// Define the safezone in the middle of the map where players start
-	s32 middle = map.tilemapwidth / 2;
-
-	// Spawn mineshafts
-	for (u8 mineshaft_count = 1; mineshaft_count <= 10; mineshaft_count++)
-	{
-		s32 x = middle - 20 + mineshaft_count * 25;
-		Vec2f mineshaft_seed = Vec2f(x, map.getLandYAtX(x)- 8);
-		PNGLoader@ png_loader = PNGLoader();
-		png_loader.loadStructure("mineshaft_entrance_" + mineshaft_count, mineshaft_seed);
-
-		// Variables for tweaking
-		u8 edge_erode_width = 6, edge_erode_cycles = 3;
-		u8 structure_width = png_loader.image.getWidth();
-		s32 left_x = mineshaft_seed.x - edge_erode_width + 1, right_x = mineshaft_seed.x + structure_width - 1;
-
-		// Clear above the structure
-		Fill(map, mineshaft_seed.x, GetHeightmap(map, mineshaft_seed.x, structure_width, 0), GetHeightmap(map, mineshaft_seed.x, structure_width, mineshaft_seed.y));
-
-		// Fill below the structure
-		s32 structure_bottom = mineshaft_seed.y + png_loader.image.getHeight();
-		int[] original_heightmap(structure_width);
-		for (s32 x = 0; x < structure_width; x++)
-		{
-			original_heightmap[x] = Maths::Max(naturemap[mineshaft_seed.x + x], structure_bottom);
-		}
-		Fill(map, mineshaft_seed.x, original_heightmap, GetHeightmap(map, mineshaft_seed.x, structure_width, structure_bottom));
-
-		// Erode left of the structure
-		int[] starting_heightmap = GetHeightmap(map, left_x, edge_erode_width);
-		int[] ending_heightmap = GetHeightmap(map, left_x, edge_erode_width);
-		Erode(edge_erode_cycles, ending_heightmap, false);
-		Fill(map, left_x, starting_heightmap, ending_heightmap);
-
-		// Erode right of the structure
-		starting_heightmap = GetHeightmap(map, right_x, edge_erode_width);
-		ending_heightmap = GetHeightmap(map, right_x, edge_erode_width);
-		Erode(edge_erode_cycles, ending_heightmap, true);
-		Fill(map, right_x, starting_heightmap, ending_heightmap);
-	}
-
-	// Generate portals
-	u8 portal_count = 0;
-
-	// To the left of the safezone
-	u8 portal_edge_distance = 20;  // How close can a portal get to the edge of the map in tiles
-	for (s32 x = middle - (safezone_width / 2 + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation));
-		x > portal_edge_distance;
-		x -= (portal_distance_baseline + map_random.NextRanged(portal_distance_deviation))
-	)
-	{
-		SpawnPortal(x);
-		portal_count++;
-	}
-
-	// To the right of the safezone
-	for (s32 x = middle + safezone_width / 2 + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation);
-		x < map.tilemapwidth - portal_edge_distance;
-		x += portal_distance_baseline + map_random.NextRanged(portal_distance_deviation)
-	)
-	{
-		SpawnPortal(x);
-		portal_count++;
-	}
-
 	// Spawn lootables
 	for (s32 x = 0; x < map.tilemapwidth; x += 2)
 	{
@@ -498,7 +505,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 				pot_choice = "potrare";
 			}
 			
-			server_CreateBlob(pot_choice, 3, Vec2f(x, map.getLandYAtX(x)) * map.tilesize);
+			server_CreateBlob(pot_choice, 3, Vec2f(x, naturemap[x] - 1) * map.tilesize);
 		}
 		else if (map_random.NextRanged(gravestone_frequency) == 0)
 		{
@@ -506,7 +513,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 			if (gravestone !is null)
 			{
 				gravestone.server_setTeamNum(3);
-				gravestone.setPosition(Vec2f(x, map.getLandYAtX(x) - 2) * map.tilesize);
+				gravestone.setPosition(Vec2f(x, naturemap[x] - 1) * map.tilesize);
 				gravestone.Init();
 			}
 		}
@@ -653,9 +660,21 @@ int[] GetHeightmap(CMap@ map, s32 left_x, u16 width, s32 y)
 	bool hard_set_y = y >= 0 && y <= map.tilemapheight;
 	for (s32 x = 0; x < width; x++)
 	{
-		heightmap[x] = hard_set_y ? y : map.getLandYAtX(left_x + x) - 1;
+		heightmap[x] = hard_set_y ? y : getHeighestBlock(map, left_x + x);
 	}
 	return heightmap;
+}
+
+s32 getHeighestBlock(CMap@ map, s32 x)
+{
+	for (s32 y = 0; y < map.tilemapheight; y++)
+	{
+		if (map.isTileSolid(Vec2f(x, y) * map.tilesize))
+		{
+			return y;
+		}
+	}
+	return -1;
 }
 
 void Fill(CMap@ map, s32 left_x, int[]@ starting_heightmap, int[]@ ending_heightmap)

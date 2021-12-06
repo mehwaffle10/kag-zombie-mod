@@ -10,8 +10,8 @@ const float DAWN = .07;
 const float MAX_DAY = .12;
 
 // Actual game time
-const u16 DEFAULT_DAY_LENGTH = 1 * 3 * getTicksASecond();
-const u16 DEFAULT_NIGHT_LENGTH = 1 * 3 * getTicksASecond();
+const u16 DEFAULT_DAY_LENGTH = 5 * 60 * getTicksASecond();
+const u16 DEFAULT_NIGHT_LENGTH = 3 * 60 * getTicksASecond();
 
 void onInit(CRules@ this)
 {

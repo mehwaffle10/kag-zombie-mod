@@ -412,6 +412,9 @@ class PNGLoader
 			case map_colors::mook_spawner:    autotile(position); AddMarker(map, offset, "mook spawner"); break;
 			case map_colors::mook_spawner_10: autotile(position); AddMarker(map, offset, "mook spawner 10"); break;
 			case map_colors::dummy:           autotile(position); spawnBlob(map, "dummy", offset, 1, true); break;
+			
+			// Zombies
+			case map_colors::portal:		  autotile(position); spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(0, 3) * map.tilesize); break;
 			default:
 				HandleCustomTile(map, offset, pixel);
 			};
@@ -561,6 +564,10 @@ class PNGLoader
 		else if(map.isTileSolid(down) && (map.isTileGrass(left) || map.isTileGrass(right)))
 		{
 			map.server_SetTile(position, CMap::tile_grass + 2 + map_random.NextRanged(2));
+		}
+		else
+		{
+			map.server_SetTile(position, CMap::tile_empty);
 		}
 	}
 
