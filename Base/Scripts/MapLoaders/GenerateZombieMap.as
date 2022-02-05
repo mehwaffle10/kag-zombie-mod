@@ -6,6 +6,10 @@
 #include "MinimapHook.as";
 #include "PNGLoader.as";
 
+s32 pot_frequency;
+s32 gravestone_frequency;
+s32 baseline_tiles;
+
 bool loadMap(CMap@ _map, const string& in filename)
 {
 	CMap@ map = _map;
@@ -20,6 +24,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	}
 
 	Random@ map_random = Random(map.getMapSeed());
+	// TODO display map seed somewhere
 
 	Noise@ map_noise = Noise(map_random.Next());
 
@@ -35,8 +40,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 	s32 portal_distance_baseline = cfg.read_s32("portal_distance_baseline", 60);
 	s32 portal_distance_deviation = cfg.read_s32("portal_distance_deviation", 60);
 
-	s32 pot_frequency = cfg.read_s32("pot_frequency", 8);
-	s32 gravestone_frequency = cfg.read_s32("gravestone_frequency", 15);
+	pot_frequency = cfg.read_s32("pot_frequency", 8);
+	gravestone_frequency = cfg.read_s32("gravestone_frequency", 15);
 
 	// Map Variables
 	s32 min_width = cfg.read_s32("min_width", 1000);
@@ -48,7 +53,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	s32 height = min_height + map_random.NextRanged(max_height - min_height);
 
 	s32 baseline = cfg.read_s32("baseline", 50);
-	s32 baseline_tiles = height * (1.0f - (baseline / 100.0f));
+	baseline_tiles = height * (1.0f - (baseline / 100.0f));
 
 	s32 deviation = cfg.read_s32("deviation", 40);
 
@@ -126,11 +131,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 	Erode(erode_cycles, heightmap);
 
 	//gen terrain
-	s32 bush_skip = 0;
-	s32 tree_skip = 0;
-	const s32 tree_limit = 2;
-	const s32 bush_limit = 3;
-
 	int[] naturemap(width);
 	for (int x = 0; x < width; ++x)
 	{
@@ -360,17 +360,24 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// Define the safezone in the middle of the map where players start
 	s32 middle = map.tilemapwidth / 2;
 
+	/*
 	// Spawn all single structure type
 	for (u8 count = 1; count <= 2; count++)
 	{
 		s32 x = middle - 20 + count * 25;
 		SpawnStructure(map, naturemap, "small_" + count, x, 6, 3);
 	}
+	*/
 	
-	/*
 	// Generate structures
 	u8 portal_count = 0;
 
+	StructureGrabBag@ bag = StructureGrabBag(map_random, 20);
+
+	Populate(map, naturemap, bag, map_random, middle, middle + 40, true);
+	Populate(map, naturemap, bag, map_random, middle - 40, middle, false);
+
+	/*
 	// To the left of the safezone
 	u8 portal_edge_distance = 20;  // How close can a portal get to the edge of the map in tiles
 	s32 x = middle - (safezone_width / 2 + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation);
@@ -396,40 +403,84 @@ bool loadMap(CMap@ _map, const string& in filename)
 	return true;
 }
 
-string SelectRandomStructure(Random@ map_random)
+class StructureGrabBag
 {
-	string[] structures = {
-		"small",
-		"mineshaft"
-	};
-
-	u8[] structure_weights = {
-		10,		// Small
-		1		// Mineshaft
-	};
-
-	u16 weight_sum = 0, running_sum = 0;
-	for (u8 i = 0; i < structure_weights.length; i++)
+	StructureGrabBag(Random@ map_random, u16 _structure_count)
 	{
-		weight_sum += structure_weights[i];
+		structure_count = _structure_count;
+		Scramble(map_random);
 	}
 
-	u16 selection = map_random.NextRanged(weight_sum);
-	string type;
-	for (u8 i = 0; i < structure_weights.length; i++)
+	u16 structure_count;
+	u16 structures_left;
+	string[] types;  // The type of structure
+	u16[] counts;  // How many to spawn on a map
+	u8[] variant_counts;  // How many files there are for a given type
+
+	void Scramble(Random@ map_random)
 	{
-		running_sum += structure_weights[i];
-		if (running_sum > selection)
+		structures_left = structure_count;
+		u16 slots_left = structure_count;
+		types.clear();
+		counts.clear();
+		variant_counts.clear();
+
+		// Structures with distinct counts
+		u16 mineshaft_count = 1 + map_random.NextRanged(2);
+		types.push_back("mineshaft_entrance");
+		counts.push_back(mineshaft_count);
+		slots_left -= mineshaft_count;
+
+		// Structures with frequencies
+		u16 small_count = u16((30 + map_random.NextRanged(11)) / 100 * slots_left);
+		types.push_back("small");
+		counts.push_back(small_count);
+		slots_left -= small_count;
+
+		// No structure
+		types.push_back("small");
+		counts.push_back(slots_left);
+
+		// Count the number of variants for each type of structure
+		for (u8 type_index = 0; type_index < types.length(); type_index++)
 		{
-			return structures[i];
+			u8 file_count = 0;
+			CFileImage@ image;
+			do
+			{
+				@image = CFileImage(types[type_index] + "_" + file_count);
+				file_count++;
+			}
+			while (image.isLoaded());
+			variant_counts.push_back(file_count - 1);
 		}
 	}
 
-	return "";
+	string getStructureVariant(Random@ map_random, string type)
+	{
+		return type + "_" + map_random.NextRanged(variant_counts[types.find(type)]);
+	}
+
+	string pickStructure(Random@ map_random)
+	{
+		u16 selection = map_random.NextRanged(structures_left);
+		u16 running_sum = 0;
+		for (u8 i = 0; i < types.length; i++)
+		{
+			running_sum += counts[i];
+			if (running_sum > selection)
+			{
+				counts[i]--;
+				structures_left--;
+				return types[i];
+			}
+		}
+		return "";
+	}
 }
-/*
+
 // Fills an area with lootables, nature, and potentially a structure
-void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 right_x, bool structure)
+void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, s32 left_x, s32 right_x, bool structure)
 {
 	// Safety check
 	if (left_x < 0 || right_x > map.tilemapwidth || left_x > right_x)
@@ -439,29 +490,40 @@ void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 r
 
 	if (structure)
 	{
+		string structure_type = bag.pickStructure(map_random);
+
 		// Get left seed for structure
-		s32 structure_seed = (right_x - left_x) / 2 - map_random.NextRanged(10);
+		s32 structure_seed = left_x + (right_x - left_x) / 2 - map_random.NextRanged(10);
 
 		// Make random structure
-		u8 structure_width = GenerateStructure(map, naturemap, SelectRandomStructure(map_random), structure_seed);
+		u8 structure_width = GenerateStructure(map, naturemap, bag, map_random, structure_type, structure_seed);
 
-		// Populate left and right zones
-		Populate(map, naturemap, map_random, left_x, structure_seed, false);
-		Populate(map, naturemap, map_random, structure_seed + structure_width, right_x, false);
+		// Populate left and right zones with only filler
+		Populate(map, naturemap, bag, map_random, left_x, structure_seed, false);
+		Populate(map, naturemap, bag, map_random, structure_seed + structure_width, right_x, false);
+		
 	}
 	else
 	{
+		// Add filler
+		/*
+		s32 width = right_x - left_x;
+		Noise@ material_noise = Noise(map_random.Next());
+		s32 bush_skip = 0;
+		s32 tree_skip = 0;
+		const s32 tree_limit = 2;
+		const s32 bush_limit = 3;
 		for (s32 x = left_x; x < right_x; x++)
 		{
 			if (naturemap[x] == -1)
 				continue;
 
 			int y = naturemap[x];
-
+			
 			//underwater?
-			if(y > water_baseline_tiles)
-				continue;
-
+			//if(y > water_baseline_tiles)
+			//	continue;
+			
 			u32 offset = x + y * width;
 
 			f32 grass_frac = material_noise.Fractal(x * 0.02f, y * 0.02f);
@@ -537,42 +599,54 @@ void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 r
 				}
 			}
 		}
-	}
-}
-*/
-u8 GenerateStructure(CMap@ map, int[]@ naturemap, string type, s32 left_x)
-{
-	if (type == "mineshaft")
-	{
-		return SpawnStructure(map, naturemap, "mineshaft_entrance_1", left_x, 6, 3);
-	}
-	else // if (type == "small")
-	{
-		return SpawnStructure(map, naturemap, "small_1", left_x, 6, 3);
+		*/
 	}
 }
 
-u8 SpawnStructure(CMap@ map, int[]@ naturemap, string filename, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles)
+u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, string type, s32 left_x)
 {
-	Vec2f mineshaft_seed = Vec2f(left_x, map.getLandYAtX(left_x) - 8);
+	return GenerateStructure(map, naturemap, bag, map_random, type, left_x, -1);
+}
+
+u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, string type, s32 left_x, s16 index)
+{
+	string file_name = index > 0 ? type + "_" + index : bag.getStructureVariant(map_random, type);
+
+	if (type == "mineshaft_entrance")
+	{
+		return SpawnStructure(map, naturemap, file_name, left_x, 6, 3);
+	}
+	else if (type == "small")
+	{
+		return SpawnStructure(map, naturemap, file_name, left_x, 6, 3);
+	}
+	else
+	{
+		return 0;	
+	}
+}
+
+u8 SpawnStructure(CMap@ map, int[]@ naturemap, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles)
+{
+	Vec2f structure_seed = Vec2f(left_x, map.getLandYAtX(left_x) - 8);
 	PNGLoader@ png_loader = PNGLoader();
-	png_loader.loadStructure(filename, mineshaft_seed);
+	png_loader.loadStructure(file_name, structure_seed);
 
 	// Variables for tweaking
 	u8 structure_width = png_loader.image.getWidth();
-	s32 left_erode_x = mineshaft_seed.x - edge_erode_width + 1, right_erode_x = mineshaft_seed.x + structure_width - 1;
+	s32 left_erode_x = structure_seed.x - edge_erode_width + 1, right_erode_x = structure_seed.x + structure_width - 1;
 
 	// Clear above the structure
-	Fill(map, mineshaft_seed.x, GetHeightmap(map, mineshaft_seed.x, structure_width, 0), GetHeightmap(map, mineshaft_seed.x, structure_width, mineshaft_seed.y));
+	Fill(map, structure_seed.x, GetHeightmap(map, structure_seed.x, structure_width, 0), GetHeightmap(map, structure_seed.x, structure_width, structure_seed.y));
 
 	// Fill below the structure
-	s32 structure_bottom = mineshaft_seed.y + png_loader.image.getHeight();
+	s32 structure_bottom = structure_seed.y + png_loader.image.getHeight();
 	int[] original_heightmap(structure_width);
 	for (s32 x = 0; x < structure_width; x++)
 	{
-		original_heightmap[x] = Maths::Max(naturemap[mineshaft_seed.x + x], structure_bottom);
+		original_heightmap[x] = Maths::Max(naturemap[structure_seed.x + x], structure_bottom);
 	}
-	Fill(map, mineshaft_seed.x, original_heightmap, GetHeightmap(map, mineshaft_seed.x, structure_width, structure_bottom));
+	Fill(map, structure_seed.x, original_heightmap, GetHeightmap(map, structure_seed.x, structure_width, structure_bottom));
 
 	// Erode left of the structure
 	int[] starting_heightmap = GetHeightmap(map, left_erode_x, edge_erode_width);

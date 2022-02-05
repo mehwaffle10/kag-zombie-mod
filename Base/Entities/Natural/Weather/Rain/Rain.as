@@ -55,7 +55,8 @@ void onInit(CBlob@ this)
 		Fog_vs = BigQuad;
 	}
 	
-	getRules().set_bool("raining", true);
+	// Waffle: Unnecessary
+	// getRules().set_bool("raining", true);
 }
 
 const int spritesize = 512;
@@ -269,7 +270,7 @@ void onCommand(CBlob@ this,u8 cmd,CBitStream @params)
 void onDie(CBlob@ this)
 {
 	// Waffle: No jungle, just restore normal skygradient
-	getRules().set_bool("raining", false);
+	// getRules().set_bool("raining", false);
 	getMap().CreateSkyGradient("skygradient_normal.png");
 	/*
 	getRules().set_bool("raining", false);
