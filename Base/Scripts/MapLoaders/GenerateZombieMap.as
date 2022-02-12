@@ -503,12 +503,12 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 	}
 	else
 	{
-		/*
 		// Add filler
 		s32 width = right_x - left_x;
 		Noise@ material_noise = Noise(map_random.Next());
 		s32 bush_skip = 0;
 		s32 tree_skip = 0;
+		bool lootable_spawned = false;
 		const s32 tree_limit = 2;
 		const s32 bush_limit = 3;
 		for (s32 x = left_x; x < right_x; x++)
@@ -518,13 +518,12 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 
 			int y = naturemap[x];
 			
-			u32 offset = x + y * width;
-
 			f32 grass_frac = material_noise.Fractal(x * 0.02f, y * 0.02f);
+			bool spawned = false;
 			Vec2f coords(x * map.tilesize, y * map.tilesize);
 			if (map.isTileGround(map.getTile(coords).type) && map.getTile(coords - Vec2f(0, map.tilesize)).type == CMap::tile_empty && grass_frac > 0.5f)
 			{
-				bool spawned = false;
+				
 				//generate vegetation
 				if (x % 7 == 0 || x % 23 == 3)
 				{
@@ -554,15 +553,17 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 					}
 				}
 
-				//todo grass control random
+				// grass control random
 				TileType grass_tile = CMap::tile_grass + (spawned ? 0 : map_random.NextRanged(4));
-				map.SetTile(offset - width, grass_tile);
+				map.server_SetTile(Vec2f(x, y - 1) * map.tilesize, grass_tile);
 			}
+
 			// Spawn lootables
-			for (s32 x = 0; x < map.tilemapwidth; x += 2)
+			if (!lootable_spawned && !spawned)
 			{
 				if (map_random.NextRanged(pot_frequency) == 0)
 				{
+					lootable_spawned = true;
 					u32 random_pot = map_random.NextRanged(100);
 					string pot_choice = "";
 					if (random_pot < 60)
@@ -576,12 +577,13 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 					else
 					{
 						pot_choice = "potrare";
-					}
+					}	
 					
 					server_CreateBlob(pot_choice, 3, Vec2f(x, naturemap[x] - 1) * map.tilesize);
 				}
 				else if (map_random.NextRanged(gravestone_frequency) == 0)
 				{
+					lootable_spawned = true;
 					CBlob@ gravestone = server_CreateBlob("gravestone");
 					if (gravestone !is null)
 					{
@@ -591,8 +593,11 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 					}
 				}
 			}
+			else
+			{
+				lootable_spawned = false;
+			}
 		}
-		*/
 	}
 }
 
