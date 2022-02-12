@@ -668,26 +668,6 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, string file_name, s32 left_x, u8 
 	return structure_width;
 }
 
-/*
-CBlob@ SpawnPortal(s32 x)
-{
-	CBlob@ portal = server_CreateBlobNoInit("portal");
-	if (portal !is null)
-	{
-		CMap@ map = getMap();
-
-		portal.server_setTeamNum(3);
-		portal.setPosition(Vec2f(x, map.getLandYAtX(x) - 5) * map.tilesize);
-		portal.Init();
-
-		// map.SetTile(offset, CMap::tile_ground_back);
-		// map.SetTile(offset, CMap::tile_ground);
-	}
-
-	return portal;
-}
-*/
-
 //spawn functions
 CBlob@ SpawnBush(CMap@ map, Vec2f pos)
 {
