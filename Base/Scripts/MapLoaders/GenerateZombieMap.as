@@ -35,8 +35,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 	ConfigFile cfg = ConfigFile(filename);
 
 	// Zombie Variables
-	s32 safezone_width = cfg.read_s32("safezone_width", 60);
-	getRules().set_s32("safezone_width", safezone_width);
 	s32 portal_distance_baseline = cfg.read_s32("portal_distance_baseline", 60);
 	s32 portal_distance_deviation = cfg.read_s32("portal_distance_deviation", 60);
 
@@ -357,9 +355,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 		}
 	}
 
-	// Define the safezone in the middle of the map where players start
-	s32 middle = map.tilemapwidth / 2;
-
 	/*
 	// Spawn all single structure type
 	for (u8 count = 1; count <= 2; count++)
@@ -368,37 +363,36 @@ bool loadMap(CMap@ _map, const string& in filename)
 		SpawnStructure(map, naturemap, "small_" + count, x, 6, 3);
 	}
 	*/
-	
-	// Generate structures
-	u8 portal_count = 0;
 
-	StructureGrabBag@ bag = StructureGrabBag(map_random, 20);
-
-	Populate(map, naturemap, bag, map_random, middle, middle + 40, true);
-	Populate(map, naturemap, bag, map_random, middle - 40, middle, false);
-
-	/*
-	// To the left of the safezone
-	u8 portal_edge_distance = 20;  // How close can a portal get to the edge of the map in tiles
-	s32 x = middle - (safezone_width / 2 + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation);
-	while (x > portal_edge_distance)
+	// Divide the map into sectors. A sector has one portal in the center and potentially two structures
+	Vec2f[] sectors;
+	s32 left_x = 0;
+	s32 border = map.tilemapwidth - portal_distance_baseline;
+	while (left_x < border)
 	{
-		s32 next_x = x -= (portal_distance_baseline + map_random.NextRanged(portal_distance_deviation));
-		s32 left_structure_x = 
-		GenerateStructure(map, naturemap, "portal", x);
-		portal_count++;
+		s32 right_x = left_x + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation);
+		sectors.push_back(Vec2f(left_x, right_x < border ? right_x : map.tilemapwidth));
+		left_x = right_x;
+	}
+	StructureGrabBag@ bag = StructureGrabBag(map_random, sectors.length * 2);
+
+	// Populate each sector
+	print("Sector Count: " + sectors.length);
+	for (u8 i = 0; i < sectors.length; i++)
+	{
+		// Find the middle
+		s32 left_x = sectors[i].x;
+		s32 right_x = sectors[i].y;
+		s32 middle_x = (left_x + right_x) / 2;
+		
+		// Spawn the portal
+		u8 structure_width = GenerateStructure(map, naturemap, bag, map_random, "portal", middle_x);
+
+		// Populate left and right of the portal
+		Populate(map, naturemap, bag, map_random, left_x, middle_x, true);
+		Populate(map, naturemap, bag, map_random, middle_x + structure_width, right_x, true);
 	}
 
-	// To the right of the safezone
-	for (s32 x = middle + safezone_width / 2 + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation);
-		x < map.tilemapwidth - portal_edge_distance;
-		x += portal_distance_baseline + map_random.NextRanged(portal_distance_deviation)
-	)
-	{
-		GenerateStructure(map, naturemap, "portal", x);
-		portal_count++;
-	}
-	*/
 	SetupBackgrounds(map);
 	return true;
 }
@@ -438,8 +432,12 @@ class StructureGrabBag
 		slots_left -= small_count;
 
 		// No structure
-		types.push_back("small");
+		types.push_back("");
 		counts.push_back(slots_left);
+
+		// Special structures, not part of the bag selection but still need counts
+		types.push_back("portal");
+		counts.push_back(0);
 
 		// Count the number of variants for each type of structure
 		for (u8 type_index = 0; type_index < types.length(); type_index++)
@@ -493,7 +491,7 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 		string structure_type = bag.pickStructure(map_random);
 
 		// Get left seed for structure
-		s32 structure_seed = left_x + (right_x - left_x) / 2 - map_random.NextRanged(10);
+		s32 structure_seed = (left_x + right_x) / 2 - map_random.NextRanged(10);
 
 		// Make random structure
 		u8 structure_width = GenerateStructure(map, naturemap, bag, map_random, structure_type, structure_seed);
@@ -505,8 +503,8 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 	}
 	else
 	{
-		// Add filler
 		/*
+		// Add filler
 		s32 width = right_x - left_x;
 		Noise@ material_noise = Noise(map_random.Next());
 		s32 bush_skip = 0;
@@ -519,10 +517,6 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 				continue;
 
 			int y = naturemap[x];
-			
-			//underwater?
-			//if(y > water_baseline_tiles)
-			//	continue;
 			
 			u32 offset = x + y * width;
 
@@ -564,7 +558,6 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 				TileType grass_tile = CMap::tile_grass + (spawned ? 0 : map_random.NextRanged(4));
 				map.SetTile(offset - width, grass_tile);
 			}
-
 			// Spawn lootables
 			for (s32 x = 0; x < map.tilemapwidth; x += 2)
 			{
@@ -616,7 +609,7 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@
 	{
 		return SpawnStructure(map, naturemap, file_name, left_x, 6, 3);
 	}
-	else if (type == "small")
+	else if (type == "small" || type == "portal")
 	{
 		return SpawnStructure(map, naturemap, file_name, left_x, 6, 3);
 	}
