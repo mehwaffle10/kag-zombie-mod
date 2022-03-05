@@ -360,10 +360,24 @@ bool loadMap(CMap@ _map, const string& in filename)
 	for (u8 count = 1; count <= 2; count++)
 	{
 		s32 x = middle - 20 + count * 25;
-		SpawnStructure(map, naturemap, "small_" + count, x, 6, 3);
+		SpawnStructure(map, naturemap, map_random, false, "small_" + count, x, 6, 3);
 	}
 	*/
-
+	/*
+	// Check a mirrored image
+	s32 middle = map.tilemapwidth / 2;
+	for (u8 count = 0; count < 2; count++)
+	{
+		s32 x = middle - 20 + count * 32;
+		u8 structure_width = SpawnStructure(map, naturemap, map_random, count % 2 == 1, "mineshaft_entrance_6", x, 6, 3);
+		// Test set top left to gold
+		for (int y = 0; y < 20; y++)
+		{
+			map.server_SetTile(Vec2f(x, y) * map.tilesize, CMap::tile_gold);
+			map.server_SetTile(Vec2f(x + structure_width, y) * map.tilesize, CMap::tile_wood);
+		}
+	}
+	*/
 	// Divide the map into sectors. A sector has one portal in the center and potentially two structures
 	Vec2f[] sectors;
 	s32 left_x = 0;
@@ -392,7 +406,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 		Populate(map, naturemap, bag, map_random, left_x, middle_x, true);
 		Populate(map, naturemap, bag, map_random, middle_x + structure_width, right_x, true);
 	}
-
+	
 	SetupBackgrounds(map);
 	return true;
 }
@@ -418,18 +432,21 @@ class StructureGrabBag
 		types.clear();
 		counts.clear();
 		variant_counts.clear();
+		print("slots_left initial: " + slots_left);
 
 		// Structures with distinct counts
 		u16 mineshaft_count = 1 + map_random.NextRanged(2);
 		types.push_back("mineshaft_entrance");
 		counts.push_back(mineshaft_count);
 		slots_left -= mineshaft_count;
+		print("slots_left mineshaft: " + slots_left);
 
 		// Structures with frequencies
-		u16 small_count = u16((30 + map_random.NextRanged(11)) / 100 * slots_left);
+		u16 small_count = u16(f32(30 + map_random.NextRanged(11)) / 100 * slots_left);
 		types.push_back("small");
 		counts.push_back(small_count);
 		slots_left -= small_count;
+		print("slots_left small: " + slots_left);
 
 		// No structure
 		types.push_back("");
@@ -612,11 +629,11 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@
 
 	if (type == "mineshaft_entrance")
 	{
-		return SpawnStructure(map, naturemap, file_name, left_x, 6, 3);
+		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, file_name, left_x, 6, 3);
 	}
 	else if (type == "small" || type == "portal")
 	{
-		return SpawnStructure(map, naturemap, file_name, left_x, 6, 3);
+		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, file_name, left_x, 6, 3);
 	}
 	else
 	{
@@ -624,14 +641,14 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@
 	}
 }
 
-u8 SpawnStructure(CMap@ map, int[]@ naturemap, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles)
+u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles)
 {
 	Vec2f structure_seed = Vec2f(left_x, map.getLandYAtX(left_x) - 8);
 	PNGLoader@ png_loader = PNGLoader();
-	png_loader.loadStructure(file_name, structure_seed);
+	png_loader.loadStructure(file_name, structure_seed, map_random, mirror);
 
 	// Variables for tweaking
-	u8 structure_width = png_loader.image.getWidth();
+	u8 structure_width = png_loader.image_width;
 	s32 left_erode_x = structure_seed.x - edge_erode_width + 1, right_erode_x = structure_seed.x + structure_width - 1;
 
 	// Clear above the structure
@@ -657,7 +674,7 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, string file_name, s32 left_x, u8 
 	ending_heightmap = GetHeightmap(map, right_erode_x, edge_erode_width);
 	Erode(edge_erode_cycles, ending_heightmap, true);
 	Fill(map, right_erode_x, starting_heightmap, ending_heightmap);
-
+	
 	// Update naturemap
 	ending_heightmap = GetHeightmap(map, left_erode_x, 2 * edge_erode_width + structure_width);
 	for (u16 x_offset = 0; x_offset < ending_heightmap.length(); x_offset++)

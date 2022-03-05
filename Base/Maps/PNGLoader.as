@@ -20,7 +20,7 @@ enum world_positions_enums
 };
 
 //global
-Random@ map_random = Random();
+Random@ map_random;
 
 class PNGLoader
 {
@@ -32,6 +32,8 @@ class PNGLoader
 	CFileImage@ image;
 	CMap@ map;
 	Vec2f top_left;
+	bool mirror;
+	int image_width;
 
 	Vec2f[][] world_positions;
 
@@ -40,12 +42,13 @@ class PNGLoader
 		world_positions = Vec2f[][](index_count, Vec2f[](0));
 	}
 
-	bool loadStructure(const string& in filename, Vec2f _top_left)
+	bool loadStructure(const string& in filename, Vec2f _top_left, Random@ _map_random, bool _mirror)
 	{
 		Reset();
 		@map = getMap();
-		@map_random = Random();
+		@map_random = _map_random;
 		top_left = _top_left;
+		mirror = _mirror;
 
 		if(!isServer())
 		{
@@ -53,13 +56,22 @@ class PNGLoader
 		}
 
 		@image = CFileImage(filename);
+		image_width = image.getWidth();
 
 		if(image.isLoaded())
 		{
 			while(image.nextPixel())
 			{
 				const SColor pixel = image.readPixel();
-				const int offset = image.getPixelOffset();
+				int offset = image.getPixelOffset();
+				// Flip offset if mirrored
+				if (mirror)
+				{
+					int row = offset / image_width;
+					int column = offset % image_width;
+
+					offset = (row + 1) * image_width - column;
+				}
 
 				// Optimization: check if the pixel color is the sky color
 				// We do this before calling handlePixel because it is overriden, and to avoid a SColor copy
@@ -123,7 +135,7 @@ class PNGLoader
 			case map_colors::alpha_spikes:          autotile(position); spawnBlob(map, "spikes",          getTeamFromChannel(alpha), position,                             true); break;
 			case map_colors::alpha_stone_door:      autotile(position); spawnBlob(map, "stone_door",      getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
 			case map_colors::alpha_trap_block:      autotile(position); spawnBlob(map, "trap_block",      getTeamFromChannel(alpha), position,                             true); break;
-			case map_colors::alpha_bridge:          autotile(position); spawnBlob(map, "bridge",      getTeamFromChannel(alpha), position,                             true); break;
+			case map_colors::alpha_bridge:          autotile(position); spawnBlob(map, "bridge",      	  getTeamFromChannel(alpha), position,                             true); break;
 			case map_colors::alpha_wooden_door:     autotile(position); spawnBlob(map, "wooden_door",     getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
 			case map_colors::alpha_wooden_platform: autotile(position); spawnBlob(map, "wooden_platform", getTeamFromChannel(alpha), position, getAngleFromChannel(alpha), true); break;
 
@@ -311,7 +323,7 @@ class PNGLoader
 			case map_colors::platform_up:    autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true); break;
 			case map_colors::platform_right: autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero,  90); break;
 			case map_colors::platform_down:  autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero, 180); break;
-			case map_colors::platform_left:  autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero, -90); break;
+			case map_colors::platform_left:  autotile(position); spawnBlob(map, "wooden_platform", offset, 255, true, Vec2f_zero, 270); break;
 
 			// Doors
 			case map_colors::wooden_door_h_blue:   autotile(position); spawnBlob(map, "wooden_door", offset,   0, true); break;
@@ -414,7 +426,7 @@ class PNGLoader
 			case map_colors::dummy:           autotile(position); spawnBlob(map, "dummy", offset, 1, true); break;
 			
 			// Zombies
-			case map_colors::portal:		  autotile(position); spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(0, 3) * map.tilesize); break;
+			case map_colors::portal:		  autotile(position); spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(mirror ? 1 : 0, 3) * map.tilesize); break;
 			default:
 				HandleCustomTile(map, offset, pixel);
 			};
@@ -613,10 +625,14 @@ class PNGLoader
 
 	Vec2f getSpawnPosition(CMap@ map, int offset)
 	{
-		Vec2f pos = (image.getPixelPosition() + top_left) * map.tilesize;
+		Vec2f position_offset = image.getPixelPosition();
+		if (mirror)
+		{
+			position_offset.x = image_width - position_offset.x - 1;
+		}
+		Vec2f pos = (top_left + position_offset) * map.tilesize;
 		f32 tile_offset = map.tilesize * 0.5f;
-		pos.x += tile_offset;
-		pos.y += tile_offset;
+		pos += Vec2f(tile_offset, tile_offset);
 		return pos;
 	}
 
@@ -647,6 +663,11 @@ class PNGLoader
 	CBlob@ spawnBlob(CMap@ map, const string &in name, u8 team, Vec2f position, s16 angle)
 	{
 		CBlob@ blob = server_CreateBlob(name, team, position);
+		angle = mirror ? -angle : angle;
+		while (angle < 0)
+		{
+			angle += 360;
+		}
 		blob.setAngleDegrees(angle);
 
 		return blob;
