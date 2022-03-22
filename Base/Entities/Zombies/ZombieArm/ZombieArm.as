@@ -109,7 +109,7 @@ bool canHit(CBlob@ this, CBlob@ b)
 
 void onTick(CBlob@ this)
 {
-	print("" + this.exists("LimitedActors"));
+	// print("" + this.exists("LimitedActors"));
 	u8 state = this.get_u8("state");
 	CSprite@ sprite = this.getSprite();
 
