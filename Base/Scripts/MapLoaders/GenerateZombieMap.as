@@ -371,7 +371,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 		s32 x = middle - 20 + count * 32;
 		u8 structure_width = SpawnStructure(map, naturemap, map_random, count % 2 == 1, "mineshaft_entrance_6", x, 6, 3);
 		// Test set top left to gold
-		for (int y = 0; y < 20; y++)
+		for (int y = 0; y < 30; y++)
 		{
 			map.server_SetTile(Vec2f(x, y) * map.tilesize, CMap::tile_gold);
 			map.server_SetTile(Vec2f(x + structure_width, y) * map.tilesize, CMap::tile_wood);
@@ -423,7 +423,7 @@ class StructureGrabBag
 	u16 structures_left;
 	string[] types;  // The type of structure
 	u16[] counts;  // How many to spawn on a map
-	u8[] variant_counts;  // How many files there are for a given type
+	u8[][] variant_widths;  // Width of each variant
 
 	void Scramble(Random@ map_random)
 	{
@@ -431,22 +431,19 @@ class StructureGrabBag
 		u16 slots_left = structure_count;
 		types.clear();
 		counts.clear();
-		variant_counts.clear();
-		print("slots_left initial: " + slots_left);
+		variant_widths.clear();
 
 		// Structures with distinct counts
 		u16 mineshaft_count = 1 + map_random.NextRanged(2);
 		types.push_back("mineshaft_entrance");
 		counts.push_back(mineshaft_count);
 		slots_left -= mineshaft_count;
-		print("slots_left mineshaft: " + slots_left);
 
 		// Structures with frequencies
 		u16 small_count = u16(f32(30 + map_random.NextRanged(11)) / 100 * slots_left);
 		types.push_back("small");
 		counts.push_back(small_count);
 		slots_left -= small_count;
-		print("slots_left small: " + slots_left);
 
 		// No structure
 		types.push_back("");
@@ -456,24 +453,25 @@ class StructureGrabBag
 		types.push_back("portal");
 		counts.push_back(0);
 
-		// Count the number of variants for each type of structure
+		// Count the number of variants for each type of structure and width of each variant
 		for (u8 type_index = 0; type_index < types.length(); type_index++)
 		{
-			u8 file_count = 0;
-			CFileImage@ image;
-			do
+			u8 variant_count = 0;
+			u8[] variants;
+			CFileImage@ image = CFileImage(types[type_index] + "_" + variant_count);
+			while (image.isLoaded())
 			{
-				@image = CFileImage(types[type_index] + "_" + file_count);
-				file_count++;
+				variants.push_back(image.getWidth());
+				variant_count++;
+				@image = CFileImage(types[type_index] + "_" + variant_count);
 			}
-			while (image.isLoaded());
-			variant_counts.push_back(file_count - 1);
+			variant_widths.push_back(variants);
 		}
 	}
 
 	string getStructureVariant(Random@ map_random, string type)
 	{
-		return type + "_" + map_random.NextRanged(variant_counts[types.find(type)]);
+		return type + "_" + map_random.NextRanged(variant_widths[types.find(type)].length);
 	}
 
 	string pickStructure(Random@ map_random)
@@ -645,15 +643,15 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, 
 {
 	Vec2f structure_seed = Vec2f(left_x, map.getLandYAtX(left_x) - 8);
 	PNGLoader@ png_loader = PNGLoader();
-	png_loader.loadStructure(file_name, structure_seed, map_random, mirror);
+	u8 structure_width = png_loader.loadStructure(file_name);
+	png_loader.buildStructure(structure_seed, map_random, mirror);
 
 	// Variables for tweaking
-	u8 structure_width = png_loader.image_width;
 	s32 left_erode_x = structure_seed.x - edge_erode_width + 1, right_erode_x = structure_seed.x + structure_width - 1;
-
+	
 	// Clear above the structure
 	Fill(map, structure_seed.x, GetHeightmap(map, structure_seed.x, structure_width, 0), GetHeightmap(map, structure_seed.x, structure_width, structure_seed.y));
-
+	
 	// Fill below the structure
 	s32 structure_bottom = structure_seed.y + png_loader.image.getHeight();
 	int[] original_heightmap(structure_width);
@@ -662,7 +660,7 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, 
 		original_heightmap[x] = Maths::Max(naturemap[structure_seed.x + x], structure_bottom);
 	}
 	Fill(map, structure_seed.x, original_heightmap, GetHeightmap(map, structure_seed.x, structure_width, structure_bottom));
-
+	
 	// Erode left of the structure
 	int[] starting_heightmap = GetHeightmap(map, left_erode_x, edge_erode_width);
 	int[] ending_heightmap = GetHeightmap(map, left_erode_x, edge_erode_width);
@@ -681,7 +679,7 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, 
 	{
 		naturemap[left_erode_x + x_offset] = ending_heightmap[x_offset];
 	}
-
+	
 	return structure_width;
 }
 

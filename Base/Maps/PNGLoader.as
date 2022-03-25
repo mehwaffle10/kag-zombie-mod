@@ -34,72 +34,84 @@ class PNGLoader
 	Vec2f top_left;
 	bool mirror;
 	int image_width;
+	int image_height;
 
 	Vec2f[][] world_positions;
+	SColor[][] pixels;
 
 	void Reset()
 	{
 		world_positions = Vec2f[][](index_count, Vec2f[](0));
 	}
 
-	bool loadStructure(const string& in filename, Vec2f _top_left, Random@ _map_random, bool _mirror)
+	u8 loadStructure(const string& in filename)
 	{
-		Reset();
-		@map = getMap();
-		@map_random = _map_random;
-		top_left = _top_left;
-		mirror = _mirror;
-
 		if(!isServer())
 		{
-			return true;
+			return 0;
 		}
 
+		@map = getMap();
 		@image = CFileImage(filename);
-		image_width = image.getWidth();
-
+		
 		if(image.isLoaded())
 		{
+			image_width = image.getWidth();
+			image_height = image.getHeight();
+
+			pixels = SColor[][](image_width, SColor[](image_height));
+
 			while(image.nextPixel())
 			{
 				const SColor pixel = image.readPixel();
 				int offset = image.getPixelOffset();
+
+				pixels[offset % image_width][offset / image_width] = pixel;
+			}
+
+			// pixels[1][0] = map_colors::tile_bedrock;
+			// pixels[image_width - 2][0] = map_colors::tile_gold;
+
+			return image_width;
+		}
+		return 0;
+	}
+
+	u8 buildStructure(Vec2f _top_left, Random@ _map_random, bool _mirror)
+	{
+		Reset();
+		top_left = _top_left;
+		@map_random = _map_random;
+		mirror = _mirror;
+
+		if(!isServer())
+		{
+			return 0;
+		}
+
+		for(u8 x = 0; x < image_width; x++)
+		{
+			for (u8 y = 0; y < image_height; y++)
+			{
 				// Flip offset if mirrored
-				if (mirror)
-				{
-					int row = offset / image_width;
-					int column = offset % image_width;
-
-					offset = (row + 1) * image_width - column;
-				}
-
-				// Optimization: check if the pixel color is the sky color
-				// We do this before calling handlePixel because it is overriden, and to avoid a SColor copy
-				/*
-				if (pixel.color != map_colors::sky)
-				{
-					handlePixel(pixel, offset);
-				}
-				*/
-				handlePixel(pixel, offset);
-
+				int offset = mirror ? (y + 1) * image_width - x - 1 : y * image_width + x;
+				handlePixel(pixels[x][y], offset);
 				getNet().server_KeepConnectionsAlive();
 			}
-
-			// late load - after placing tiles
-			for(uint i = 0; i < world_positions.length; ++i)
-			{
-				Vec2f[]@ world_positions_set = world_positions[i];
-				u8 world_position_index = world_positions_set.length;
-				for(uint step = 0; step < world_position_index; ++step)
-				{
-					handleOffset(i, world_positions_set[step]);
-					getNet().server_KeepConnectionsAlive();
-				}
-			}
-			return true;
 		}
-		return false;
+
+		// late load - after placing tiles
+		for(uint i = 0; i < world_positions.length; ++i)
+		{
+			Vec2f[]@ world_positions_set = world_positions[i];
+			u8 world_position_index = world_positions_set.length;
+			for(uint step = 0; step < world_position_index; ++step)
+			{
+				handleOffset(i, world_positions_set[step]);
+				getNet().server_KeepConnectionsAlive();
+			}
+		}
+		return image_width;
 	}
 
 	// Queue an offset to be autotiled
@@ -625,12 +637,7 @@ class PNGLoader
 
 	Vec2f getSpawnPosition(CMap@ map, int offset)
 	{
-		Vec2f position_offset = image.getPixelPosition();
-		if (mirror)
-		{
-			position_offset.x = image_width - position_offset.x - 1;
-		}
-		Vec2f pos = (top_left + position_offset) * map.tilesize;
+		Vec2f pos = (top_left + Vec2f(offset % image_width, offset / image_width)) * map.tilesize;
 		f32 tile_offset = map.tilesize * 0.5f;
 		pos += Vec2f(tile_offset, tile_offset);
 		return pos;
