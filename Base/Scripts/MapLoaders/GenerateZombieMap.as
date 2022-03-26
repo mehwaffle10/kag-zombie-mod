@@ -360,7 +360,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	for (u8 count = 1; count <= 2; count++)
 	{
 		s32 x = middle - 20 + count * 25;
-		SpawnStructure(map, naturemap, map_random, false, "small_" + count, x, 6, 3);
+		SpawnStructure(map, naturemap, map_random, false, "small_" + count, x, 6, 3, true);
 	}
 	*/
 	/*
@@ -369,7 +369,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	for (u8 count = 0; count < 2; count++)
 	{
 		s32 x = middle - 20 + count * 32;
-		u8 structure_width = SpawnStructure(map, naturemap, map_random, count % 2 == 1, "mineshaft_entrance_6", x, 6, 3);
+		u8 structure_width = SpawnStructure(map, naturemap, map_random, count % 2 == 1, "mineshaft_entrance_6", x, 6, 3, true);
 		// Test set top left to gold
 		for (int y = 0; y < 30; y++)
 		{
@@ -465,13 +465,29 @@ class StructureGrabBag
 				variant_count++;
 				@image = CFileImage(types[type_index] + "_" + variant_count);
 			}
+
+			if (variants.length == 0)
+			{
+				variants.push_back(0);
+			}
+
 			variant_widths.push_back(variants);
 		}
 	}
 
-	string getStructureVariant(Random@ map_random, string type)
+	u8 getStructureVariant(Random@ map_random, string type)
 	{
-		return type + "_" + map_random.NextRanged(variant_widths[types.find(type)].length);
+		return map_random.NextRanged(variant_widths[types.find(type)].length);
+	}
+
+	u8 getVariantWidth(string type, u8 variant)
+	{
+		return variant_widths[types.find(type)][variant];
+	}
+
+	string getVariantFilename(string type, u8 variant)
+	{
+		return type + "_" + variant;
 	}
 
 	string pickStructure(Random@ map_random)
@@ -481,6 +497,7 @@ class StructureGrabBag
 		for (u8 i = 0; i < types.length; i++)
 		{
 			running_sum += counts[i];
+
 			if (running_sum > selection)
 			{
 				counts[i]--;
@@ -503,13 +520,16 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 
 	if (structure)
 	{
+		// Get a structure variant and width
 		string structure_type = bag.pickStructure(map_random);
+		u8 variant_index = bag.getStructureVariant(map_random, structure_type);
+		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
 
 		// Get left seed for structure
-		s32 structure_seed = (left_x + right_x) / 2 - map_random.NextRanged(10);
+		s32 structure_seed = (left_x + right_x - structure_width) / 2;
 
 		// Make random structure
-		u8 structure_width = GenerateStructure(map, naturemap, bag, map_random, structure_type, structure_seed);
+		GenerateStructure(map, naturemap, bag, map_random, structure_type, structure_seed, variant_index);
 
 		// Populate left and right zones with only filler
 		Populate(map, naturemap, bag, map_random, left_x, structure_seed, false);
@@ -621,17 +641,18 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@
 	return GenerateStructure(map, naturemap, bag, map_random, type, left_x, -1);
 }
 
-u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, string type, s32 left_x, s16 index)
+u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, string type, s32 left_x, s32 variant_index)
 {
-	string file_name = index > 0 ? type + "_" + index : bag.getStructureVariant(map_random, type);
-
+	variant_index = variant_index < 0 ? bag.getStructureVariant(map_random, type) : variant_index;
+	string filename = bag.getVariantFilename(type, variant_index);
+	
 	if (type == "mineshaft_entrance")
 	{
-		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, file_name, left_x, 6, 3);
+		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3, true);
 	}
 	else if (type == "small" || type == "portal")
 	{
-		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, file_name, left_x, 6, 3);
+		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3, true);
 	}
 	else
 	{
@@ -639,11 +660,15 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@
 	}
 }
 
-u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles)
+u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles, bool offset_height)
 {
-	Vec2f structure_seed = Vec2f(left_x, map.getLandYAtX(left_x) - 8);
+	Vec2f structure_seed = Vec2f(left_x, map.getLandYAtX(left_x));
 	PNGLoader@ png_loader = PNGLoader();
 	u8 structure_width = png_loader.loadStructure(file_name);
+	if (offset_height)
+	{
+		structure_seed.y -= png_loader.height_offset;
+	}
 	png_loader.buildStructure(structure_seed, map_random, mirror);
 
 	// Variables for tweaking
@@ -651,7 +676,7 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, 
 	
 	// Clear above the structure
 	Fill(map, structure_seed.x, GetHeightmap(map, structure_seed.x, structure_width, 0), GetHeightmap(map, structure_seed.x, structure_width, structure_seed.y));
-	
+
 	// Fill below the structure
 	s32 structure_bottom = structure_seed.y + png_loader.image.getHeight();
 	int[] original_heightmap(structure_width);
@@ -660,7 +685,7 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, 
 		original_heightmap[x] = Maths::Max(naturemap[structure_seed.x + x], structure_bottom);
 	}
 	Fill(map, structure_seed.x, original_heightmap, GetHeightmap(map, structure_seed.x, structure_width, structure_bottom));
-	
+
 	// Erode left of the structure
 	int[] starting_heightmap = GetHeightmap(map, left_erode_x, edge_erode_width);
 	int[] ending_heightmap = GetHeightmap(map, left_erode_x, edge_erode_width);
@@ -672,7 +697,7 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, 
 	ending_heightmap = GetHeightmap(map, right_erode_x, edge_erode_width);
 	Erode(edge_erode_cycles, ending_heightmap, true);
 	Fill(map, right_erode_x, starting_heightmap, ending_heightmap);
-	
+
 	// Update naturemap
 	ending_heightmap = GetHeightmap(map, left_erode_x, 2 * edge_erode_width + structure_width);
 	for (u16 x_offset = 0; x_offset < ending_heightmap.length(); x_offset++)

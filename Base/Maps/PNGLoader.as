@@ -31,10 +31,11 @@ class PNGLoader
 
 	CFileImage@ image;
 	CMap@ map;
-	Vec2f top_left;
+	Vec2f seed;
 	bool mirror;
 	int image_width;
 	int image_height;
+	int height_offset;
 
 	Vec2f[][] world_positions;
 	SColor[][] pixels;
@@ -44,7 +45,7 @@ class PNGLoader
 		world_positions = Vec2f[][](index_count, Vec2f[](0));
 	}
 
-	u8 loadStructure(const string& in filename)
+	u8 loadStructure(const string filename)
 	{
 		if(!isServer())
 		{
@@ -72,15 +73,22 @@ class PNGLoader
 			// pixels[1][0] = map_colors::tile_bedrock;
 			// pixels[image_width - 2][0] = map_colors::tile_gold;
 
+			// Find the highest solid tile on the left
+			height_offset = 0;
+			while(height_offset < pixels[0].length && !isColorSolid(pixels[0][height_offset]))
+			{
+				height_offset++;
+			}
+
 			return image_width;
 		}
 		return 0;
 	}
 
-	u8 buildStructure(Vec2f _top_left, Random@ _map_random, bool _mirror)
+	u8 buildStructure(Vec2f _seed, Random@ _map_random, bool _mirror)
 	{
 		Reset();
-		top_left = _top_left;
+		seed = _seed;
 		@map_random = _map_random;
 		mirror = _mirror;
 
@@ -637,7 +645,7 @@ class PNGLoader
 
 	Vec2f getSpawnPosition(CMap@ map, int offset)
 	{
-		Vec2f pos = (top_left + Vec2f(offset % image_width, offset / image_width)) * map.tilesize;
+		Vec2f pos = (seed + Vec2f(offset % image_width, offset / image_width)) * map.tilesize;
 		f32 tile_offset = map.tilesize * 0.5f;
 		pos += Vec2f(tile_offset, tile_offset);
 		return pos;
@@ -1052,6 +1060,12 @@ SColor getColorFromTileType(TileType tile)
 	return TILE_LUT[tile];
 }
 
+bool isColorSolid(SColor color)
+{
+	s32 index = TILE_LUT.find(color);
+	return index < 0 ? false : getMap().isTileSolid(index);
+}
+
 const SColor[] TILE_LUT = {
 map_colors::unused,                // |   0 |
 map_colors::unused,                // |   1 |
@@ -1166,6 +1180,7 @@ map_colors::tile_bedrock,          // | 109 |
 map_colors::tile_bedrock,          // | 110 |
 map_colors::tile_bedrock,          // | 111 |
 map_colors::unused,                // | 112 |
+
 map_colors::unused,                // | 113 |
 map_colors::unused,                // | 114 |
 map_colors::unused,                // | 115 |
