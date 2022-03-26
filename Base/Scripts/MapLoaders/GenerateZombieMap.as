@@ -438,6 +438,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 		variant_indices.insertAt(sorted_index, variant_index);
 	}
 	
+	// TODO Check sector boundaries for overlap during population
+
 	// Populate subsectors
 	for (u8 i = 0; i < subsectors.length; i++)
 	{
@@ -452,12 +454,20 @@ bool loadMap(CMap@ _map, const string& in filename)
 		// Get left seed for structure
 		s32 structure_seed = (left_x + right_x - structure_width) / 2;
 
-		// Make random structure
-		GenerateStructure(map, naturemap, map_random, structure_type, variant_index, structure_seed);
+		// Make structure
+		if (structure_seed < left_x + 6 || structure_seed + structure_width > right_x - 6)
+		{
+			print("Structure " + getVariantFilename(structure_type, variant_index) + " did not fit in subsector of size " + subsector_sizes[i]);
+			Populate(map, naturemap, map_random, left_x, right_x);
+		}
+		else
+		{
+			GenerateStructure(map, naturemap, map_random, structure_type, variant_index, structure_seed);
 
-		// Populate left and right zones with only filler
-		Populate(map, naturemap, map_random, left_x, structure_seed);
-		Populate(map, naturemap, map_random, structure_seed + structure_width, right_x);
+			// Populate left and right zones with filler
+			Populate(map, naturemap, map_random, left_x, structure_seed);
+			Populate(map, naturemap, map_random, structure_seed + structure_width, right_x);
+		}
 	}
 
 	// DEV - Draw Sector Boundaries
