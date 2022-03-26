@@ -35,8 +35,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 	ConfigFile cfg = ConfigFile(filename);
 
 	// Zombie Variables
-	s32 portal_distance_baseline = cfg.read_s32("portal_distance_baseline", 60);
-	s32 portal_distance_deviation = cfg.read_s32("portal_distance_deviation", 60);
+	s32 sector_size_baseline = cfg.read_s32("sector_size_baseline", 80);
+	s32 sector_size_deviation = cfg.read_s32("sector_size_deviation", 40);
 
 	pot_frequency = cfg.read_s32("pot_frequency", 8);
 	gravestone_frequency = cfg.read_s32("gravestone_frequency", 15);
@@ -360,7 +360,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	for (u8 count = 1; count <= 2; count++)
 	{
 		s32 x = middle - 20 + count * 25;
-		SpawnStructure(map, naturemap, map_random, false, "small_" + count, x, 6, 3, true);
+		SpawnStructure(map, naturemap, map_random, false, "small_" + count, x, 6, 3);
 	}
 	*/
 	/*
@@ -369,7 +369,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	for (u8 count = 0; count < 2; count++)
 	{
 		s32 x = middle - 20 + count * 32;
-		u8 structure_width = SpawnStructure(map, naturemap, map_random, count % 2 == 1, "mineshaft_entrance_6", x, 6, 3, true);
+		u8 structure_width = SpawnStructure(map, naturemap, map_random, count % 2 == 1, "mineshaft_entrance_6", x, 6, 3);
 		// Test set top left to gold
 		for (int y = 0; y < 30; y++)
 		{
@@ -378,35 +378,97 @@ bool loadMap(CMap@ _map, const string& in filename)
 		}
 	}
 	*/
-	// Divide the map into sectors. A sector has one portal in the center and potentially two structures
+	// Divide the map into sectors. A sector has one portal and potentially structures
 	Vec2f[] sectors;
 	s32 left_x = 0;
-	s32 border = map.tilemapwidth - portal_distance_baseline;
+	s32 border = map.tilemapwidth - sector_size_baseline;
 	while (left_x < border)
 	{
-		s32 right_x = left_x + portal_distance_baseline + map_random.NextRanged(portal_distance_deviation);
+		s32 right_x = left_x + sector_size_baseline + map_random.NextRanged(sector_size_deviation);
 		sectors.push_back(Vec2f(left_x, right_x < border ? right_x : map.tilemapwidth));
 		left_x = right_x;
 	}
 	StructureGrabBag@ bag = StructureGrabBag(map_random, sectors.length * 2);
 
-	// Populate each sector
+	// Add portals to sectors
 	print("Sector Count: " + sectors.length);
+	Vec2f[] subsectors = {};
+	u8[] subsector_sizes;
 	for (u8 i = 0; i < sectors.length; i++)
 	{
-		// Find the middle
+		// Get portal information
+		string structure_type = "portal";
+		u8 variant_index = bag.getStructureVariant(map_random, structure_type);
+		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
+
+		// Create a portal
 		s32 left_x = sectors[i].x;
 		s32 right_x = sectors[i].y;
-		s32 middle_x = (left_x + right_x) / 2;
-		
-		// Spawn the portal
-		u8 structure_width = GenerateStructure(map, naturemap, bag, map_random, "portal", middle_x);
+		s32 border_distance = 10;  // How close a portal can get to the border of a sector
+		s32 portal_seed = left_x + border_distance + map_random.NextRanged((right_x - left_x - structure_width - 2 * border_distance));
+		GenerateStructure(map, naturemap, map_random, structure_type, variant_index, portal_seed);
 
-		// Populate left and right of the portal
-		Populate(map, naturemap, bag, map_random, left_x, middle_x, true);
-		Populate(map, naturemap, bag, map_random, middle_x + structure_width, right_x, true);
+		// Add left and right of the portal as subsectors to be populated sorted by size
+		s32 left_subsector_size = portal_seed - left_x;
+		subsector_sizes.push_back(left_subsector_size);
+		subsector_sizes.sortDesc();
+		subsectors.insertAt(subsector_sizes.find(left_subsector_size), Vec2f(left_x, portal_seed));
+
+		s32 right_subsector_size = right_x - portal_seed - structure_width;
+		subsector_sizes.push_back(right_subsector_size);
+		subsector_sizes.sortDesc();
+		subsectors.insertAt(subsector_sizes.find(right_subsector_size), Vec2f(portal_seed + structure_width, right_x));
+	}
+
+	// Create a list of structure types and variants ordered by size
+	string[] structure_types;
+	u8[] structure_sizes, variant_indices;
+	for (u8 subsector_index = 0; subsector_index < subsector_sizes.length; subsector_index++)
+	{
+		// Get a structure and its information
+		string structure_type = bag.pickStructure(map_random);
+		u8 variant_index = bag.getStructureVariant(map_random, structure_type);
+		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
+
+		// Add the structure into the list
+		structure_sizes.push_back(structure_width);
+		structure_sizes.sortDesc();
+		u8 sorted_index = structure_sizes.find(structure_width);
+		structure_types.insertAt(sorted_index, structure_type);
+		variant_indices.insertAt(sorted_index, variant_index);
 	}
 	
+	// Populate subsectors
+	for (u8 i = 0; i < subsectors.length; i++)
+	{
+		s32 left_x = subsectors[i].x;
+		s32 right_x = subsectors[i].y;
+
+		// Get a structure variant and width
+		string structure_type = structure_types[i];
+		u8 variant_index = variant_indices[i];
+		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
+
+		// Get left seed for structure
+		s32 structure_seed = (left_x + right_x - structure_width) / 2;
+
+		// Make random structure
+		GenerateStructure(map, naturemap, map_random, structure_type, variant_index, structure_seed);
+
+		// Populate left and right zones with only filler
+		Populate(map, naturemap, map_random, left_x, structure_seed);
+		Populate(map, naturemap, map_random, structure_seed + structure_width, right_x);
+	}
+
+	// DEV - Draw Sector Boundaries
+	for (u8 i = 0; i < sectors.length; i++)
+	{
+		for (int y = 0; y < 30; y++)
+		{
+			map.server_SetTile(Vec2f(sectors[i].y, y) * map.tilesize, CMap::tile_gold);
+		}
+	}
+
 	SetupBackgrounds(map);
 	return true;
 }
@@ -485,11 +547,6 @@ class StructureGrabBag
 		return variant_widths[types.find(type)][variant];
 	}
 
-	string getVariantFilename(string type, u8 variant)
-	{
-		return type + "_" + variant;
-	}
-
 	string pickStructure(Random@ map_random)
 	{
 		u16 selection = map_random.NextRanged(structures_left);
@@ -509,8 +566,13 @@ class StructureGrabBag
 	}
 }
 
+string getVariantFilename(string type, u8 variant_index)
+{
+	return type == "" ? "" : type + "_" + variant_index;
+}
+
 // Fills an area with lootables, nature, and potentially a structure
-void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, s32 left_x, s32 right_x, bool structure)
+void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 right_x)
 {
 	// Safety check
 	if (left_x < 0 || right_x > map.tilemapwidth || left_x > right_x)
@@ -518,141 +580,113 @@ void Populate(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_ra
 		return;
 	}
 
-	if (structure)
+	// Add filler
+	s32 width = right_x - left_x;
+	Noise@ material_noise = Noise(map_random.Next());
+	s32 bush_skip = 0;
+	s32 tree_skip = 0;
+	bool lootable_spawned = false;
+	const s32 tree_limit = 2;
+	const s32 bush_limit = 3;
+	for (s32 x = left_x; x < right_x; x++)
 	{
-		// Get a structure variant and width
-		string structure_type = bag.pickStructure(map_random);
-		u8 variant_index = bag.getStructureVariant(map_random, structure_type);
-		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
+		if (naturemap[x] == -1)
+			continue;
 
-		// Get left seed for structure
-		s32 structure_seed = (left_x + right_x - structure_width) / 2;
-
-		// Make random structure
-		GenerateStructure(map, naturemap, bag, map_random, structure_type, structure_seed, variant_index);
-
-		// Populate left and right zones with only filler
-		Populate(map, naturemap, bag, map_random, left_x, structure_seed, false);
-		Populate(map, naturemap, bag, map_random, structure_seed + structure_width, right_x, false);
+		int y = naturemap[x];
 		
-	}
-	else
-	{
-		// Add filler
-		s32 width = right_x - left_x;
-		Noise@ material_noise = Noise(map_random.Next());
-		s32 bush_skip = 0;
-		s32 tree_skip = 0;
-		bool lootable_spawned = false;
-		const s32 tree_limit = 2;
-		const s32 bush_limit = 3;
-		for (s32 x = left_x; x < right_x; x++)
+		f32 grass_frac = material_noise.Fractal(x * 0.02f, y * 0.02f);
+		bool spawned = false;
+		Vec2f coords(x * map.tilesize, y * map.tilesize);
+		if (map.isTileGround(map.getTile(coords).type) && map.getTile(coords - Vec2f(0, map.tilesize)).type == CMap::tile_empty && grass_frac > 0.5f)
 		{
-			if (naturemap[x] == -1)
-				continue;
-
-			int y = naturemap[x];
 			
-			f32 grass_frac = material_noise.Fractal(x * 0.02f, y * 0.02f);
-			bool spawned = false;
-			Vec2f coords(x * map.tilesize, y * map.tilesize);
-			if (map.isTileGround(map.getTile(coords).type) && map.getTile(coords - Vec2f(0, map.tilesize)).type == CMap::tile_empty && grass_frac > 0.5f)
+			//generate vegetation
+			if (x % 7 == 0 || x % 23 == 3)
 			{
+				f32 _g = map_random.NextFloat();
+
+				Vec2f pos = (Vec2f(x, y - 1) * map.tilesize) + Vec2f(4.0f, 4.0f);
+				Vec2f mirror_pos = (Vec2f(width - 1 - x, y - 1) * map.tilesize) + Vec2f(4.0f, 4.0f);
+
+				if (tree_skip < tree_limit &&
+						(_g > 0.5f || bush_skip > bush_limit))  //bush
+				{
+					bush_skip = 0;
+					tree_skip++;
+
+					SpawnBush(map, pos);
+
+					spawned = true;
+				}
+				else if (tree_skip >= tree_limit || _g > 0.25f)  //tree
+				{
+					tree_skip = 0;
+					bush_skip++;
+
+					SpawnTree(map, pos, y < baseline_tiles);
+
+					spawned = true;
+				}
+			}
+
+			// grass control random
+			TileType grass_tile = CMap::tile_grass + (spawned ? 0 : map_random.NextRanged(4));
+			map.server_SetTile(Vec2f(x, y - 1) * map.tilesize, grass_tile);
+		}
+
+		// Spawn lootables
+		if (!lootable_spawned && !spawned)
+		{
+			if (map_random.NextRanged(pot_frequency) == 0)
+			{
+				lootable_spawned = true;
+				u32 random_pot = map_random.NextRanged(100);
+				string pot_choice = "";
+				if (random_pot < 60)
+				{
+					pot_choice = "potcombat";
+				}
+				else if (random_pot < 90)
+				{
+					pot_choice = "potbuilder";
+				}
+				else
+				{
+					pot_choice = "potrare";
+				}	
 				
-				//generate vegetation
-				if (x % 7 == 0 || x % 23 == 3)
-				{
-					f32 _g = map_random.NextFloat();
-
-					Vec2f pos = (Vec2f(x, y - 1) * map.tilesize) + Vec2f(4.0f, 4.0f);
-					Vec2f mirror_pos = (Vec2f(width - 1 - x, y - 1) * map.tilesize) + Vec2f(4.0f, 4.0f);
-
-					if (tree_skip < tree_limit &&
-							(_g > 0.5f || bush_skip > bush_limit))  //bush
-					{
-						bush_skip = 0;
-						tree_skip++;
-
-						SpawnBush(map, pos);
-
-						spawned = true;
-					}
-					else if (tree_skip >= tree_limit || _g > 0.25f)  //tree
-					{
-						tree_skip = 0;
-						bush_skip++;
-
-						SpawnTree(map, pos, y < baseline_tiles);
-
-						spawned = true;
-					}
-				}
-
-				// grass control random
-				TileType grass_tile = CMap::tile_grass + (spawned ? 0 : map_random.NextRanged(4));
-				map.server_SetTile(Vec2f(x, y - 1) * map.tilesize, grass_tile);
+				server_CreateBlob(pot_choice, 3, Vec2f(x, naturemap[x] - 1) * map.tilesize);
 			}
-
-			// Spawn lootables
-			if (!lootable_spawned && !spawned)
+			else if (map_random.NextRanged(gravestone_frequency) == 0)
 			{
-				if (map_random.NextRanged(pot_frequency) == 0)
+				lootable_spawned = true;
+				CBlob@ gravestone = server_CreateBlob("gravestone");
+				if (gravestone !is null)
 				{
-					lootable_spawned = true;
-					u32 random_pot = map_random.NextRanged(100);
-					string pot_choice = "";
-					if (random_pot < 60)
-					{
-						pot_choice = "potcombat";
-					}
-					else if (random_pot < 90)
-					{
-						pot_choice = "potbuilder";
-					}
-					else
-					{
-						pot_choice = "potrare";
-					}	
-					
-					server_CreateBlob(pot_choice, 3, Vec2f(x, naturemap[x] - 1) * map.tilesize);
-				}
-				else if (map_random.NextRanged(gravestone_frequency) == 0)
-				{
-					lootable_spawned = true;
-					CBlob@ gravestone = server_CreateBlob("gravestone");
-					if (gravestone !is null)
-					{
-						gravestone.server_setTeamNum(3);
-						gravestone.setPosition(Vec2f(x, naturemap[x] - 1) * map.tilesize);
-						gravestone.Init();
-					}
+					gravestone.server_setTeamNum(3);
+					gravestone.setPosition(Vec2f(x, naturemap[x] - 1) * map.tilesize);
+					gravestone.Init();
 				}
 			}
-			else
-			{
-				lootable_spawned = false;
-			}
+		}
+		else
+		{
+			lootable_spawned = false;
 		}
 	}
 }
 
-u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, string type, s32 left_x)
+u8 GenerateStructure(CMap@ map, int[]@ naturemap, Random@ map_random, string type, u8 variant_index, s32 left_x)
 {
-	return GenerateStructure(map, naturemap, bag, map_random, type, left_x, -1);
-}
-
-u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@ map_random, string type, s32 left_x, s32 variant_index)
-{
-	variant_index = variant_index < 0 ? bag.getStructureVariant(map_random, type) : variant_index;
-	string filename = bag.getVariantFilename(type, variant_index);
-	
+	string filename = getVariantFilename(type, variant_index);
 	if (type == "mineshaft_entrance")
 	{
-		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3, true);
+		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3);
 	}
 	else if (type == "small" || type == "portal")
 	{
-		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3, true);
+		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3);
 	}
 	else
 	{
@@ -660,15 +694,12 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, StructureGrabBag@ bag, Random@
 	}
 }
 
-u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles, bool offset_height)
+u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles)
 {
 	Vec2f structure_seed = Vec2f(left_x, map.getLandYAtX(left_x));
 	PNGLoader@ png_loader = PNGLoader();
 	u8 structure_width = png_loader.loadStructure(file_name);
-	if (offset_height)
-	{
-		structure_seed.y -= png_loader.height_offset;
-	}
+	structure_seed.y -= png_loader.height_offset;
 	png_loader.buildStructure(structure_seed, map_random, mirror);
 
 	// Variables for tweaking
