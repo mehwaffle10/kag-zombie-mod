@@ -354,13 +354,13 @@ bool loadMap(CMap@ _map, const string& in filename)
 			}
 		}
 	}
-
 	/*
 	// Spawn all single structure type
-	for (u8 count = 1; count <= 2; count++)
+	s32 middle = map.tilemapwidth / 2;
+	for (u8 count = 0; count <= 10; count++)
 	{
-		s32 x = middle - 20 + count * 25;
-		SpawnStructure(map, naturemap, map_random, false, "small_" + count, x, 6, 3);
+		s32 x = middle - 20 + count * 40;
+		SpawnStructure(map, naturemap, map_random, false, "lake_" + count, x, 6, 3);
 	}
 	*/
 	/*
@@ -451,6 +451,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 		u8 variant_index = variant_indices[i];
 		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
 
+		print(getVariantFilename(structure_type, variant_index));
+
 		// Get left seed for structure
 		s32 structure_seed = (left_x + right_x - structure_width) / 2;
 
@@ -511,6 +513,16 @@ class StructureGrabBag
 		counts.push_back(mineshaft_count);
 		slots_left -= mineshaft_count;
 
+		u16 lake_count = 2 + map_random.NextRanged(2);
+		types.push_back("lake");
+		counts.push_back(lake_count);
+		slots_left -= lake_count;
+
+		u16 wall_count = 3 + map_random.NextRanged(2);
+		types.push_back("wall");
+		counts.push_back(wall_count);
+		slots_left -= wall_count;
+
 		// Structures with frequencies
 		u16 small_count = u16(f32(30 + map_random.NextRanged(11)) / 100 * slots_left);
 		types.push_back("small");
@@ -544,6 +556,11 @@ class StructureGrabBag
 			}
 
 			variant_widths.push_back(variants);
+		}
+
+		for (u8 type_index = 0; type_index < types.length(); type_index++)
+		{
+			print(types[type_index] + ": " + counts[type_index]);
 		}
 	}
 
@@ -694,13 +711,13 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, Random@ map_random, string typ
 	{
 		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3);
 	}
-	else if (type == "small" || type == "portal")
+	else if (type == "")
 	{
-		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3);
+		return 0;
 	}
 	else
 	{
-		return 0;	
+		return SpawnStructure(map, naturemap, map_random, map_random.NextRanged(2) == 0, filename, left_x, 6, 3);
 	}
 }
 
