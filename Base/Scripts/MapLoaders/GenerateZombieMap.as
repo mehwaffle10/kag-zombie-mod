@@ -8,6 +8,7 @@
 
 s32 pot_frequency;
 s32 gravestone_frequency;
+s32 boulder_frequency;
 s32 baseline_tiles;
 
 bool loadMap(CMap@ _map, const string& in filename)
@@ -40,6 +41,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 	pot_frequency = cfg.read_s32("pot_frequency", 8);
 	gravestone_frequency = cfg.read_s32("gravestone_frequency", 15);
+	boulder_frequency = cfg.read_s32("boulder_frequency", 20);
 
 	// Map Variables
 	s32 min_width = cfg.read_s32("min_width", 1000);
@@ -696,6 +698,11 @@ void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 r
 					gravestone.Init();
 				}
 			}
+			else if (map_random.NextRanged(boulder_frequency) == 0)
+			{
+				lootable_spawned = true;
+				server_CreateBlob("boulder", 3, Vec2f(x, naturemap[x] - 1) * map.tilesize);
+			}
 		}
 		else
 		{
@@ -913,6 +920,5 @@ void Fill(CMap@ map, s32 left_x, int[]@ starting_heightmap, int[]@ ending_height
 		{
 			map.server_SetTile(position * map.tilesize, fill ? CMap::tile_ground : CMap::tile_empty);
 		}
-		// TODO add grass on top
 	}
 }
