@@ -120,6 +120,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 	//gen heightmap
 	//(generate full width to avoid clamping strangeness)
+	
 	int[] heightmap(width);
 	for (int x = 0; x < width; ++x)
 	{
@@ -879,6 +880,8 @@ void Erode(s32 erode_cycles, int[]@ heightmap)
 			}
 		}
 	}
+	heightmap[0] = heightmap[1];
+	heightmap[heightmap.length() - 1] = heightmap[heightmap.length() - 2];
 }
 
 int[] GetHeightmap(CMap@ map, s32 left_x, u16 width)
