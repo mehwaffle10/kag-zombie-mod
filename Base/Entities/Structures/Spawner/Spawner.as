@@ -5,12 +5,17 @@
 #include "Hitters.as";
 
 u8[] SPAWNER_LOOT_TABLE = INDEX_KNIGHT;
+u8 MAX_COOLDOWN = 5 * getTicksASecond(), MIN_COOLDOWN = 2 * getTicksASecond();
 
-bool is_active;
+void setRandomCooldown(CBlob@ this)
+{
+	this.set_u8("cooldown", MIN_COOLDOWN + XORRandom(MAX_COOLDOWN - MIN_COOLDOWN));
+}
 
 void onInit(CBlob@ this)
 {
-	is_active = false;
+	setRandomCooldown(this);
+	this.set_bool("active", false);
 	addLoot(this, SPAWNER_LOOT_TABLE, 1, 0);
 }
 
@@ -50,26 +55,34 @@ void onTick(CBlob@ this)
 	bool nearby_player = nearbyPlayer(this);
 	if (isServer())
 	{
-		if (nearby_player && getGameTime() % getTicksASecond() == 0)
+		if (nearby_player)
 		{
-			Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
-			CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
+			if (this.get_u8("cooldown") > 0)
+			{
+				this.set_u8("cooldown", this.get_u8("cooldown") - 1);
+			}
+			else
+			{
+				setRandomCooldown(this);
+				Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
+				CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
+			}
 		}
 	}
 	else
 	{
-		if (nearby_player && !is_active)
+		if (nearby_player && !this.get_bool("active"))
 		{
-			is_active = true;
+			this.set_bool("active", true);
 			CSprite@ sprite = this.getSprite();
 			if (sprite !is null)
 			{
 				sprite.PlaySound("bridge_open.ogg", 3.0f);
 			}
 		}
-		else if (!nearby_player && is_active)
+		else if (!nearby_player && this.get_bool("active"))
 		{
-			is_active = false;
+			this.set_bool("active", false);
 			CSprite@ sprite = this.getSprite();
 			if (sprite !is null)
 			{
