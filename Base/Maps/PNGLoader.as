@@ -447,6 +447,7 @@ class PNGLoader
 			
 			// Zombies
 			case map_colors::portal:		  autotile(position); spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(mirror ? 1 : 0, 3) * map.tilesize); break;
+			case map_colors::spawner:		  autotile(position); spawnBlob(map, "spawner", 3, getSpawnPosition(map, offset) - Vec2f(0, 1) * map.tilesize); break;
 			default:
 				HandleCustomTile(map, offset, pixel);
 			};

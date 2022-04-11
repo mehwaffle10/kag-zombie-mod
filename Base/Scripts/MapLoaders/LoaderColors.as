@@ -265,6 +265,7 @@ namespace map_colors
 		redbarrier			   = 0xFFE43771, // ARGB(255, 228, 55,  113);
 
 		// ZOMBIES
-		portal				   = 0xFFF000F0  // ARGB(255, 128, 0, 128);
+		portal				   = 0xFFF000F0,  // ARGB(255, 128, 0, 128);
+		spawner				   = 0xFF780078  // ARGB(255, 120, 0, 120);
 	};
 }
