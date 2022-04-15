@@ -5,6 +5,7 @@
 #include "CustomBlocks.as";
 #include "MinimapHook.as";
 #include "PNGLoader.as";
+#include "PathFindingCommon.as";
 
 s32 pot_frequency;
 s32 gravestone_frequency;
@@ -16,6 +17,13 @@ bool loadMap(CMap@ _map, const string& in filename)
 	CMap@ map = _map;
 
 	MiniMap::Initialise();
+
+	if (!map.hasScript("PathFindingCore"))
+	{
+		map.AddScript("PathFindingCore");
+	}
+
+	map.set_bool("Update Nodes", !isServer());
 
 	if (!isServer() || filename == "")
 	{
@@ -357,17 +365,15 @@ bool loadMap(CMap@ _map, const string& in filename)
 			}
 		}
 	}
-	/*
-	// Spawn all single structure type
+	// DEV - Spawn all single structure type
 	s32 middle = map.tilemapwidth / 2;
-	for (u8 count = 0; count <= 10; count++)
+	for (u8 count = 0; count <= 4; count++)
 	{
-		s32 x = middle - 20 + count * 40;
-		SpawnStructure(map, naturemap, map_random, false, "lake_" + count, x, 6, 3);
+		s32 x = middle - 20 + count * 50;
+		SpawnStructure(map, naturemap, map_random, false, "big_" + count, x, 6, 3);
 	}
-	*/
 	/*
-	// Check a mirrored image
+	// DEV - Check a mirrored image
 	s32 middle = map.tilemapwidth / 2;
 	for (u8 count = 0; count < 2; count++)
 	{
@@ -381,6 +387,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 		}
 	}
 	*/
+	/*
 	// Divide the map into sectors. A sector has one portal and potentially structures
 	Vec2f[] sectors;
 	s32 left_x = 0;
@@ -483,6 +490,10 @@ bool loadMap(CMap@ _map, const string& in filename)
 			map.server_SetTile(Vec2f(sectors[i].y, y) * map.tilesize, CMap::tile_gold);
 		}
 	}
+	*/
+
+	GenerateGraph(map, 2);
+	map.set_bool("Update Nodes", true);
 
 	SetupBackgrounds(map);
 	return true;
@@ -520,6 +531,11 @@ class StructureGrabBag
 		types.push_back("lake");
 		counts.push_back(lake_count);
 		slots_left -= lake_count;
+
+		u16 big_count = 2 + map_random.NextRanged(2);
+		types.push_back("big");
+		counts.push_back(big_count);
+		slots_left -= big_count;
 
 		u16 wall_count = 3 + map_random.NextRanged(2);
 		types.push_back("wall");
