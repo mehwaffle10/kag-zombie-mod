@@ -3,6 +3,7 @@
 #include "LootCommon.as";
 #include "GenericButtonCommon.as";
 #include "Hitters.as";
+#include "FireCommon.as";
 
 u8[] SPAWNER_LOOT_TABLE = INDEX_KNIGHT;
 u8 MAX_COOLDOWN = 5 * getTicksASecond(), MIN_COOLDOWN = 2 * getTicksASecond();
@@ -17,6 +18,9 @@ void onInit(CBlob@ this)
 	setRandomCooldown(this);
 	this.set_bool("active", false);
 	addLoot(this, SPAWNER_LOOT_TABLE, 1, 0);
+	this.Tag("heavy weight");
+	this.Tag("ignore fall");
+	this.set_s16(burn_duration, 30 * getTicksASecond());
 }
 
 void onInit(CSprite@ this)
@@ -65,7 +69,7 @@ void onTick(CBlob@ this)
 			{
 				setRandomCooldown(this);
 				Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
-				CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
+				// CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
 			}
 		}
 	}
