@@ -18,19 +18,19 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 	MiniMap::Initialise();
 
-	if (!map.hasScript("PathFindingCore"))
-	{
-		map.AddScript("PathFindingCore");
-	}
-
-	map.set_bool("Update Nodes", !isServer());
-
 	if (!isServer() || filename == "")
 	{
 		SetupMap(map, 0, 0);
 		SetupBackgrounds(map);
 		return true;
 	}
+
+	if (!map.hasScript("PathFindingMapUpdates"))
+	{
+		map.AddScript("PathFindingMapUpdates");
+	}
+
+	map.set_bool("Update Nodes", false);
 
 	Random@ map_random = Random(map.getMapSeed());
 	// TODO display map seed somewhere
@@ -365,6 +365,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 			}
 		}
 	}
+
+	/*
 	// DEV - Spawn all single structure type
 	s32 middle = map.tilemapwidth / 2;
 	for (u8 count = 0; count <= 4; count++)
@@ -372,6 +374,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 		s32 x = middle - 20 + count * 50;
 		SpawnStructure(map, naturemap, map_random, false, "big_" + count, x, 6, 3);
 	}
+	*/
 	/*
 	// DEV - Check a mirrored image
 	s32 middle = map.tilemapwidth / 2;
@@ -387,7 +390,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 		}
 	}
 	*/
-	/*
 	// Divide the map into sectors. A sector has one portal and potentially structures
 	Vec2f[] sectors;
 	s32 left_x = 0;
@@ -490,7 +492,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 			map.server_SetTile(Vec2f(sectors[i].y, y) * map.tilesize, CMap::tile_gold);
 		}
 	}
-	*/
+
 
 	GenerateGraph(map, 2);
 	map.set_bool("Update Nodes", true);
