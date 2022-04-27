@@ -43,7 +43,7 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
         {
             // Check if the spot is size wide and tall and has a standable block below it
             Vec2f pos = Vec2f(x, y);
-            if (isBigEnough(pos, size, map) && canStand(pos, size, map, broken_block))
+            if (isBigEnough(pos, size, map, broken_block) && canStand(pos, size, map, broken_block))
             {
                 y_values.push_back(y);
             }
@@ -73,11 +73,12 @@ void writeX(CRules@ rules, s32 x, u8[]@ y_values)
     rules.Sync(x + " length", true);
 }
 
-bool isBigEnough(Vec2f top_left, u8 size, CMap@ map)
+bool isBigEnough(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
 {
     for (u8 i = 0; i < size * size; i++)
     {
-        if (map.isTileSolid((top_left + Vec2f(i / size, i % size)) * map.tilesize))
+        Vec2f pos = top_left + Vec2f(i / size, i % size);
+        if (pos != broken_block && map.isTileSolid(pos * map.tilesize))
         {
             return false;
         }
