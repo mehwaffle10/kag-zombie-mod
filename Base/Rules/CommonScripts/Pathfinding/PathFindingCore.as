@@ -8,17 +8,17 @@
 void onBlobCreated(CRules@ this, CBlob@ blob)
 {
     CMap@ map = getMap();
-    if(map.get_bool("Update Nodes") && blob !is null && blob.isPlatform())
+    if(map.get_bool("Update Nodes") && blob !is null && (blob.isPlatform() || blob.isLadder()))
     {
         print("onBlobCreated");
         blob.AddScript("UpdateOnStaticChange");
     }
 }
 
+/*
 void onBlobDie(CRules@ this, CBlob@ blob)
 {
     CMap@ map = getMap();
-    // TODO Fix nodes being placed on multiple falling platforms
     // Platform's attached to something are being held by a builder and not placed yet, they die when going back into your inventory
     if(map.get_bool("Update Nodes") && blob !is null && blob.isPlatform() && !blob.isAttached())
     {
@@ -28,8 +28,4 @@ void onBlobDie(CRules@ this, CBlob@ blob)
         UpdateGraph(map, 2, pos, true);
     }
 }
-
-void onBlobCollapse(CBlob@ this)
-{
-    print("onBlobCollapse");
-}
+*/

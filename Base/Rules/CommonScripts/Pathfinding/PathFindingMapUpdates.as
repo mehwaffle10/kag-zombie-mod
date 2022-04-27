@@ -16,7 +16,7 @@ bool onMapTileCollapse(CMap@ this, u32 offset)
 {
     // Only update if the block is solid or a platform
     Vec2f pos = this.getTileSpacePosition(offset);
-    if(this.get_bool("Update Nodes") && (this.isTileSolid(this.getTile(offset).type) || isPlatform(pos * this.tilesize, this) != -1.0f))
+    if(this.get_bool("Update Nodes") && this.isTileSolid(this.getTile(offset).type))
     {
         print("onMapTileCollapse: " + pos);
         UpdateGraph(this, 2, pos, true);

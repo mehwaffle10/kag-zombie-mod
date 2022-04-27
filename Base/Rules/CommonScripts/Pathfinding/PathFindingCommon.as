@@ -1,4 +1,6 @@
 
+const string IS_STATIC = "is static";
+
 void GenerateGraph(CMap@ map, u8 size)
 {
     UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1), Vec2f(-1.0f, -1.0f));  // Fix off by one error since UpdateGraph uses <=
@@ -85,6 +87,7 @@ bool isBigEnough(Vec2f top_left, u8 size, CMap@ map)
 
 bool canStand(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
 {
+    // Check for blocks
     // Broken block was necessary since hooks trigger on the tick before something is destroyed
     for (u8 i = 0; i < size; i++)
     {
@@ -94,6 +97,16 @@ bool canStand(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
             return true;
         }
     }
+
+    // Check for ladders
+    for (u8 i = 0; i < size * size; i++)
+    {
+        if (isLadder((top_left + Vec2f(i / size, i % size)) * map.tilesize, map))
+        {
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -103,12 +116,26 @@ float isPlatform(Vec2f pos, CMap@ map)
     map.getBlobsInRadius(pos + Vec2f(1, 1) * map.tilesize / 2, 0.1f, blobs);
     for (u16 i = 0; i < blobs.length; i++)
     {
-        if (blobs[i] !is null && blobs[i].isPlatform() && blobs[i].getShape().isStatic())
+        if (blobs[i] !is null && blobs[i].isPlatform() && blobs[i].get_bool(IS_STATIC))
         {
             return blobs[i].getAngleDegrees();
         }
     }
     return -1.0f;
+}
+
+bool isLadder(Vec2f pos, CMap@ map)
+{
+    CBlob@[] blobs;
+    map.getBlobsInRadius(pos + Vec2f(1, 1) * map.tilesize / 2, 0.1f, blobs);
+    for (u16 i = 0; i < blobs.length; i++)
+    {
+        if (blobs[i] !is null && blobs[i].isLadder() && blobs[i].get_bool(IS_STATIC))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 void printX(s32 x, u8[] y_values)
