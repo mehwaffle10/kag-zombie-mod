@@ -694,6 +694,11 @@ class PNGLoader
 		CBlob@ blob = spawnBlob(map, name, team, position, angle);
 		blob.getShape().SetStatic(fixed);
 
+		if (blob !is null && blob.isPlatform())
+		{
+			blob.AddScript("UpdateOnStaticChange");
+		}
+
 		return blob;
 	}
 
@@ -718,239 +723,239 @@ class PNGLoader
 	}
 
 	void getInfoFromBlob(CBlob@ this, SColor &out color, Vec2f &out offset)
-{
-	const string name = this.getName();
-
-	// declare some default values
-	color = map_colors::unused;
-	offset = Vec2f_zero;
-
-	// BLOCKS
-	if(this.getShape().isStatic())
 	{
-		if(name == "ladder")
-		{
-			color = map_colors::alpha_ladder;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "spikes")
-		{
-			color = map_colors::alpha_spikes;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "stone_door")
-		{
-			color = map_colors::alpha_stone_door;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "trap_block")
-		{
-			color = map_colors::alpha_trap_block;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "bridge")
-		{
-			color = map_colors::alpha_bridge;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "wooden_door")
-		{
-			color = map_colors::alpha_wooden_door;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "wooden_platform")
-		{
-			color = map_colors::alpha_wooden_platform;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		// MECHANISMS
-		else if(name == "coin_slot")
-		{
-			color = map_colors::alpha_coin_slot;
-			color.setAlpha(getChannelFromTeam(255));
-		}
-		else if(name == "lever")
-		{
-			color = map_colors::alpha_lever;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "pressure_plate")
-		{
-			color = map_colors::alpha_pressure_plate;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
-		}
-		else if(name == "push_button")
-		{
-			color = map_colors::alpha_push_button;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "sensor")
-		{
-			color = map_colors::alpha_sensor;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "diode")
-		{
-			color = map_colors::alpha_diode;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "elbow")
-		{
-			color = map_colors::alpha_elbow;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "emitter")
-		{
-			color = map_colors::alpha_emitter;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "inverter")
-		{
-			color = map_colors::alpha_inverter;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "junction")
-		{
-			color = map_colors::alpha_junction;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "magazine")
-		{
-			color = map_colors::alpha_magazine;
+		const string name = this.getName();
 
-			const string[] MAGAZINE_ITEM = {
-			"mat_bombs",
-			"mat_waterbombs",
-			"mat_arrows",
-			"mat_waterarrows",
-			"mat_firearrows",
-			"mat_bombarrows",
-			"food"};
+		// declare some default values
+		color = map_colors::unused;
+		offset = Vec2f_zero;
 
-			u8 alpha = MAGAZINE_ITEM.length;
-
-			CInventory@ inventory = this.getInventory();
-			if(inventory.isFull())
+		// BLOCKS
+		if(this.getShape().isStatic())
+		{
+			if(name == "ladder")
 			{
-				CBlob@ blob = inventory.getItem(0);
-
-				s8 element = MAGAZINE_ITEM.find(blob.getName());
-				if(element != -1)
-				{
-					alpha = element;
-				}
+				color = map_colors::alpha_ladder;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
 			}
-			color.setAlpha(alpha);
-		}
-		else if(name == "oscillator")
-		{
-			color = map_colors::alpha_oscillator;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "randomizer")
-		{
-			color = map_colors::alpha_randomizer;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "receiver")
-		{
-			color = map_colors::alpha_receiver;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "resistor")
-		{
-			color = map_colors::alpha_resistor;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "tee")
-		{
-			color = map_colors::alpha_tee;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "toggle")
-		{
-			color = map_colors::alpha_toggle;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "transistor")
-		{
-			color = map_colors::alpha_transistor;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "wire")
-		{
-			color = map_colors::alpha_wire;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "bolter")
-		{
-			color = map_colors::alpha_bolter;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
-		}
-		else if(name == "dispenser")
-		{
-			color = map_colors::alpha_dispenser;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
-		}
-		else if(name == "lamp")
-		{
-			color = map_colors::alpha_lamp;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "obstructor")
-		{
-			color = map_colors::alpha_obstructor;
-			color.setAlpha(getChannelFromTeam(this.getTeamNum()));
-		}
-		else if(name == "spiker")
-		{
-			color = map_colors::alpha_spiker;
-			color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
-		}
-	}
+			else if(name == "spikes")
+			{
+				color = map_colors::alpha_spikes;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "stone_door")
+			{
+				color = map_colors::alpha_stone_door;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "trap_block")
+			{
+				color = map_colors::alpha_trap_block;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "bridge")
+			{
+				color = map_colors::alpha_bridge;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "wooden_door")
+			{
+				color = map_colors::alpha_wooden_door;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "wooden_platform")
+			{
+				color = map_colors::alpha_wooden_platform;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			// MECHANISMS
+			else if(name == "coin_slot")
+			{
+				color = map_colors::alpha_coin_slot;
+				color.setAlpha(getChannelFromTeam(255));
+			}
+			else if(name == "lever")
+			{
+				color = map_colors::alpha_lever;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "pressure_plate")
+			{
+				color = map_colors::alpha_pressure_plate;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
+			}
+			else if(name == "push_button")
+			{
+				color = map_colors::alpha_push_button;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "sensor")
+			{
+				color = map_colors::alpha_sensor;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "diode")
+			{
+				color = map_colors::alpha_diode;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "elbow")
+			{
+				color = map_colors::alpha_elbow;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "emitter")
+			{
+				color = map_colors::alpha_emitter;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "inverter")
+			{
+				color = map_colors::alpha_inverter;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "junction")
+			{
+				color = map_colors::alpha_junction;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "magazine")
+			{
+				color = map_colors::alpha_magazine;
 
-	// FLORA
-	if(name == "bush")
-	{
-		color = map_colors::bush;
-	}
-	else if(name == "flowers")
-	{
-		color = map_colors::flowers;
-	}
-	else if(name == "grain_plant")
-	{
-		color = map_colors::grain;
-	}
-	else if(name == "tree_pine" || name == "tree_bushy")
-	{
-		color = map_colors::tree;
-	}
-	// FAUNA
-	else if(name == "bison")
-	{
-		color = map_colors::bison;
-	}
-	else if(name == "chicken")
-	{
-		color = map_colors::chicken;
-	}
-	else if(name == "fishy")
-	{
-		color = map_colors::fish;
-	}
-	else if(name == "shark")
-	{
-		color = map_colors::shark;
-	}
+				const string[] MAGAZINE_ITEM = {
+				"mat_bombs",
+				"mat_waterbombs",
+				"mat_arrows",
+				"mat_waterarrows",
+				"mat_firearrows",
+				"mat_bombarrows",
+				"food"};
 
-	// set last bit to true so the minimum alpha is 128
-	u8 alpha = color.getAlpha();
-	if(alpha != 0xFF)
-	{
-		color.setAlpha(0x80 | alpha);
+				u8 alpha = MAGAZINE_ITEM.length;
+
+				CInventory@ inventory = this.getInventory();
+				if(inventory.isFull())
+				{
+					CBlob@ blob = inventory.getItem(0);
+
+					s8 element = MAGAZINE_ITEM.find(blob.getName());
+					if(element != -1)
+					{
+						alpha = element;
+					}
+				}
+				color.setAlpha(alpha);
+			}
+			else if(name == "oscillator")
+			{
+				color = map_colors::alpha_oscillator;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "randomizer")
+			{
+				color = map_colors::alpha_randomizer;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "receiver")
+			{
+				color = map_colors::alpha_receiver;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "resistor")
+			{
+				color = map_colors::alpha_resistor;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "tee")
+			{
+				color = map_colors::alpha_tee;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "toggle")
+			{
+				color = map_colors::alpha_toggle;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "transistor")
+			{
+				color = map_colors::alpha_transistor;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "wire")
+			{
+				color = map_colors::alpha_wire;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()) | getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "bolter")
+			{
+				color = map_colors::alpha_bolter;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
+			}
+			else if(name == "dispenser")
+			{
+				color = map_colors::alpha_dispenser;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
+			}
+			else if(name == "lamp")
+			{
+				color = map_colors::alpha_lamp;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "obstructor")
+			{
+				color = map_colors::alpha_obstructor;
+				color.setAlpha(getChannelFromTeam(this.getTeamNum()));
+			}
+			else if(name == "spiker")
+			{
+				color = map_colors::alpha_spiker;
+				color.setAlpha(getChannelFromAngle(this.getAngleDegrees()));
+			}
+		}
+
+		// FLORA
+		if(name == "bush")
+		{
+			color = map_colors::bush;
+		}
+		else if(name == "flowers")
+		{
+			color = map_colors::flowers;
+		}
+		else if(name == "grain_plant")
+		{
+			color = map_colors::grain;
+		}
+		else if(name == "tree_pine" || name == "tree_bushy")
+		{
+			color = map_colors::tree;
+		}
+		// FAUNA
+		else if(name == "bison")
+		{
+			color = map_colors::bison;
+		}
+		else if(name == "chicken")
+		{
+			color = map_colors::chicken;
+		}
+		else if(name == "fishy")
+		{
+			color = map_colors::fish;
+		}
+		else if(name == "shark")
+		{
+			color = map_colors::shark;
+		}
+
+		// set last bit to true so the minimum alpha is 128
+		u8 alpha = color.getAlpha();
+		if(alpha != 0xFF)
+		{
+			color.setAlpha(0x80 | alpha);
+		}
 	}
-}
 }
 
 /*
