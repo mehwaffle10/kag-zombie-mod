@@ -69,7 +69,7 @@ void onTick(CBlob@ this)
 			{
 				setRandomCooldown(this);
 				Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
-				// CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
+				CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
 			}
 		}
 	}
