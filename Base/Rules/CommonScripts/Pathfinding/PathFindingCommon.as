@@ -103,7 +103,7 @@ float isPlatform(Vec2f pos, CMap@ map)
     map.getBlobsInRadius(pos + Vec2f(1, 1) * map.tilesize / 2, 0.1f, blobs);
     for (u16 i = 0; i < blobs.length; i++)
     {
-        if (blobs[i] !is null && blobs[i].isPlatform())
+        if (blobs[i] !is null && blobs[i].isPlatform() && blobs[i].getShape().isStatic())
         {
             return blobs[i].getAngleDegrees();
         }
