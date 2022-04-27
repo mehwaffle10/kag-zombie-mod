@@ -1,19 +1,28 @@
-// s32[][]@ nodes;
-// @nodes = s32[][](map.tilemapwidth, s32[](0));
 
 void GenerateGraph(CMap@ map, u8 size)
 {
-    UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1));  // Fix off by one error since UpdateGraph uses <=
+    UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1), Vec2f(-1.0f, -1.0f));  // Fix off by one error since UpdateGraph uses <=
 }
 
-void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right)
+void UpdateGraph(CMap@ map, u8 size, Vec2f center, bool destroyed)
+{
+    // Center and Radius in tilespace
+    u8 update_radius = 10;  // Square radius
+    Vec2f offset = Vec2f(update_radius, update_radius);
+    UpdateGraph(map, size, center - offset, center + offset, destroyed ? center : Vec2f(-1.0f, -1.0f));
+}
+
+void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f broken_block)
 { 
+    CRules@ rules = getRules();
+    // TODO: Check if it's faster to insert in the middle of an array or append to the back and then sort
     // Find all valid nodes
     for (s32 x = Maths::Max(top_left.x, 0); x <= Maths::Min(bottom_right.x, map.tilemapwidth - 1); x++)
     {
-        // Clear entries in the range and find starting point for insertion
+        // Clear entries in the range and find starting point for insertion if splicing in 
         u8[] y_values;
-        readX(map, x, y_values);
+        readX(rules, x, y_values);
+
         u8 index = 0;
         while(index < y_values.length && y_values[index] <= bottom_right.y)
         {
@@ -32,32 +41,34 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right)
         {
             // Check if the spot is size wide and tall and has a standable block below it
             Vec2f pos = Vec2f(x, y);
-            if (isBigEnough(pos, size, map) && canStand(pos, size, map))
+            if (isBigEnough(pos, size, map) && canStand(pos, size, map, broken_block))
             {
-                y_values.insertAt(index, y);
+                y_values.push_back(y);
             }
         }
-        writeX(map, x, y_values);
+        y_values.sortAsc();
+        writeX(rules, x, y_values);
     }
 }
 
-void readX(CMap@ map, s32 x, u8[]@ y_values)
+// Had to attach to rules instead of map since for some reason map seems to be the only object that doesn't sync when a player joins
+void readX(CRules@ rules, s32 x, u8[]@ y_values)
 {
-    for(u8 i = 0; i < map.get_u8(x + " length"); i++)
+    for(u8 i = 0; i < rules.get_u8(x + " length"); i++)
     {
-        y_values.push_back(map.get_u8(x + " index " + i));
+        y_values.push_back(rules.get_u8(x + " index " + i));
     }
 }
 
-void writeX(CMap@ map, s32 x, u8[]@ y_values)
+void writeX(CRules@ rules, s32 x, u8[]@ y_values)
 {
     for(u8 i = 0; i < y_values.length; i++)
     {
-        map.set_u8(x + " index " + i, y_values[i]);
-        map.Sync(x + " index " + i, true);
+        rules.set_u8(x + " index " + i, y_values[i]);
+        rules.Sync(x + " index " + i, true);
     }
-    map.set_u8(x + " length", y_values.length);
-    map.Sync(x + " length", true);
+    rules.set_u8(x + " length", y_values.length);
+    rules.Sync(x + " length", true);
 }
 
 bool isBigEnough(Vec2f top_left, u8 size, CMap@ map)
@@ -72,12 +83,13 @@ bool isBigEnough(Vec2f top_left, u8 size, CMap@ map)
     return true;
 }
 
-bool canStand(Vec2f top_left, u8 size, CMap@ map)
+bool canStand(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
 {
+    // Broken block was necessary since hooks trigger on the tick before something is destroyed
     for (u8 i = 0; i < size; i++)
     {
         Vec2f pos = (top_left + Vec2f(i, size)) * map.tilesize;
-        if (map.isTileSolid(pos) || isPlatform(pos, map) == 0.0f)
+        if (pos != broken_block * map.tilesize && (map.isTileSolid(pos) || isPlatform(pos, map) == 0.0f))
         {
             return true;
         }
@@ -99,19 +111,10 @@ float isPlatform(Vec2f pos, CMap@ map)
     return -1.0f;
 }
 
-void DrawNode(CMap@ map, Vec2f top_left, u8 size)
+void printX(s32 x, u8[] y_values)
 {
-    top_left *= map.tilesize;
-    f32 offset = size * map.tilesize;
-    Vec2f bottom_left = top_left + Vec2f(0, offset), 
-          top_right = top_left + Vec2f(offset, 0), 
-          bottom_right = top_left + Vec2f(offset, offset);
-
-    GUI::DrawLine(top_left, top_right, SColor(255, 255, 255, 255));
-    GUI::DrawLine(top_left, bottom_left, SColor(255, 255, 0, 0));
-    GUI::DrawLine(bottom_left, bottom_right, SColor(255, 0, 255, 0));
-    GUI::DrawLine(top_right, bottom_right, SColor(255, 0, 0, 255));
-
-    // top_left = getDriver().getScreenPosFromWorldPos(Vec2f(map.tilemapwidth / 2, 20) * map.tilesize);
-    // GUI::DrawRectangle(top_left, top_left + Vec2f(3, 3) * 2 * map.tilesize * camera.targetDistance);
+    for (u8 i = 0; i < y_values.length; i++)
+    {
+        print("" + x + ", " + y_values[i]);
+    }
 }
