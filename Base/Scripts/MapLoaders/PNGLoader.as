@@ -31,6 +31,7 @@ class PNGLoader
 
 	CFileImage@ image;
 	CMap@ map;
+	CRules@ rules;
 	Vec2f seed;
 	bool mirror;
 	int image_width;
@@ -54,7 +55,8 @@ class PNGLoader
 
 		@map = getMap();
 		@image = CFileImage(filename);
-		
+		@rules = getRules();
+
 		if(image.isLoaded())
 		{
 			image_width = image.getWidth();
@@ -446,7 +448,14 @@ class PNGLoader
 			case map_colors::dummy:           autotile(position); spawnBlob(map, "dummy", offset, 1, true); break;
 			
 			// Zombies
-			case map_colors::portal:		  autotile(position); spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(mirror ? 1 : 0, 3) * map.tilesize); break;
+			case map_colors::portal:		  {
+												autotile(position);
+												CBlob@ portal = spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(mirror ? 1 : 0, 3) * map.tilesize);
+												u8 portal_count = rules.get_u8("portal_count");
+												rules.set_u16("portal_" + portal_count, portal.getNetworkID());
+												rules.set_u8("portal_count", portal_count + 1);
+												break;
+											  }
 			case map_colors::spawner:		  autotile(position); spawnBlob(map, "spawner", 3, getSpawnPosition(map, offset) - Vec2f(0, 1) * map.tilesize); break;
 			default:
 				HandleCustomTile(map, offset, pixel);

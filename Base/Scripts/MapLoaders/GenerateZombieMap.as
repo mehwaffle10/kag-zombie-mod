@@ -15,6 +15,7 @@ s32 baseline_tiles;
 bool loadMap(CMap@ _map, const string& in filename)
 {
 	CMap@ map = _map;
+	CRules@ rules = getRules();
 
 	MiniMap::Initialise();
 
@@ -420,6 +421,19 @@ bool loadMap(CMap@ _map, const string& in filename)
 		s32 portal_seed = left_x + border_distance + map_random.NextRanged((right_x - left_x - structure_width - 2 * border_distance));
 		GenerateStructure(map, naturemap, map_random, structure_type, variant_index, portal_seed);
 
+		// Add the boundaries to the newest portal
+		CBlob@ portal = getBlobByNetworkID(rules.get_u16("portal_" + i));
+		if (portal !is null)
+		{
+			portal.set_Vec2f("sector", sectors[i]);
+			portal.Sync("sector", true);
+			portal.SendCommand(portal.getCommandID("corrupt"));
+		}
+		else
+		{
+			print("Failed to add sector data to portal");
+		}
+
 		// Add left and right of the portal as subsectors to be populated sorted by size
 		s32 left_subsector_size = portal_seed - left_x;
 		subsector_sizes.push_back(left_subsector_size);
@@ -485,13 +499,13 @@ bool loadMap(CMap@ _map, const string& in filename)
 	}
 
 	// DEV - Draw Sector Boundaries
-	for (u8 i = 0; i < sectors.length; i++)
-	{
-		for (int y = 0; y < 30; y++)
-		{
-			map.server_SetTile(Vec2f(sectors[i].y, y) * map.tilesize, CMap::tile_gold);
-		}
-	}
+	// for (u8 i = 0; i < sectors.length; i++)
+	// {
+	// 	for (int y = 0; y < 30; y++)
+	// 	{
+	// 		map.server_SetTile(Vec2f(sectors[i].y, y) * map.tilesize, CMap::tile_gold);
+	// 	}
+	// }
 
 
 	GenerateGraph(map, 2);
