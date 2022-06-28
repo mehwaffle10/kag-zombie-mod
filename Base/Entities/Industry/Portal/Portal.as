@@ -1,4 +1,6 @@
 
+#include "GenericButtonCommon.as"
+
 namespace State
 {
 	enum state_type
@@ -50,6 +52,8 @@ void UpdateAnim(CBlob@ this)
 
 void onTick(CBlob@ this)
 {
+	u8 state = this.get_u8("state");
+	
 	// Show borders of sector
 	if (isClient() && this.exists("sector"))
 	{
@@ -87,20 +91,20 @@ void onTick(CBlob@ this)
 
 				// Pick a color based on corruption
 				SColor[] colors;
-				if (i == 0) {
-					// Purples
-					colors.push_back(SColor(255, 211, 121, 224));
-					colors.push_back(SColor(255, 158, 58,  187));
-					colors.push_back(SColor(255, 98,  26,  131));
-					// colors.push_back(SColor(255, 42,  11,  71 ));
-				}
-				else
-				{
+				if (state == State::liberated) {
 					// Blues
 					colors.push_back(SColor(255, 44,  175, 222));
 					colors.push_back(SColor(255, 29,  133, 171));
 					colors.push_back(SColor(255, 26,  78,  131));
 					// colors.push_back(SColor(255, 34,  39,  96 ));
+				}
+				else
+				{
+					// Purples
+					colors.push_back(SColor(255, 211, 121, 224));
+					colors.push_back(SColor(255, 158, 58,  187));
+					colors.push_back(SColor(255, 98,  26,  131));
+					// colors.push_back(SColor(255, 42,  11,  71 ));
 				};
 
 				CParticle@ particle = ParticlePixel(Vec2f(xs[i], y) * map.tilesize, velocity, colors[XORRandom(colors.length())], true, 2 * getTicksASecond());
@@ -116,7 +120,7 @@ void onTick(CBlob@ this)
 	}
 
 	// Spawn enemies
-	if (this.get_u8("state") == State::active)
+	if (state == State::active)
 	{
 
 		u16 points = this.get_u16("points");
@@ -197,14 +201,36 @@ void Summon(CBlob@ this, string spawn, u8 cost)
 
 void GetButtonsFor(CBlob@ this, CBlob@ caller)
 {
-	/*
-	if (!canSeeButtons(this, caller)) return;
+	if (caller is null || !canSeeButtons(this, caller))
+	{
+		return;
+	}
 
-	if (this.isOverlapping(caller))
-		this.set_bool("shop available", !builder_only || caller.getName() == "builder");
-	else
-		this.set_bool("shop available", false);
-	*/
+	CBitStream params, missing;
+	params.write_u16(caller.getNetworkID());
+
+	if (caller.isOverlapping(this))
+	{
+		// Select corrupt or liberate button
+		if (this.get_u8("state") == State::liberated)
+		{
+			// Add corrupt button. For testing purposes only
+			CButton@ corrupt_button = caller.CreateGenericButton(12, Vec2f(0, 8), this, this.getCommandID("corrupt"), getTranslatedString("Corrupt Portal"), params);
+			if (corrupt_button !is null)
+			{
+				corrupt_button.enableRadius = 32.0f;
+			}
+		}
+		else
+		{
+			// Add liberate button. Will require special item and conditions
+			CButton@ liberate_button = caller.CreateGenericButton(12, Vec2f(0, 8), this, this.getCommandID("liberate"), getTranslatedString("Liberate Portal"), params);
+			if (liberate_button !is null)
+			{
+				liberate_button.enableRadius = 32.0f;
+			}
+		}
+	}
 }
 
 void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
@@ -242,6 +268,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 	{
 		// Set the state
 		this.set_u8("state", this.get_bool("is_day") ? State::inactive : State::active);
+		this.server_setTeamNum(1);
 
 		// Prevent players from building here
 		CMap@ map = getMap();
@@ -257,6 +284,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 	{
 		// Set the state
 		this.set_u8("state", State::liberated);
+		this.server_setTeamNum(0);
 
 		// Allow players to build here
 		CMap@ map = getMap();
@@ -265,8 +293,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			return;
 		}
 
-		Vec2f sector = this.get_Vec2f("sector");
-		map.server_AddSector(Vec2f(sector.x, 0) * map.tilesize, Vec2f(sector.y, map.tilemapheight) * map.tilesize, "no build");
+		map.RemoveSectorsAtPosition(this.getPosition(), "no build");
 	}
 }
 
