@@ -64,9 +64,10 @@ void onTick(CBlob@ this)
 		string[] border_y_names = {"left_border_y", "right_border_y"};
 
 		// Screen locations
-		Driver@ driver = getDriver();
-		s32 left_x = driver.getWorldPosFromScreenPos(Vec2f(0, 0)).x / map.tilesize - 1;
-		s32 right_x = driver.getWorldPosFromScreenPos(Vec2f(driver.getScreenWidth(), 0)).x / map.tilesize + 1;
+		s32 max_tile_distance = 90;
+		s32 screen_center_tile_x = getCamera().getPosition().x / map.tilesize;
+		s32 left_x = screen_center_tile_x - max_tile_distance;
+		s32 right_x = screen_center_tile_x + max_tile_distance;
 
 		for (u8 i = 0; i < xs.length(); i++)
 		{
