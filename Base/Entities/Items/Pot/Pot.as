@@ -28,9 +28,14 @@ bool doesCollideWithBlob(CBlob@ this, CBlob@ blob)
 		return false;
 	}
 
+	// Make pots collide with platforms and doors
+	if (blob !is null && (blob.hasTag("door") || blob.getName() == "wooden_platform" || blob.getName() == "bridge"))
+	{
+		return true;	
+	}
+
 	// Only collide if hit by arrow
 	return blob.getName() == "arrow";
-
 }
 
 void onDie(CBlob@ this)
