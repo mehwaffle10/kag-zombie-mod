@@ -331,11 +331,10 @@ void onTick(CBlob@ this)
 				{
 					overlapped = carryBlob.isOverlappedAtPosition(bottomPos, carryBlob.getAngleDegrees());
 				}
-
-				bc.buildableAtPos = isBuildableAtPos(this, bottomPos, buildtile, carryBlob, bc.sameTileOnBack) && !overlapped;
-				bc.rayBlocked = isBuildRayBlocked(this.getPosition(), bc.tileAimPos + halftileoffset, bc.rayBlockedPos);
 				// Waffle: Only render when the position is valid, do serverBlobCheck
-				bc.buildable = bc.buildableAtPos && !bc.rayBlocked && serverBlobCheck(this, carryBlob, bc.tileAimPos);
+				bc.buildableAtPos = isBuildableAtPos(this, bottomPos, buildtile, carryBlob, bc.sameTileOnBack) && !overlapped && serverBlobCheck(this, carryBlob, bc.tileAimPos);
+				bc.rayBlocked = isBuildRayBlocked(this.getPosition(), bc.tileAimPos + halftileoffset, bc.rayBlockedPos);
+				bc.buildable = bc.buildableAtPos && !bc.rayBlocked;
 				bc.supported = carryBlob.getShape().getConsts().support > 0 ? map.hasSupportAtPos(bc.tileAimPos) : true;
 				//printf("bc.buildableAtPos " + bc.buildableAtPos + " bc.supported " + bc.supported );
 			}

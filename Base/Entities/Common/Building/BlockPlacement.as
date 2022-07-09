@@ -161,11 +161,11 @@ void onTick(CBlob@ this)
 		if (bc.cursorClose)
 		{
 			Vec2f halftileoffset(map.tilesize * 0.5f, map.tilesize * 0.5f);
-			bc.buildableAtPos = isBuildableAtPos(this, bc.tileAimPos + halftileoffset, buildtile, null, bc.sameTileOnBack);
+			// Waffle: Only render when the position is valid, do serverTileCheck
+			bc.buildableAtPos = isBuildableAtPos(this, bc.tileAimPos + halftileoffset, buildtile, null, bc.sameTileOnBack) && serverTileCheck(this, blockIndex, bc.tileAimPos);
 			//printf("bc.buildableAtPos " + bc.buildableAtPos );
 			bc.rayBlocked = isBuildRayBlocked(this.getPosition(), bc.tileAimPos + halftileoffset, bc.rayBlockedPos);
-			// Waffle: Only render when the position is valid, do serverBlockCheck
-			bc.buildable = bc.buildableAtPos && !bc.rayBlocked && serverTileCheck(this, blockIndex, bc.tileAimPos);
+			bc.buildable = bc.buildableAtPos && !bc.rayBlocked;
 
 			bc.supported = bc.buildable && map.hasSupportAtPos(bc.tileAimPos);
 		}
