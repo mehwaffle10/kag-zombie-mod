@@ -1,6 +1,8 @@
 
 const string IS_STATIC = "is static";
 
+u8 max_edge_length = 3;
+
 void GenerateGraph(CMap@ map, u8 size)
 {
     UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1), Vec2f(-1.0f, -1.0f));  // Fix off by one error since UpdateGraph uses <=
@@ -9,8 +11,7 @@ void GenerateGraph(CMap@ map, u8 size)
 void UpdateGraph(CMap@ map, u8 size, Vec2f center, bool destroyed)
 {
     // Center and Radius in tilespace
-    u8 update_radius = 10;  // Square radius
-    Vec2f offset = Vec2f(update_radius, update_radius);
+    Vec2f offset = Vec2f(max_edge_length, max_edge_length);
     UpdateGraph(map, size, center - offset, center + offset, destroyed ? center : Vec2f(-1.0f, -1.0f));
 }
 
@@ -23,10 +24,10 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
     {
         // Clear entries in the range and find starting point for insertion if splicing in 
         u8[] y_values;
-        readX(rules, x, y_values);
+        readX(rules, size, x, y_values);
 
         u8 index = 0;
-        while(index < y_values.length && y_values[index] <= bottom_right.y)
+        while(index < y_values.length() && y_values[index] <= bottom_right.y)
         {
             if (y_values[index] >= top_left.y)
             {
@@ -48,29 +49,67 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
                 y_values.push_back(y);
             }
         }
+
+        // Sort and remove duplicates
         y_values.sortAsc();
-        writeX(rules, x, y_values);
+        writeX(rules, size, x, y_values);
+    }
+
+    // Update Edges
+    // Create grid for lookup
+    u8[] costs = {1, 2};
+    for (s32 x = Maths::Max(top_left.x - max_edge_length, 0); x <= Maths::Min(bottom_right.x + max_edge_length, map.tilemapwidth - 1); x++)
+    {
+        u8[] y_values;
+        readX(rules, size, x, y_values);
+        for (u8 i = 0; i < y_values.length(); i++)
+        {
+            Vec2f[] targets = {Vec2f(x, y_values[i])};
+            writeEdges(rules, size, x, y_values[i], targets, costs);
+        }
     }
 }
 
 // Had to attach to rules instead of map since for some reason map seems to be the only object that doesn't sync when a player joins
-void readX(CRules@ rules, s32 x, u8[]@ y_values)
+void readX(CRules@ rules, u8 size, s32 x, u8[]@ y_values)
 {
-    for(u8 i = 0; i < rules.get_u8(x + " length"); i++)
+    for(u8 i = 0; i < rules.get_u8(getXLengthString(x, size)); i++)
     {
-        y_values.push_back(rules.get_u8(x + " index " + i));
+        y_values.push_back(rules.get_u8(getXString(x, size, i)));
     }
 }
 
-void writeX(CRules@ rules, s32 x, u8[]@ y_values)
+void writeX(CRules@ rules, u8 size, s32 x, u8[]@ y_values)
 {
     for(u8 i = 0; i < y_values.length; i++)
     {
-        rules.set_u8(x + " index " + i, y_values[i]);
-        rules.Sync(x + " index " + i, true);
+        rules.set_u8(getXString(x, size, i), y_values[i]);
+        rules.Sync(getXString(x, size, i), true);
     }
-    rules.set_u8(x + " length", y_values.length);
-    rules.Sync(x + " length", true);
+    rules.set_u8(getXLengthString(x, size), y_values.length);
+    rules.Sync(getXLengthString(x, size), true);
+}
+
+void readEdges(CRules@ rules, u8 size, s32 x, s32 y, Vec2f[]@ targets, u8[]@ costs)
+{
+    for(u8 i = 0; i < rules.get_u8(getEdgeLengthString(x, y, size)); i++)
+    {
+        targets.push_back(rules.get_Vec2f(getEdgeTargetString(x, y, size, i)));
+        costs.push_back(rules.get_u8(getEdgeCostString(x, y, size, i)));
+    }
+}
+
+void writeEdges(CRules@ rules, u8 size, s32 x, s32 y, Vec2f[]@ targets, u8[]@ costs)
+{
+    for(u8 i = 0; i < targets.length; i++)
+    {
+        rules.set_Vec2f(getEdgeTargetString(x, y, size, i), targets[i]);
+        rules.Sync(getEdgeTargetString(x, y, size, i), true);
+        rules.set_u8(getEdgeCostString(x, y, size, i), costs[i]);
+        rules.Sync(getEdgeCostString(x, y, size, i), true);
+    }
+    rules.set_u8(getEdgeLengthString(x, y, size), targets.length);
+    rules.Sync(getEdgeLengthString(x, y, size), true);
 }
 
 bool isBigEnough(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
@@ -84,6 +123,34 @@ bool isBigEnough(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
         }
     }
     return true;
+}
+
+bool isTraversible(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block, u8 direction)
+{
+    // Check for blocks
+    // Broken block was necessary since hooks trigger on the tick before something is destroyed
+    for (u8 i = 0; i < size; i++)
+    {
+        Vec2f pos = (top_left + Vec2f(i, size)) * map.tilesize;
+        if (pos != broken_block * map.tilesize && (map.isTileSolid(pos) || isPlatform(pos, map) == 0.0f))
+        {
+            return true;
+        }
+    }
+
+    // Check for ladders
+    // if (ladder)
+    // {
+    //     for (u8 i = 0; i < size * size; i++)
+    //     {
+    //         if (isLadder((top_left + Vec2f(i / size, i % size)) * map.tilesize, map))
+    //         {
+    //             return true;
+    //         }
+    //     }
+    // }
+
+    return false;
 }
 
 bool canStand(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
@@ -145,4 +212,29 @@ void printX(s32 x, u8[] y_values)
     {
         print("" + x + ", " + y_values[i]);
     }
+}
+
+string getXString(s32 x, u8 size, u8 i)
+{
+    return x + " " + size + " " + i;
+}
+
+string getXLengthString(s32 x, u8 size)
+{
+    return x + " " + size + " l";
+}
+
+string getEdgeTargetString(s32 x, s32 y, u8 size, u8 i)
+{
+    return x + " " + y + " " + size + " " + i;
+}
+
+string getEdgeCostString(s32 x, s32 y, u8 size, u8 i)
+{
+    return x + " " + y + " " + size + " " + i + " c";
+}
+
+string getEdgeLengthString(s32 x, s32 y, u8 size)
+{
+    return "x " + x + " y " + y + " size " + size + " l";
 }
