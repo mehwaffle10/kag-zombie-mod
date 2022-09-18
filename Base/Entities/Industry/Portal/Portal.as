@@ -108,14 +108,14 @@ void onTick(CBlob@ this)
 					// colors.push_back(SColor(255, 42,  11,  71 ));
 				};
 
-				CParticle@ particle = ParticlePixel(Vec2f(xs[i], y) * map.tilesize, velocity, colors[XORRandom(colors.length())], true, 2 * getTicksASecond());
-				if (particle !is null)
-				{
-					particle.scale = 10.0f;
-					particle.Z = 10.0f;
-					particle.gravity = Vec2f(0, 0);
-					particle.collides = false;
-				}
+				// CParticle@ particle = ParticlePixel(Vec2f(xs[i], y) * map.tilesize, velocity, colors[XORRandom(colors.length())], true, 2 * getTicksASecond());
+				// if (particle !is null)
+				// {
+				// 	particle.scale = 0.0f;
+				// 	particle.Z = 10.0f;
+				// 	particle.gravity = Vec2f(0, 0);
+				// 	particle.collides = false;
+				// }
 			}
 		}
 	}
