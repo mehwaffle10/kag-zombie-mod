@@ -507,7 +507,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// 	}
 	// }
 
-
 	GenerateGraph(map, 2);
 	map.set_bool("Update Nodes", true);
 
