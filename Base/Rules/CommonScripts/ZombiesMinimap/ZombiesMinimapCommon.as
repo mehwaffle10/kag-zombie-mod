@@ -1,6 +1,8 @@
 
 const string ZOMBIE_MINIMAP_TEXTURE = "zombie_minimap";
 const string ZOMBIE_MINIMAP_UPDATE_COMMAND = "zombie_minimap_update";
+const string ZOMBIE_MINIMAP_NONSTATIC_PREFIX = "zombie_minimap_nonstatic";
+const string ZOMBIE_MINIMAP_WATER_PREFIX = "zombie_minimap_water";
 
 const u8 tile_width = 2;  // pixels
 const u8 border_width = 4;  // pixels
@@ -87,18 +89,18 @@ SColor getMapColor(CMap@ map, Vec2f world_pos, TileType tile_type)
         else 
         {
             color = color_sky;
-        }
-
-        // TODO(hobey): maybe check if there's a door/platform on this backwall and make a custom color for them?
-        // Tint the map based on Fire/Water State
-        if (map.isInWater(world_pos))
-        {
-            color = color.getInterpolated(color_water, 0.5f);
-        }
-        else if (map.isInFire(world_pos))
-        {
-            color = color.getInterpolated(color_fire, 0.5f);
         } 
     }
     return color;
 }
+
+// // TODO(hobey): maybe check if there's a door/platform on this backwall and make a custom color for them?
+//         // Tint the map based on Fire/Water State
+//         if (map.isInWater(world_pos))
+//         {
+//             color = color.getInterpolated(color_water, 0.5f);
+//         }
+//         else if (map.isInFire(world_pos))
+//         {
+//             color = color.getInterpolated(color_fire, 0.5f);
+//         }

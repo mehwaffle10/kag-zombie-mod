@@ -24,7 +24,6 @@ void onSetStatic(CBlob@ this, const bool isStatic)
         this.set_bool(IS_STATIC, isStatic);
         Vec2f pos = this.getPosition() / map.tilesize;
         pos = Vec2f(Maths::Floor(pos.x), Maths::Floor(pos.y));
-        print("onSetStatic: " + pos + ", " + isStatic);
         UpdateGraph(map, 2, pos, false);
     }
 }

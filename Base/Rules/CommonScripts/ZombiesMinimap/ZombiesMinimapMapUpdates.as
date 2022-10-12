@@ -1,6 +1,8 @@
 
 #include "ZombiesMinimapCommon.as"
 
+#define CLIENT_ONLY
+
 void onSetTile(CMap@ this, u32 index, TileType newtile, TileType oldtile)
 {
     Vec2f pos = Vec2f(index % this.tilemapwidth, index / this.tilemapwidth);
