@@ -12,13 +12,14 @@ void Setup()
 {
     CMap@ map = getMap();
     Driver@ driver = getDriver();
+    CRules@ rules = getRules();
 
     if (map is null || driver is null)
     {
         return;
     }
 
-	// Create minimap texture
+    // Generate minimap
     ImageData@ image_data = ImageData(map.tilemapwidth, map.tilemapheight);
     for (u16 x = 0; x < map.tilemapwidth; x++)
     {
@@ -27,6 +28,8 @@ void Setup()
             image_data.put(x, y, getMapColor(map, Vec2f(x, y) * map.tilesize));
         }
     }
+    
+    // Create minimap texture
     if (Texture::exists(ZOMBIE_MINIMAP_TEXTURE))
 	{
         Texture::destroy(ZOMBIE_MINIMAP_TEXTURE);
@@ -181,5 +184,37 @@ void RenderMinimap(int id)
     minimap.BuildMesh();
 
     // Render mesh
-    minimap.RenderMeshWithMaterial();    
+    minimap.RenderMeshWithMaterial();
+
+    // Draw Players
+    s32 world_left = map_left * map.tilesize;
+    s32 world_right = (map_left + map_width) * map.tilesize;
+    Vec2f icon_size = Vec2f(8, 8);
+    CBlob@[] player_blobs;
+    getBlobsByTag("player", player_blobs);
+    for (u8 i = 0; i < player_blobs.length(); i++)
+    {
+        // Make sure the blob exists
+        CBlob@ player_blob = player_blobs[i];
+        if (player_blob is null)
+        {
+            continue;
+        }
+
+        // Only draw blobs that fit on the map
+        Vec2f pos = player_blob.getPosition();
+        if (pos.x < world_left || pos.x > world_right)
+        {
+            continue;
+        }
+
+        // Draw the icon
+        GUI::DrawIcon(
+            "MinimapIcons.png",
+            player_blobs[i].getPlayer() is getLocalPlayer() ? 0 : 8,
+            icon_size,
+            upper_left + (pos - Vec2f(world_left, 0)) / map.tilesize * tile_width - icon_size,
+            1.0f, player_blob.getTeamNum()
+        );
+    }
 }
