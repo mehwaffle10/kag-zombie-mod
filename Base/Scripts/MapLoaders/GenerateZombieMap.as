@@ -1,11 +1,12 @@
 // generates from a zombie_gen config
 // fileName is "" on client!
 
-#include "LoaderUtilities.as";
-#include "CustomBlocks.as";
-#include "MinimapHook.as";
-#include "PNGLoader.as";
-#include "PathFindingCommon.as";
+#include "LoaderUtilities.as"
+#include "CustomBlocks.as"
+#include "PNGLoader.as"
+#include "PathFindingCommon.as"
+#include "ZombiesMinimapCommon.as"
+#include "ZombiesMinimapSectorNames.as"
 
 s32 pot_frequency;
 s32 gravestone_frequency;
@@ -16,8 +17,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 {
 	CMap@ map = _map;
 	CRules@ rules = getRules();
-
-	MiniMap::Initialise();
+	rules.set_u8("portal_count", 0);
+	// MiniMap::Initialise();
 
 	if (!isServer() || filename == "")
 	{
@@ -26,12 +27,12 @@ bool loadMap(CMap@ _map, const string& in filename)
 		return true;
 	}
 
-	if (!map.hasScript("PathFindingMapUpdates"))
-	{
-		map.AddScript("PathFindingMapUpdates");
-	}
+	// if (!map.hasScript("PathFindingMapUpdates"))
+	// {
+	// 	map.AddScript("PathFindingMapUpdates");
+	// }
 
-	map.set_bool("Update Nodes", false);
+	// map.set_bool("Update Nodes", false);
 
 	Random@ map_random = Random(map.getMapSeed());
 	// TODO display map seed somewhere
@@ -405,7 +406,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 	// Add portals to sectors
 	print("Sector Count: " + sectors.length);
-	Vec2f[] subsectors = {};
+	string[] current_sector_names;
+	Vec2f[] subsectors;
 	u8[] subsector_sizes;
 	for (u8 i = 0; i < sectors.length; i++)
 	{
@@ -425,9 +427,59 @@ bool loadMap(CMap@ _map, const string& in filename)
 		CBlob@ portal = getBlobByNetworkID(rules.get_u16("portal_" + i));
 		if (portal !is null)
 		{
+			// Sector information
 			portal.set_Vec2f("sector", sectors[i]);
 			portal.Sync("sector", true);
-			portal.SendCommand(portal.getCommandID("corrupt"));
+			
+			// Sector boundaries
+			s32[] borders = {left_x, right_x - 1};
+			for (u8 j = 0; j < borders.length(); j++)
+			{
+				// Find the highest block for two sector borders
+				bool left = j % 2 == 0;
+				s32 x = borders[j];
+				s32 y = naturemap[x];
+				if (left && x - 1 > 0)
+				{
+					y = Maths::Min(naturemap[x - 1], y);
+				}
+				else if (!left && x + 1 < map.tilemapwidth)
+				{
+					y = Maths::Min(naturemap[x + 1], y);
+				}
+
+				// Spawn the border
+				CBlob@ border = server_CreateBlob("sector_border", portal.getTeamNum(), Vec2f(x + 0.5f, y) * map.tilesize);
+				if (border !is null)
+				{
+					border.SetFacingLeft(left);
+
+					// Save the borders for lookup
+					string border_id = "sector_border_" + x;
+					rules.set_netid(border_id, border.getNetworkID());
+					rules.Sync(border_id, true);
+				}
+
+				// Name the sector
+				bool unique = false;
+				string name;
+				while(!unique)
+				{
+					unique = true;
+					name = sector_names[map_random.NextRanged(sector_names.length())];
+					for (u8 i = 0; i < current_sector_names.length(); i++)
+					{
+						if (name == current_sector_names[i])
+						{
+							unique = false;
+							break;
+						}
+					}
+				}
+				current_sector_names.push_back(name);
+				portal.set_string(ZOMBIE_MINIMAP_SECTOR_NAME, name);
+				portal.Sync(ZOMBIE_MINIMAP_SECTOR_NAME, true);
+			}
 		}
 		else
 		{
@@ -507,8 +559,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// 	}
 	// }
 
-	GenerateGraph(map, 2);
-	map.set_bool("Update Nodes", true);
+	// GenerateGraph(map, 2);
+	// map.set_bool("Update Nodes", true);
 
 	SetupBackgrounds(map);
 	return true;

@@ -452,8 +452,11 @@ class PNGLoader
 												autotile(position);
 												CBlob@ portal = spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(mirror ? 1 : 0, 3) * map.tilesize);
 												u8 portal_count = rules.get_u8("portal_count");
-												rules.set_u16("portal_" + portal_count, portal.getNetworkID());
+												string portal_i = "portal_" + portal_count;
+												rules.set_netid(portal_i, portal.getNetworkID());
+												rules.Sync(portal_i, true);
 												rules.set_u8("portal_count", portal_count + 1);
+												rules.Sync("portal_count", true);
 												break;
 											  }
 			case map_colors::spawner:		  autotile(position); spawnBlob(map, "spawner", 3, getSpawnPosition(map, offset) - Vec2f(0, 1) * map.tilesize); break;

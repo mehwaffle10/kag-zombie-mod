@@ -1,58 +1,21 @@
-// Lantern script
 
 void onInit(CBlob@ this)
 {
-	this.SetLight(true);
-	this.SetLightRadius(64.0f);
-	this.SetLightColor(SColor(255, 255, 240, 171));
-	this.addCommandID("light on");
-	this.addCommandID("light off");
-	AddIconToken("$lantern on$", "Lantern.png", Vec2f(8, 8), 0);
-	AddIconToken("$lantern off$", "Lantern.png", Vec2f(8, 8), 3);
-
-	this.Tag("dont deactivate");
-	this.Tag("fire source");
-	this.Tag("ignore_arrow");
-	this.Tag("ignore fall");
-
-	this.getCurrentScript().runFlags |= Script::tick_inwater;
-}
-
-void onTick(CBlob@ this)
-{
-	if (this.isLight() && this.isInWater())
+	CShape@ shape = this.getShape();
+	if (shape !is null)
 	{
-		Light(this, false);
+		shape.SetRotationsAllowed(false);
+		shape.getConsts().mapCollisions = false;
+		shape.SetGravityScale(0.0f);
 	}
-}
+	this.setVelocity(Vec2f_zero);
 
-void Light(CBlob@ this, bool on)
-{
-	if (!on)
+	CSprite@ sprite = this.getSprite();
+	if (sprite !is null)
 	{
-		this.SetLight(false);
-		this.getSprite().SetAnimation("nofire");
+		u16 netID = this.getNetworkID();
+		sprite.animation.frame = (netID % sprite.animation.getFramesCount());
+		sprite.SetZ(10.0f);
+		sprite.SetLighting(false);
 	}
-	else
-	{
-		this.SetLight(true);
-		this.getSprite().SetAnimation("fire");
-	}
-	this.getSprite().PlaySound("SparkleShort.ogg");
-}
-
-void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
-{
-	if (cmd == this.getCommandID("activate"))
-	{
-		if (this.isInWater()) return;
-		
-		Light(this, !this.isLight());
-	}
-
-}
-
-bool doesCollideWithBlob(CBlob@ this, CBlob@ blob)
-{
-    return blob.getShape().isStatic();
 }

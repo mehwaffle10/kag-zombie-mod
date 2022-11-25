@@ -1,5 +1,6 @@
 
 #include "GenericButtonCommon.as"
+#include "ZombiesMinimapCommon.as"
 
 namespace State
 {
@@ -32,6 +33,21 @@ void onInit(CBlob@ this)
 	// Other commands
 	this.addCommandID("corrupt");
 	this.addCommandID("liberate");
+
+	// Animation
+	CSprite@ sprite = this.getSprite();
+	if (sprite !is null)
+	{
+		u16 netID = this.getNetworkID();
+		sprite.animation.frame = (netID % sprite.animation.getFramesCount());
+		sprite.SetZ(-10.0f);
+	}
+
+	// Minimap. We want this to be initialized every time the client joins so don't set it on the server
+	if (isClient())
+	{
+		this.set_bool("minimap_initialized", false);
+	}
 }
 
 void UpdateAnim(CBlob@ this)
@@ -53,71 +69,11 @@ void UpdateAnim(CBlob@ this)
 void onTick(CBlob@ this)
 {
 	u8 state = this.get_u8("state");
-	
-	// Show borders of sector
-	if (isClient() && this.exists("sector"))
+
+	// Initialize minimap
+	if (isClient() && !this.get_bool("minimap_initialized") && this.exists("sector") && Texture::exists(ZOMBIE_MINIMAP_TEXTURE))
 	{
-		// Border locations
-		CMap@ map = getMap();
-		Vec2f sector = this.get_Vec2f("sector");
-		s32[] xs = {sector.x, sector.y};
-		string[] border_y_names = {"left_border_y", "right_border_y"};
-
-		// Screen locations
-		s32 max_tile_distance = 90;
-		s32 screen_center_tile_x = getCamera().getPosition().x / map.tilesize;
-		s32 left_x = screen_center_tile_x - max_tile_distance;
-		s32 right_x = screen_center_tile_x + max_tile_distance;
-
-		for (u8 i = 0; i < xs.length(); i++)
-		{
-			// Only draw borders on screen
-			if (xs[i] < left_x || xs[i] > right_x)
-			{
-				continue;
-			}
-
-			// Find the top dirt block
-			if (!this.exists(border_y_names[i]))
-			{
-				this.set_s32(border_y_names[i], getGroundYLevel(map, xs[i]));
-			}
-			s32 y = this.get_s32(border_y_names[i]);
-
-			// Spew magical particles
-			if (XORRandom(0) == 0)
-			{
-				Vec2f velocity = getRandomVelocity(80.0f, 0.35f + 0.15f / (1 + XORRandom(4)), 10.0f);
-				velocity.x *= i == 0 ? -1 : 1;
-
-				// Pick a color based on corruption
-				SColor[] colors;
-				if (state == State::liberated) {
-					// Blues
-					colors.push_back(SColor(255, 44,  175, 222));
-					colors.push_back(SColor(255, 29,  133, 171));
-					colors.push_back(SColor(255, 26,  78,  131));
-					// colors.push_back(SColor(255, 34,  39,  96 ));
-				}
-				else
-				{
-					// Purples
-					colors.push_back(SColor(255, 211, 121, 224));
-					colors.push_back(SColor(255, 158, 58,  187));
-					colors.push_back(SColor(255, 98,  26,  131));
-					// colors.push_back(SColor(255, 42,  11,  71 ));
-				};
-
-				// CParticle@ particle = ParticlePixel(Vec2f(xs[i], y) * map.tilesize, velocity, colors[XORRandom(colors.length())], true, 2 * getTicksASecond());
-				// if (particle !is null)
-				// {
-				// 	particle.scale = 0.0f;
-				// 	particle.Z = 10.0f;
-				// 	particle.gravity = Vec2f(0, 0);
-				// 	particle.collides = false;
-				// }
-			}
-		}
+		setSectorBorderColor(this);
 	}
 
 	// Spawn enemies
@@ -269,15 +225,21 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 	{
 		// Set the state
 		this.set_u8("state", this.get_bool("is_day") ? State::inactive : State::active);
-		this.server_setTeamNum(1);
+		this.server_setTeamNum(3);
 
-		// Prevent players from building here
+		// Update the minimap border colors
 		CMap@ map = getMap();
-		if (!this.exists("sector") || map.getSectorAtPosition(this.getPosition(), "no build") !is null)
+		if (!this.exists("sector"))
 		{
 			return;
 		}
+		setSectorBorderColor(this);
 
+		// Prevent players from building here
+		if (map.getSectorAtPosition(this.getPosition(), "no build") !is null)
+		{
+			return;
+		}
 		Vec2f sector = this.get_Vec2f("sector");
 		map.server_AddSector(Vec2f(sector.x, 0) * map.tilesize, Vec2f(sector.y, map.tilemapheight) * map.tilesize, "no build");
 	}
@@ -287,38 +249,44 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		this.set_u8("state", State::liberated);
 		this.server_setTeamNum(0);
 
-		// Allow players to build here
+		// Update the minimap border colors
 		CMap@ map = getMap();
-		if (!this.exists("sector") || map.getSectorAtPosition(this.getPosition(), "no build") is null)
+		if (!this.exists("sector"))
 		{
 			return;
 		}
+		setSectorBorderColor(this);
 
+		// Allow players to build here
+		if (map.getSectorAtPosition(this.getPosition(), "no build") is null)
+		{
+			return;
+		}
 		map.RemoveSectorsAtPosition(this.getPosition(), "no build");
 	}
 }
 
-s32 getGroundYLevel(CMap@ map, s32 x)
-{
-	for (s32 y = 0; y < map.tilemapheight; y++)
-	{
-		// Check both blocks, pick the highest one so that the border particles always are at the same height and aren't behind blocks
-		for (u8 x_offset = 0; x_offset <= 1; x_offset++)
-		{		
-			Tile t = map.getTile(Vec2f(x - x_offset, y) * map.tilesize);
-			if (t.type == CMap::tile_ground     ||  // Dirt Blocks
-				t.type >= 29 && t.type <= 31    ||  // Damaged Dirt Blocks
-				t.type == CMap::tile_thickstone ||  // Dense Stone Ore
-				t.type >= 214 && t.type <= 218  ||  // Damaged Dense Stone Ore
-				t.type == CMap::tile_stone      ||  // Stone Ore
-				t.type >= 100 && t.type <= 104  ||  // Damaged Stone Ore
-				t.type == CMap::tile_gold       ||  // Gold Ore
-				t.type >= 91 && t.type <= 94    ||  // Damaged Gold Ore
-				t.type == CMap::tile_bedrock)       // Bedrock
-			{
-				return y;
-			}
-		}
-	}
-	return -1;
-}
+// s32 getGroundYLevel(CMap@ map, s32 x)
+// {
+// 	for (s32 y = 0; y < map.tilemapheight; y++)
+// 	{
+// 		// Check both blocks, pick the highest one so that the border particles always are at the same height and aren't behind blocks
+// 		for (u8 x_offset = 0; x_offset <= 1; x_offset++)
+// 		{		
+// 			Tile t = map.getTile(Vec2f(x - x_offset, y) * map.tilesize);
+// 			if (t.type == CMap::tile_ground     ||  // Dirt Blocks
+// 				t.type >= 29 && t.type <= 31    ||  // Damaged Dirt Blocks
+// 				t.type == CMap::tile_thickstone ||  // Dense Stone Ore
+// 				t.type >= 214 && t.type <= 218  ||  // Damaged Dense Stone Ore
+// 				t.type == CMap::tile_stone      ||  // Stone Ore
+// 				t.type >= 100 && t.type <= 104  ||  // Damaged Stone Ore
+// 				t.type == CMap::tile_gold       ||  // Gold Ore
+// 				t.type >= 91 && t.type <= 94    ||  // Damaged Gold Ore
+// 				t.type == CMap::tile_bedrock)       // Bedrock
+// 			{
+// 				return y;
+// 			}
+// 		}
+// 	}
+// 	return -1;
+// }

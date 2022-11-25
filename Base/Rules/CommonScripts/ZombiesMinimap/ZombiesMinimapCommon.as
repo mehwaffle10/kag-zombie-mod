@@ -1,37 +1,53 @@
 
 const string ZOMBIE_MINIMAP_TEXTURE = "zombie_minimap";
+const string ZOMBIE_MINIMAP_EXPLORATION_TEXTURE = "pixel";
 const string ZOMBIE_MINIMAP_UPDATE_COMMAND = "zombie_minimap_update";
 const string ZOMBIE_MINIMAP_NONSTATIC_PREFIX = "zombie_minimap_nonstatic";
 const string ZOMBIE_MINIMAP_WATER_PREFIX = "zombie_minimap_water";
+const string ZOMBIE_MINIMAP_EXPLORED = "zombie_minimap_explored";
+const string ZOMBIE_MINIMAP_FULL = "zombie_minimap_render_full_map";
+const string ZOMBIE_MINIMAP_FULL_LEFT_X = "zombie_minimap_full_map_left_x";
+const string ZOMBIE_MAP_WIDTH = "zombies_map_width";
+const string ZOMBIE_MAP_HEIGHT = "zombies_map_height";
+const string ZOMBIE_MINIMAP_SECTOR_NAME = "zombies_minimap_sector_name";
 
 const u8 tile_width = 2;  // pixels
-const u8 border_width = 4;  // pixels
-const u16 map_width = 200;  // number of tiles
+const u8 border_width = 14;  // pixels
+const u16 minimap_width = 200;  // number of tiles
+const u8 exploration_width = 16;  // number of tiles
+const u16 full_map_border = 500;  // pixels
+const u16 scroll_width = 300;  // pixels
+const u8 scroll_speed = 4;  // number of tiles
+
 
 // Minimap colors from MinimapHook.as
-SColor color_sky             = SColor(0xffA5BDC8);
-SColor color_dirt            = SColor(0xff844715);
-SColor color_dirt_backwall   = SColor(0xff3B1406);
-SColor color_stone           = SColor(0xff8B6849);
-SColor color_thickstone      = SColor(0xff42484B);
-SColor color_gold            = SColor(0xffFEA53D);
-SColor color_bedrock         = SColor(0xff2D342D);
-SColor color_wood            = SColor(0xffC48715);
-SColor color_wood_backwall   = SColor(0xff552A11);
-SColor color_castle          = SColor(0xff637160);
-SColor color_castle_backwall = SColor(0xff313412);
-SColor color_water           = SColor(0xff2cafde);
-SColor color_fire            = SColor(0xffd5543f);
-SColor color_grass           = SColor(0xff649b0d);
-SColor color_moss            = SColor(0xff315212);
+f32 interpolation = 0.85f;
+SColor color_fade            = SColor(0xff2a0b47);
+SColor color_sky             = SColor(0xffa5bdc8).getInterpolated(color_fade, interpolation);
+SColor color_dirt            = SColor(0xff844715).getInterpolated(color_fade, interpolation);
+SColor color_dirt_backwall   = SColor(0xff3b1406).getInterpolated(color_fade, interpolation);
+SColor color_stone           = SColor(0xff8b6849).getInterpolated(color_fade, interpolation);
+SColor color_thickstone      = SColor(0xff42484b).getInterpolated(color_fade, interpolation);
+SColor color_gold            = SColor(0xfffea53d).getInterpolated(color_fade, interpolation);
+SColor color_bedrock         = SColor(0xff2d342d).getInterpolated(color_fade, interpolation);
+SColor color_wood            = SColor(0xffc48715).getInterpolated(color_fade, interpolation);
+SColor color_wood_backwall   = SColor(0xff552a11).getInterpolated(color_fade, interpolation);
+SColor color_castle          = SColor(0xff637160).getInterpolated(color_fade, interpolation);
+SColor color_castle_backwall = SColor(0xff313412).getInterpolated(color_fade, interpolation);
+SColor color_water           = SColor(0xff2cafde).getInterpolated(color_fade, interpolation);
+SColor color_fire            = SColor(0xffd5543f).getInterpolated(color_fade, interpolation);
+SColor color_grass           = SColor(0xff649b0d).getInterpolated(color_fade, interpolation);
+SColor color_moss            = SColor(0xff315212).getInterpolated(color_fade, interpolation);
 SColor color_unexplored      = SColor(0xffedcca6);
+SColor color_team_blue       = SColor(0xff1d85ab);
+SColor color_team_purple     = SColor(0xff9e3abb);
 
-SColor getMapColor(CMap@ map, Vec2f world_pos)
+SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos)
 {
-    return getMapColor(map, world_pos, map.getTile(world_pos).type);
+    return getMapColor(rules, map, world_pos, map.getTile(world_pos).type);
 }
 
-SColor getMapColor(CMap@ map, Vec2f world_pos, TileType tile_type)
+SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos, TileType tile_type)
 {
     SColor color;
     if (map.isTileGround(tile_type))  
@@ -91,16 +107,63 @@ SColor getMapColor(CMap@ map, Vec2f world_pos, TileType tile_type)
             color = color_sky;
         } 
     }
+
+    // Add sector borders
+    string border_id = "sector_border_" + Maths::Round(world_pos.x / map.tilesize);
+    if (rules.exists(border_id))
+    {
+        CBlob@ border = getBlobByNetworkID(rules.get_netid(border_id));
+        if (border !is null)
+        {
+            color = color.getInterpolated(border.getTeamNum() == 0 ? color_team_blue : color_team_purple, 0.5f);
+        }
+    }
     return color;
 }
 
-// // TODO(hobey): maybe check if there's a door/platform on this backwall and make a custom color for them?
-//         // Tint the map based on Fire/Water State
-//         if (map.isInWater(world_pos))
-//         {
-//             color = color.getInterpolated(color_water, 0.5f);
-//         }
-//         else if (map.isInFire(world_pos))
-//         {
-//             color = color.getInterpolated(color_fire, 0.5f);
-//         }
+void setSectorBorderColor(CBlob@ portal)
+{
+	CRules@ rules = getRules();
+	CMap@ map = getMap();
+	ImageData@ image_data = Texture::data(ZOMBIE_MINIMAP_TEXTURE);
+	Vec2f sector = portal.get_Vec2f("sector");
+
+	s32[] borders = {sector.x, sector.y - 1};
+	for (u8 i = 0; i < borders.length(); i++)
+	{
+		s32 x = Maths::Round(borders[i]);
+		string border_id = "sector_border_" + x;
+		if (!rules.exists(border_id))
+		{
+			continue;
+		}
+		
+		CBlob@ border = getBlobByNetworkID(rules.get_netid(border_id));
+		if (border is null)
+		{
+			continue;
+		}
+
+        // Flag that the minimap has a color on it
+        if (isClient())
+        {
+            portal.set_bool("minimap_initialized", true);
+        }
+
+		// Update the color of the sprite
+		border.server_setTeamNum(portal.getTeamNum());
+
+		// Update the zombie minimap border colors for clients
+		if (isClient() && map !is null)
+		{
+			for (u8 y = 0; y < map.tilemapheight; y++)
+			{
+				image_data.put(x, y, getMapColor(rules, map, Vec2f(x, y) * map.tilesize));
+			}
+		}
+	}
+	if (isClient())
+	{
+		Texture::update(ZOMBIE_MINIMAP_TEXTURE, image_data);
+	}
+}
