@@ -50,7 +50,7 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
             }
         }
 
-        // Sort and remove duplicates
+        // Sort before saving
         y_values.sortAsc();
         writeX(rules, size, x, y_values);
     }
@@ -160,16 +160,17 @@ bool canStand(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
     for (u8 i = 0; i < size; i++)
     {
         Vec2f pos = (top_left + Vec2f(i, size)) * map.tilesize;
-        if (pos != broken_block * map.tilesize && (map.isTileSolid(pos) || isPlatform(pos, map) == 0.0f))
+        if (pos != broken_block * map.tilesize && (map.isTileSolid(pos) || isPlatform(pos, map) == 0.0f) || isDoor(pos, map))
         {
             return true;
         }
     }
 
-    // Check for ladders
+    // Check for ladders and doors
     for (u8 i = 0; i < size * size; i++)
     {
-        if (isLadder((top_left + Vec2f(i / size, i % size)) * map.tilesize, map))
+        Vec2f pos = (top_left + Vec2f(i / size, i % size)) * map.tilesize;
+        if (isLadder(pos, map))
         {
             return true;
         }
@@ -184,6 +185,7 @@ float isPlatform(Vec2f pos, CMap@ map)
     map.getBlobsInRadius(pos + Vec2f(1, 1) * map.tilesize / 2, 0.1f, blobs);
     for (u16 i = 0; i < blobs.length; i++)
     {
+        // We don't need to check for bridges since there will never be enemy bridges TBD
         if (blobs[i] !is null && blobs[i].isPlatform() && blobs[i].get_bool(IS_STATIC))
         {
             return blobs[i].getAngleDegrees();
@@ -199,6 +201,20 @@ bool isLadder(Vec2f pos, CMap@ map)
     for (u16 i = 0; i < blobs.length; i++)
     {
         if (blobs[i] !is null && blobs[i].isLadder() && blobs[i].get_bool(IS_STATIC))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isDoor(Vec2f pos, CMap@ map)
+{
+    CBlob@[] blobs;
+    map.getBlobsInRadius(pos + Vec2f(1, 1) * map.tilesize / 2, 0.1f, blobs);
+    for (u16 i = 0; i < blobs.length; i++)
+    {
+        if (blobs[i] !is null && blobs[i].hasTag("door") && blobs[i].get_bool(IS_STATIC))
         {
             return true;
         }

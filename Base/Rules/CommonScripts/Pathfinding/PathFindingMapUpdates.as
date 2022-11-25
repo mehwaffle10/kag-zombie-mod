@@ -18,7 +18,6 @@ bool onMapTileCollapse(CMap@ this, u32 offset)
     Vec2f pos = this.getTileSpacePosition(offset);
     if(this.get_bool("Update Nodes") && this.isTileSolid(this.getTile(offset).type))
     {
-        print("onMapTileCollapse: " + pos);
         UpdateGraph(this, 2, pos, true);
     }
     return true;
