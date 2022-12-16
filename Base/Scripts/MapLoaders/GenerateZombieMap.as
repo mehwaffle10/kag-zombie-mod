@@ -27,12 +27,12 @@ bool loadMap(CMap@ _map, const string& in filename)
 		return true;
 	}
 
-	// if (!map.hasScript("PathFindingMapUpdates"))
-	// {
-	// 	map.AddScript("PathFindingMapUpdates");
-	// }
+	if (!map.hasScript("PathFindingMapUpdates"))
+	{
+		map.AddScript("PathFindingMapUpdates");
+	}
 
-	// map.set_bool("Update Nodes", false);
+	map.set_bool("Update Nodes", false);
 
 	Random@ map_random = Random(map.getMapSeed());
 	// TODO display map seed somewhere
@@ -438,14 +438,14 @@ bool loadMap(CMap@ _map, const string& in filename)
 				// Find the highest block for two sector borders
 				bool left = j % 2 == 0;
 				s32 x = borders[j];
-				s32 y = naturemap[x];
+				s32 y = getHeighestBlock(map, x);
 				if (left && x - 1 > 0)
 				{
-					y = Maths::Min(naturemap[x - 1], y);
+					y = Maths::Min(getHeighestBlock(map, x - 1), y);
 				}
 				else if (!left && x + 1 < map.tilemapwidth)
 				{
-					y = Maths::Min(naturemap[x + 1], y);
+					y = Maths::Min(getHeighestBlock(map, x + 1), y);
 				}
 
 				// Spawn the border
@@ -515,8 +515,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 		structure_types.insertAt(sorted_index, structure_type);
 		variant_indices.insertAt(sorted_index, variant_index);
 	}
-	
-	// TODO Check sector boundaries for overlap during population
 
 	// Populate subsectors
 	for (u8 i = 0; i < subsectors.length; i++)
@@ -559,8 +557,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// 	}
 	// }
 
-	// GenerateGraph(map, 2);
-	// map.set_bool("Update Nodes", true);
+	map.set_bool("Update Nodes", true);
 
 	SetupBackgrounds(map);
 	return true;
