@@ -184,8 +184,14 @@ void RenderMap(int id)
         return;
     }
 
-    // See if we're rendering the minimap or the full map
-    u16 map_width = Maths::Min(map.tilemapwidth, full_map ? (driver.getScreenWidth() - full_map_border) / tile_width : minimap_width);
+    // See if we're rendering the minimap or the full map. Also limit by exploration so that we don't know how big the map is initially
+    u16 min_fog_width = exploration_width * 3;
+    s32 left = rules.get_s32(ZOMBIE_MINIMAP_EXPLORED + "_left"), right = rules.get_s32(ZOMBIE_MINIMAP_EXPLORED + "_right");
+    u16 map_width = Maths::Min(
+        right - left + min_fog_width * 2,                                                    // Limit to where we've explored
+        Maths::Min(map.tilemapwidth,                                                         // Limit to size of map
+        full_map ? (driver.getScreenWidth() - full_map_border) / tile_width : minimap_width  // Otherwise pick between our minimap size or full map size
+    ));
 
     // Setup
     Render::SetTransformScreenspace();
@@ -193,9 +199,15 @@ void RenderMap(int id)
     Vec2f upper_left = Vec2f(middle - map_width / 2 * tile_width, 40), bottom_right = upper_left + Vec2f(map_width, map.tilemapheight) * tile_width;
 
     // Get the left position on the tile map
-    s32 left = rules.get_s32(ZOMBIE_MINIMAP_EXPLORED + "_left"), right = rules.get_s32(ZOMBIE_MINIMAP_EXPLORED + "_right");
     s32 full_map_left = rules.get_s32(ZOMBIE_MINIMAP_FULL_LEFT_X);
-    s32 map_left = Maths::Min(map.tilemapwidth - map_width, Maths::Max(0, driver.getWorldPosFromScreenPos(Vec2f(middle, 0)).x / map.tilesize - map_width / 2));
+    s32 left_scroll_limit = left - min_fog_width, right_scroll_limit = right - map_width + min_fog_width;
+    s32 map_left = Maths::Min(
+        map.tilemapwidth - map_width,                                                       // Limit to right side of map
+        Maths::Max(0,                                                                       // Limit to left side of map
+        Maths::Min(right_scroll_limit,                                                   // Limit to how far we've explored right
+        Maths::Max(left_scroll_limit,                                                    // Limit to how far we've explored left
+        driver.getWorldPosFromScreenPos(Vec2f(middle, 0)).x / map.tilesize - map_width / 2  // Otherwise center on screen
+    ))));
     if (full_map_left < 0)
     {
         full_map_left = map_left;
@@ -209,18 +221,15 @@ void RenderMap(int id)
         if (mouse_screen_pos.y > upper_left.y && mouse_screen_pos.y < bottom_right.y)
         {
             // Scroll left
-            u16 min_fog_width = exploration_width * 3;
-            s32 scroll_limit = left - min_fog_width;
-            if (mouse_screen_pos.x > upper_left.x && mouse_screen_pos.x < upper_left.x + scroll_width && map_left > scroll_limit)
+            if (mouse_screen_pos.x > upper_left.x && mouse_screen_pos.x < upper_left.x + scroll_width && map_left > left_scroll_limit)
             {
                 // Can only scroll as far as explored or to edge of map
-                map_left = Maths::Max(0, Maths::Max(scroll_limit, map_left - scroll_speed));
+                map_left = Maths::Max(0, Maths::Max(left_scroll_limit, map_left - scroll_speed));
             }
             // Scroll right
-            scroll_limit = right - map_width + min_fog_width;
-            if (mouse_screen_pos.x < bottom_right.x && mouse_screen_pos.x > bottom_right.x - scroll_width && map_left < scroll_limit)
+            if (mouse_screen_pos.x < bottom_right.x && mouse_screen_pos.x > bottom_right.x - scroll_width && map_left < right_scroll_limit)
             {
-                map_left = Maths::Min(map.tilemapwidth - map_width, Maths::Min(scroll_limit, map_left + scroll_speed));
+                map_left = Maths::Min(map.tilemapwidth - map_width, Maths::Min(right_scroll_limit, map_left + scroll_speed));
             }
             rules.set_s32(ZOMBIE_MINIMAP_FULL_LEFT_X, map_left);
         }
@@ -452,44 +461,6 @@ void RenderMap(int id)
         }
     }
 
-    /*
-    for (s32 x = 0; x < map_width + exploration_width; x += exploration_width)
-    {
-        for (s32 y = 0; y < map.tilemapheight; y += exploration_width)
-        {
-            // Figure out which exploration position we are in. This is a grid of squares with width exploration_width
-            s32 map_x = map_left + x;
-            Vec2f exploration_pos = Vec2f(Maths::Floor(map_x / exploration_width), y / exploration_width);
-
-            // Add a square if the position is not explored
-            if (!rules.get_bool(ZOMBIE_MINIMAP_EXPLORED + "_" + exploration_pos))
-            {
-                // Make sure not to draw off of the map
-                s32 exploration_x = exploration_pos.x * exploration_width - map_left;
-                Vec2f offset = Vec2f(Maths::Max(exploration_x, 0), y);
-                s32 x_width = Maths::Min(exploration_x + exploration_width, Maths::Min(exploration_width, map_width - exploration_x)) * tile_width;
-                s32 y_width = Maths::Min(exploration_width, map.tilemapheight - offset.y) * tile_width;
-                offset *= tile_width;                
-
-                // Add vertices
-                v_raw_exploration.push_back(Vertex(upper_left + offset,                           1000, Vec2f(0, 0), color_unexplored));
-                v_raw_exploration.push_back(Vertex(upper_left + offset + Vec2f(x_width, 0),       1000, Vec2f(1, 0), color_unexplored));
-                v_raw_exploration.push_back(Vertex(upper_left + offset + Vec2f(x_width, y_width), 1000, Vec2f(1, 1), color_unexplored));
-                v_raw_exploration.push_back(Vertex(upper_left + offset + Vec2f(0,       y_width), 1000, Vec2f(0, 1), color_unexplored));
-
-                // Add indices
-                u32 exploration_length = v_raw_exploration.length();
-                v_i_exploration.push_back(exploration_length - 4);
-                v_i_exploration.push_back(exploration_length - 3);
-                v_i_exploration.push_back(exploration_length - 2);
-                v_i_exploration.push_back(exploration_length - 4);
-                v_i_exploration.push_back(exploration_length - 2);
-                v_i_exploration.push_back(exploration_length - 1);
-            }
-        }
-    }
-    */
-
     // Mesh config 
     if (v_raw_exploration.length() > 0)
     {
@@ -563,25 +534,6 @@ void onTick(CRules@ this)
         {
             continue;
         }
-
-        /*
-        // Explore current and adjacent positions
-        Vec2f pos = blob.getPosition() / map.tilesize;
-        Vec2f exploration_pos = Vec2f(Maths::Floor(pos.x / exploration_width), Maths::Floor(pos.y / exploration_width));
-        for (s8 x = -1; x <= 1; x++)
-        {
-            for (s8 y = -1; y <= 1; y++)
-            {
-                string explored = ZOMBIE_MINIMAP_EXPLORED + "_" + (exploration_pos + Vec2f(x, y));
-                if (this.get_bool(explored))
-                {
-                    continue;
-                }
-
-                this.set_bool(explored, true);
-            }
-        }
-        */
 
         // Explore horizontally
         s32 x = blob.getPosition().x / map.tilesize;
