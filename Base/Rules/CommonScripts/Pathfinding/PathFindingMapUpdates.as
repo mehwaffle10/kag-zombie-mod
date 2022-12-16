@@ -1,5 +1,5 @@
 
-#define SERVER_ONLY
+// #define SERVER_ONLY
 
 #include "PathFindingCommon.as";
 

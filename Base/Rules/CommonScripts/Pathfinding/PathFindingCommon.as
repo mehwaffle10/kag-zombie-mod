@@ -84,10 +84,10 @@ void writeX(CRules@ rules, u8 size, s32 x, u8[]@ y_values)
     for(u8 i = 0; i < y_values.length; i++)
     {
         rules.set_u8(getXString(x, size, i), y_values[i]);
-        rules.Sync(getXString(x, size, i), true);
+        // rules.Sync(getXString(x, size, i), true);
     }
     rules.set_u8(getXLengthString(x, size), y_values.length);
-    rules.Sync(getXLengthString(x, size), true);
+    // rules.Sync(getXLengthString(x, size), true);
 }
 
 void readEdges(CRules@ rules, u8 size, s32 x, s32 y, Vec2f[]@ targets, u8[]@ costs)
@@ -104,12 +104,12 @@ void writeEdges(CRules@ rules, u8 size, s32 x, s32 y, Vec2f[]@ targets, u8[]@ co
     for(u8 i = 0; i < targets.length; i++)
     {
         rules.set_Vec2f(getEdgeTargetString(x, y, size, i), targets[i]);
-        rules.Sync(getEdgeTargetString(x, y, size, i), true);
+        // rules.Sync(getEdgeTargetString(x, y, size, i), true);
         rules.set_u8(getEdgeCostString(x, y, size, i), costs[i]);
-        rules.Sync(getEdgeCostString(x, y, size, i), true);
+        // rules.Sync(getEdgeCostString(x, y, size, i), true);
     }
     rules.set_u8(getEdgeLengthString(x, y, size), targets.length);
-    rules.Sync(getEdgeLengthString(x, y, size), true);
+    // rules.Sync(getEdgeLengthString(x, y, size), true);
 }
 
 bool isBigEnough(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
