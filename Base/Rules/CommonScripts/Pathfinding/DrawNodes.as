@@ -17,22 +17,24 @@ void onRender(CRules@ this)
         readX(this, 2, x, y_values);
         for (u8 i = 0; i < y_values.length; i++)
         {
-            DrawNode(map, Vec2f(x, y_values[i]), 2, mouse_world_pos, mouse_screen_pos);
+            DrawNode(map, driver, Vec2f(x, y_values[i]), 2, mouse_world_pos, mouse_screen_pos);
         }
     }
 }
 
-void DrawNode(CMap@ map, Vec2f top_left, u8 size, Vec2f mouse_world_pos, Vec2f mouse_screen_pos)
+void DrawNode(CMap@ map, Driver@ driver, Vec2f tile_top_left, u8 size, Vec2f mouse_world_pos, Vec2f mouse_screen_pos)
 {
-    top_left *= map.tilesize;
+    CRules@ rules = getRules();
+    CControls@ controls = getControls();
+    Vec2f world_top_left = tile_top_left * map.tilesize;
     f32 offset = size * map.tilesize;
-    Vec2f bottom_left = top_left + Vec2f(0, offset), 
-          top_right = top_left + Vec2f(offset, 0), 
-          bottom_right = top_left + Vec2f(offset, offset);
+    Vec2f bottom_left = world_top_left + Vec2f(0, offset), 
+          top_right = world_top_left + Vec2f(offset, 0), 
+          bottom_right = world_top_left + Vec2f(offset, offset);
 
     // Draw box
-    GUI::DrawLine(top_left, top_right, SColor(255, 255, 255, 255));
-    GUI::DrawLine(top_left, bottom_left, SColor(255, 255, 0, 0));
+    GUI::DrawLine(world_top_left, top_right, SColor(255, 255, 255, 255));
+    GUI::DrawLine(world_top_left, bottom_left, SColor(255, 255, 0, 0));
     GUI::DrawLine(bottom_left, bottom_right, SColor(255, 0, 255, 0));
     GUI::DrawLine(top_right, bottom_right, SColor(255, 0, 0, 255));
 
@@ -40,22 +42,40 @@ void DrawNode(CMap@ map, Vec2f top_left, u8 size, Vec2f mouse_world_pos, Vec2f m
     // GUI::DrawRectangle(top_left, top_left + Vec2f(3, 3) * 2 * map.tilesize * camera.targetDistance);
 
     // Add hover area for listing edges
-    f32 hover_area_size = map.tilesize / 2;
-    Vec2f hover_bottom_right = top_left + Vec2f(1, 1) * hover_area_size;
-    GUI::DrawLine(top_left + Vec2f(hover_area_size, 0), hover_bottom_right, SColor(255, 255, 0, 255));
-    GUI::DrawLine(top_left + Vec2f(0, hover_area_size), hover_bottom_right, SColor(255, 255, 255, 0));
+    bool render = true;
+    if (controls.isKeyPressed(KEY_NUMPAD9))
+    {
+        render = false;
+        f32 hover_area_size = map.tilesize / 2;
+        Vec2f hover_bottom_right = world_top_left + Vec2f(1, 1) * hover_area_size;
+        GUI::DrawLine(world_top_left + Vec2f(hover_area_size, 0), hover_bottom_right, SColor(255, 255, 0, 255));
+        GUI::DrawLine(world_top_left + Vec2f(0, hover_area_size), hover_bottom_right, SColor(255, 255, 255, 0));
+        if (mouse_world_pos.x >= world_top_left.x && mouse_world_pos.x <= hover_bottom_right.x &&
+            mouse_world_pos.y >= world_top_left.y && mouse_world_pos.y <= hover_bottom_right.y)
+        {
+            render = true;   
+        }
+    }
 
-    if (mouse_world_pos.x >= top_left.x && mouse_world_pos.x <= hover_bottom_right.x &&
-        mouse_world_pos.y >= top_left.y && mouse_world_pos.y <= hover_bottom_right.y)
+    if (render)
     {
         Vec2f tile_pos = map.getTileSpacePosition(mouse_world_pos);
         u8 line_offset = 12;
-        Vec2f[] targets;
-        u8[] costs;
-        readEdges(getRules(), 2, tile_pos.x, tile_pos.y, targets, costs);
-        for (u8 i = 0; i < targets.length(); i++)
+        u8 length = rules.get_u8(getEdgeLengthString(tile_top_left.x, tile_top_left.y, 2));
+        for (u8 i = 0; i < length; i++)
         {
-            GUI::DrawText(targets[i] + " " + costs[i], mouse_screen_pos - Vec2f(0, line_offset * (targets.length() - i)), SColor(255, 255, 255, 255));
+            Vec2f target = rules.get_Vec2f(getEdgeTargetString(tile_top_left.x, tile_top_left.y, 2, i)) * map.tilesize;
+            GUI::DrawSplineArrow(
+                world_top_left,
+                target,
+                SColor(255, tile_top_left.x % 5 * 50, 0, tile_top_left.y % 5 * 50)
+            );
+
+            GUI::DrawText(
+                " " + rules.get_s8(getEdgeCostString(tile_top_left.x, tile_top_left.y, 2, i)),
+                driver.getScreenPosFromWorldPos(target),
+                SColor(255, 255, 255, 255)
+            );
         }
     }
 }
