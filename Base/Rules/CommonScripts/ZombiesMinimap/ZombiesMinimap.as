@@ -204,8 +204,8 @@ void RenderMap(int id)
     s32 map_left = Maths::Min(
         map.tilemapwidth - map_width,                                                       // Limit to right side of map
         Maths::Max(0,                                                                       // Limit to left side of map
-        Maths::Min(right_scroll_limit,                                                   // Limit to how far we've explored right
-        Maths::Max(left_scroll_limit,                                                    // Limit to how far we've explored left
+        Maths::Min(right_scroll_limit,                                                      // Limit to how far we've explored right
+        Maths::Max(left_scroll_limit,                                                       // Limit to how far we've explored left
         driver.getWorldPosFromScreenPos(Vec2f(middle, 0)).x / map.tilesize - map_width / 2  // Otherwise center on screen
     ))));
     if (full_map_left < 0)
