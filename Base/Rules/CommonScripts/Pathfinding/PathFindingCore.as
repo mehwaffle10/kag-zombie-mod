@@ -1,11 +1,9 @@
 
-// #define SERVER_ONLY
-
 #include "PathFindingCommon.as";
 
 // TODO Add support for doors
 
-const string delay_string = "graph generation delay";
+s8 delay = 2;
 
 void onInit(CRules@ this)
 {
@@ -19,30 +17,37 @@ void onRestart(CRules@ this)
 
 void Reset(CRules@ this)
 {
-    this.set_s8(delay_string, 2);
+    this.set_bool("Update Nodes " + isClient(), false);
+    delay = 2;
+    CMap@ map = getMap();
+    if (map !is null && !map.hasScript("PathFindingMapUpdates"))
+    {
+        map.AddScript("PathFindingMapUpdates");
+    }
 }
 
 void onTick(CRules@ this)
 {
-    if (this.exists(delay_string))
+    if (delay == 0)
     {
-        s8 delay = this.get_s8(delay_string);
-        if (delay == 0)
+        CMap@ map = getMap();
+        if (map !is null)
         {
-            GenerateGraph(getMap(), 2);
+            GenerateGraph(map);
         }
+        this.set_bool("Update Nodes " + isClient(), true);
+    }
 
-        if (delay >= 0)
-        {
-            this.set_s8(delay_string, delay - 1);
-        }
-    }   
+    if (delay >= 0)
+    {
+        delay--;
+    }
 }
 
 void onBlobCreated(CRules@ this, CBlob@ blob)
 {
     CMap@ map = getMap();
-    if(map.get_bool("Update Nodes") && blob !is null && (blob.isPlatform() || blob.hasTag("door") || blob.isLadder()))
+    if(getRules().get_bool("Update Nodes " + isClient()) && blob !is null && (blob.isPlatform() || blob.hasTag("door") || blob.isLadder()))
     {
         blob.AddScript("UpdateOnStaticChange");
     }

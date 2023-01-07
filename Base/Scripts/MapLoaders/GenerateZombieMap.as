@@ -4,7 +4,6 @@
 #include "LoaderUtilities.as"
 #include "CustomBlocks.as"
 #include "PNGLoader.as"
-#include "PathFindingCommon.as"
 #include "ZombiesMinimapCommon.as"
 #include "ZombiesMinimapSectorNames.as"
 
@@ -26,13 +25,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 		SetupBackgrounds(map);
 		return true;
 	}
-
-	if (!map.hasScript("PathFindingMapUpdates"))
-	{
-		map.AddScript("PathFindingMapUpdates");
-	}
-
-	map.set_bool("Update Nodes", false);
 
 	Random@ map_random = Random(map.getMapSeed());
 	// TODO display map seed somewhere
@@ -556,8 +548,6 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// 		map.server_SetTile(Vec2f(sectors[i].y, y) * map.tilesize, CMap::tile_gold);
 	// 	}
 	// }
-
-	map.set_bool("Update Nodes", true);
 
 	SetupBackgrounds(map);
 	return true;

@@ -1,11 +1,27 @@
 
 const string IS_STATIC = "is static";
+const u8 max_edge_length = 3;
+const u8[] graph_sizes = {2};
 
-u8 max_edge_length = 3;
+void GenerateGraph(CMap@ map)
+{
+    for (u8 i = 0; i < graph_sizes.length(); i++)
+    {
+        GenerateGraph(map, graph_sizes[i]);
+    }
+}
 
 void GenerateGraph(CMap@ map, u8 size)
 {
     UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1), Vec2f(-1.0f, -1.0f));  // Fix off by one error since UpdateGraph uses <=
+}
+
+void UpdateGraph(CMap@ map, Vec2f center, bool destroyed)
+{
+    for (u8 i = 0; i < graph_sizes.length(); i++)
+    {
+        UpdateGraph(map, graph_sizes[i], center, destroyed);
+    }
 }
 
 void UpdateGraph(CMap@ map, u8 size, Vec2f center, bool destroyed)
@@ -31,6 +47,7 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
         {
             if (y_values[index] >= top_left.y)
             {
+                deleteEdges(rules, size, x, y_values[index]);
                 y_values.erase(index);
             }
             else
@@ -57,15 +74,115 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
 
     // Update Edges
     // Create grid for lookup
-    u8[] costs = {1, 2};
-    for (s32 x = Maths::Max(top_left.x - max_edge_length, 0); x <= Maths::Min(bottom_right.x + max_edge_length, map.tilemapwidth - 1); x++)
+    Vec2f grid_top_left = top_left - Vec2f(Maths::Min(top_left.x, max_edge_length), Maths::Min(top_left.y, max_edge_length));
+    Vec2f grid_bottom_right = bottom_right + Vec2f(Maths::Min(map.tilemapwidth - 1 - bottom_right.x, max_edge_length), Maths::Min(map.tilemapheight - 1 - bottom_right.y, max_edge_length));
+    Vec2f grid_size = grid_bottom_right - grid_top_left;
+    bool[][] nodes(Maths::Max(grid_size.x, map.tilemapwidth), bool[](Maths::Max(grid_size.y, map.tilemapheight), false));
+    bool[][] big_enough(nodes.length(), bool[](nodes[0].length(), false));
+    for (s32 x = grid_top_left.x; x <= grid_bottom_right.x; x++)
     {
         u8[] y_values;
         readX(rules, size, x, y_values);
         for (u8 i = 0; i < y_values.length(); i++)
         {
-            Vec2f[] targets = {Vec2f(x, y_values[i])};
-            writeEdges(rules, size, x, y_values[i], targets, costs);
+            s32 y = y_values[i];
+            if (y >= grid_top_left.y && y <= grid_bottom_right.y)
+            {
+                nodes[x - grid_top_left.x][y - grid_top_left.y] = true;
+            }
+        }
+
+        for (s32 y = grid_top_left.y; y <= grid_bottom_right.y; y++)
+        {
+            big_enough[x - grid_top_left.x][y - grid_top_left.y] = isBigEnough(Vec2f(x, y), size, map, broken_block);
+        }
+    }
+
+    // Check for edges
+    for (s32 x = grid_top_left.x; x <= grid_bottom_right.x; x++)
+    {
+        for (u8 y = grid_top_left.y; y <= grid_bottom_right.y; y++)
+        {
+            Vec2f current = Vec2f(x, y);
+            Vec2f grid_coords = current - grid_top_left;
+            if (nodes[grid_coords.x][grid_coords.y])
+            {
+                // Check Left
+                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_coords.x); i++)
+                {
+                    Vec2f target_grid_coords = Vec2f(grid_coords.x - i, grid_coords.y);
+                    // Check if there is a pathable node
+                    if (nodes[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        Vec2f target = Vec2f(x - i, y);
+                        writeEdge(rules, size, x,        y,        target,  i);
+                        writeEdge(rules, size, target.x, target.y, current, i);
+                        break;
+                    }
+                    // Check if there's something blocking our pathing
+                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        break;
+                    }
+                }
+
+                // Check Right
+                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_bottom_right.x - grid_coords.x); i++)
+                {
+                    Vec2f target_grid_coords = Vec2f(grid_coords.x + i, grid_coords.y);
+                    // Check if there is a pathable node
+                    if (nodes[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        Vec2f target = Vec2f(x + i, y);
+                        writeEdge(rules, size, x,        y,        target,  i);
+                        writeEdge(rules, size, target.x, target.y, current, i);
+                        break;
+                    }
+                    // Check if there's something blocking our pathing
+                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        break;
+                    }
+                }
+
+                // Check Up
+                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_coords.y); i++)
+                {
+                    Vec2f target_grid_coords = Vec2f(grid_coords.x, grid_coords.y - i);
+                    // Check if there is a pathable node
+                    if (nodes[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        Vec2f target = Vec2f(x, y - i);
+                        writeEdge(rules, size, x,        y,        target,  i);
+                        writeEdge(rules, size, target.x, target.y, current, i);
+                        break;
+                    }
+                    // Check if there's something blocking our pathing
+                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        break;
+                    }
+                }
+
+                // Check Down
+                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_bottom_right.y - grid_coords.y); i++)
+                {
+                    Vec2f target_grid_coords = Vec2f(grid_coords.x, grid_coords.y + i);
+                    // Check if there is a pathable node
+                    if (nodes[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        Vec2f target = Vec2f(x, y + i);
+                        writeEdge(rules, size, x,        y,        target,  i);
+                        writeEdge(rules, size, target.x, target.y, current, i);
+                        break;
+                    }
+                    // Check if there's something blocking our pathing
+                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
+                    {
+                        break;
+                    }
+                }
+            }
         }
     }
 }
@@ -84,32 +201,70 @@ void writeX(CRules@ rules, u8 size, s32 x, u8[]@ y_values)
     for(u8 i = 0; i < y_values.length; i++)
     {
         rules.set_u8(getXString(x, size, i), y_values[i]);
-        // rules.Sync(getXString(x, size, i), true);
     }
     rules.set_u8(getXLengthString(x, size), y_values.length);
-    // rules.Sync(getXLengthString(x, size), true);
 }
 
-void readEdges(CRules@ rules, u8 size, s32 x, s32 y, Vec2f[]@ targets, u8[]@ costs)
+void writeEdge(CRules@ rules, u8 size, s32 x, s32 y, Vec2f target, u8 cost)
 {
-    for(u8 i = 0; i < rules.get_u8(getEdgeLengthString(x, y, size)); i++)
+    // Check if we're overwriting an edge
+    string length_string = getEdgeLengthString(x, y, size);
+    u8 length = rules.get_u8(length_string);
+    for(u8 i = 0; i < length; i++)
     {
-        targets.push_back(rules.get_Vec2f(getEdgeTargetString(x, y, size, i)));
-        costs.push_back(rules.get_u8(getEdgeCostString(x, y, size, i)));
+        if (rules.get_Vec2f(getEdgeTargetString(x, y, size, i)) == target)
+        {
+            rules.set_s8(getEdgeCostString(x, y, size, i), cost);
+            return;
+        }    
     }
+
+    // Adding a new edge
+    rules.set_Vec2f(getEdgeTargetString(x, y, size, length), target);
+    rules.set_s8(getEdgeCostString(x, y, size, length), cost);
+    rules.set_u8(length_string, length + 1);
 }
 
-void writeEdges(CRules@ rules, u8 size, s32 x, s32 y, Vec2f[]@ targets, u8[]@ costs)
+void deleteEdges(CRules@ rules, u8 size, s32 x, s32 y)
 {
-    for(u8 i = 0; i < targets.length; i++)
+    // Delete all edges connecting to this node
+    string length_string = getEdgeLengthString(x, y, size);
+    u8 length = rules.get_u8(length_string);
+    for(u8 i = 0; i < length; i++)
     {
-        rules.set_Vec2f(getEdgeTargetString(x, y, size, i), targets[i]);
-        // rules.Sync(getEdgeTargetString(x, y, size, i), true);
-        rules.set_u8(getEdgeCostString(x, y, size, i), costs[i]);
-        // rules.Sync(getEdgeCostString(x, y, size, i), true);
+        Vec2f target = rules.get_Vec2f(getEdgeTargetString(x, y, size, i));
+        deleteEdge(rules, size, target.x, target.y, Vec2f(x, y));
     }
-    rules.set_u8(getEdgeLengthString(x, y, size), targets.length);
-    // rules.Sync(getEdgeLengthString(x, y, size), true);
+
+    // Reset the array length
+    rules.set_u8(length_string, 0);
+}
+
+void deleteEdge(CRules@ rules, u8 size, s32 x, s32 y, Vec2f target)
+{
+    // Check if we're overwriting an edge
+    string length_string = getEdgeLengthString(x, y, size);
+    u8 length = rules.get_u8(length_string);
+    bool deleted = false;
+    for(u8 i = 0; i < length; i++)
+    {
+        if (deleted)
+        {
+            // Shift up in list
+            rules.set_s8(getEdgeCostString(x, y, size, i - 1), rules.get_s8(getEdgeCostString(x, y, size, i)));
+        }
+        else if (rules.get_Vec2f(getEdgeTargetString(x, y, size, i)) == target)
+        {
+            // Flag that we need to shift up the rest of the items
+            deleted = true;
+        }
+    }
+
+    // Check if we need to reduce the size of the list
+    if (deleted)
+    {
+        rules.set_u8(getEdgeLengthString(x, y, size), length - 1);
+    }
 }
 
 bool isBigEnough(Vec2f top_left, u8 size, CMap@ map, Vec2f broken_block)
