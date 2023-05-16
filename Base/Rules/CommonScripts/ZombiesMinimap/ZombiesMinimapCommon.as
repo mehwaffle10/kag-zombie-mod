@@ -1,4 +1,6 @@
 
+#include "ZombieBlocksCommon.as"
+
 const string ZOMBIE_MINIMAP_TEXTURE = "zombie_minimap";
 const string ZOMBIE_MINIMAP_EXPLORATION_TEXTURE = "pixel";
 const string ZOMBIE_MINIMAP_UPDATE_COMMAND = "zombie_minimap_update";
@@ -23,6 +25,7 @@ const u8 scroll_speed = 4;  // number of tiles
 // Minimap colors from MinimapHook.as
 f32 interpolation = 0.85f;
 SColor color_fade            = SColor(0xff2a0b47);
+SColor color_corruption      = SColor(0xff2a0b47);
 SColor color_sky             = SColor(0xffa5bdc8).getInterpolated(color_fade, interpolation);
 SColor color_dirt            = SColor(0xff844715).getInterpolated(color_fade, interpolation);
 SColor color_dirt_backwall   = SColor(0xff3b1406).getInterpolated(color_fade, interpolation);
@@ -50,55 +53,56 @@ SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos)
 SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos, TileType tile_type)
 {
     SColor color;
-    if (map.isTileGround(tile_type))  
+    bool corrupt = false;
+    if (tile_type >= WORLD_OFFSET)
+    {
+        corrupt = true;
+    }
+
+    if (isDirt(tile_type))
     {
         color = color_dirt;
     } 
-    else if (map.isTileBedrock(tile_type))
+    else if (isBedrock(tile_type))
     {
         color = color_bedrock;
     }
-    else if (map.isTileStone(tile_type))
+    else if (isStone(tile_type))
     {
         color = color_stone;
     }
-    else if (map.isTileThickStone(tile_type))
+    else if (isThickStone(tile_type))
     {
         color = color_thickstone;
     }
-    else if (map.isTileGold(tile_type))
+    else if (isGold(tile_type))
     {
         color = color_gold;
     }
-    else if (map.isTileWood(tile_type)) 
+    else if (isWood(tile_type)) 
     { 
         color = color_wood;
     } 
-    else if (map.isTileCastle(tile_type))      
+    else if (isCastle(tile_type))      
     { 
         // Check for Mossy Stone Backwall
-        color = tile_type == CMap::tile_castle_moss ? color_castle.getInterpolated(color_moss, 0.5f) : color_castle;
+        color = isMossyCastle(tile_type) ? color_castle.getInterpolated(color_moss, 0.5f) : color_castle;
     } 
-    else {
-        if (tile_type == CMap::tile_ground_back)  // Dirt Backwall
+    else
+    {
+        if (isDirtBackwall(tile_type))  // Dirt Backwall
         {
             color = color_dirt_backwall;
         }
-        else if (tile_type == CMap::tile_wood_back ||  // Wood Backwall
-                tile_type == 207)                     // Damaged Wood Backwall
+        else if (isWoodBackwall(tile_type))
         {
             color = color_wood_backwall;
         }
-        else if (tile_type == CMap::tile_castle_back ||  // Stone Backwall
-                tile_type >= 76 && tile_type <= 79)     // Damaged Stone Backwall
+        else if (isCastleBackwall(tile_type))
         {
-            color = color_castle_backwall;
+            color = isMossyCastleBackwall(tile_type) ? color_castle_backwall.getInterpolated(color_moss, 0.5f) : color_castle_backwall;
         }
-        else if (tile_type == CMap::tile_castle_back_moss)  // Mossy Stone Backwall
-        {
-            color = color_castle_backwall.getInterpolated(color_moss, 0.5f);
-        }
-        else if (map.isTileGrass(tile_type))
+        else if (isGrass(tile_type))
         {
             color = color_grass;
         }
@@ -106,6 +110,12 @@ SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos, TileType tile_type
         {
             color = color_sky;
         } 
+    }
+
+    // Add corruption
+    if (corrupt)
+    {
+        color = color.getInterpolated(color_corruption, 0.5f);
     }
 
     // Add sector borders
@@ -123,6 +133,11 @@ SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos, TileType tile_type
 
 void setSectorBorderColor(CBlob@ portal)
 {
+    if (portal is null)
+    {
+        return;
+    }
+
 	CRules@ rules = getRules();
 	CMap@ map = getMap();
 	ImageData@ image_data = Texture::data(ZOMBIE_MINIMAP_TEXTURE);

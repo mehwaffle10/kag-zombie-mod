@@ -3,7 +3,11 @@
 
 // TODO Add support for doors
 
-s8 delay = 2;
+const u8 scan_width = 40;
+const s8 delay = getTicksASecond() / 3;
+s8 timer = delay;
+s32 current_x = 0;
+
 
 void onInit(CRules@ this)
 {
@@ -18,7 +22,8 @@ void onRestart(CRules@ this)
 void Reset(CRules@ this)
 {
     this.set_bool("Update Nodes " + isClient(), false);
-    delay = 2;
+    current_x = 0;
+    timer = delay;
     CMap@ map = getMap();
     if (map !is null && !map.hasScript("PathFindingMapUpdates"))
     {
@@ -28,19 +33,25 @@ void Reset(CRules@ this)
 
 void onTick(CRules@ this)
 {
-    if (delay == 0)
+    if (timer == 0)
     {
         CMap@ map = getMap();
         if (map !is null)
         {
-            GenerateGraph(map);
+            print("Updating Graph, Current_X: " + current_x);
+            UpdateGraph(map, Vec2f(current_x, 0), Vec2f(Maths::Min(current_x + scan_width, map.tilemapwidth - 1), map.tilemapheight - 1));
+            current_x += scan_width;
+            if (current_x < map.tilemapwidth)
+            {
+                timer = delay;
+            }
+            this.set_bool("Update Nodes " + isClient(), true);
         }
-        this.set_bool("Update Nodes " + isClient(), true);
     }
 
-    if (delay >= 0)
+    if (timer >= 0)
     {
-        delay--;
+        timer--;
     }
 }
 

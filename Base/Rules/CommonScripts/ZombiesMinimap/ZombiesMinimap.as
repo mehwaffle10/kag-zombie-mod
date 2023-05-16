@@ -150,6 +150,11 @@ void RenderMap(int id)
 	CMap@ map = getMap();
     CControls@ controls = getControls();
     Driver@ driver = getDriver();
+
+    if (map is null || controls is null || driver is null)
+    {
+        return;
+    }
     
     if (!minimap_initialized && map.tilemapwidth > 0 && map.tilemapheight > 0)
     {

@@ -3,17 +3,25 @@ const string IS_STATIC = "is static";
 const u8 max_edge_length = 3;
 const u8[] graph_sizes = {2};
 
-void GenerateGraph(CMap@ map)
+// void GenerateGraph(CMap@ map)
+// {
+//     for (u8 i = 0; i < graph_sizes.length(); i++)
+//     {
+//         GenerateGraph(map, graph_sizes[i]);
+//     }
+// }
+
+// void GenerateGraph(CMap@ map, u8 size)
+// {
+//     UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1), Vec2f(-1.0f, -1.0f));  // Fix off by one error since UpdateGraph uses <=
+// }
+
+void UpdateGraph(CMap@ map, Vec2f top_left, Vec2f bottom_right)
 {
     for (u8 i = 0; i < graph_sizes.length(); i++)
     {
-        GenerateGraph(map, graph_sizes[i]);
+        UpdateGraph(map, graph_sizes[i], top_left, bottom_right, Vec2f(-1, -1));
     }
-}
-
-void GenerateGraph(CMap@ map, u8 size)
-{
-    UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1), Vec2f(-1.0f, -1.0f));  // Fix off by one error since UpdateGraph uses <=
 }
 
 void UpdateGraph(CMap@ map, Vec2f center, bool destroyed)
@@ -107,84 +115,71 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
             Vec2f grid_coords = current - grid_top_left;
             if (nodes[grid_coords.x][grid_coords.y])
             {
-                // Check Left
-                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_coords.x); i++)
-                {
-                    Vec2f target_grid_coords = Vec2f(grid_coords.x - i, grid_coords.y);
-                    // Check if there is a pathable node
-                    if (nodes[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        Vec2f target = Vec2f(x - i, y);
-                        writeEdge(rules, size, x,        y,        target,  i);
-                        writeEdge(rules, size, target.x, target.y, current, i);
-                        break;
-                    }
-                    // Check if there's something blocking our pathing
-                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        break;
-                    }
-                }
+                // Check above and below the current node
+                u8 max_height = Maths::Min(max_edge_length, grid_coords.y), min_height = Maths::Min(max_edge_length, grid_bottom_right.y - grid_coords.y);
+                max_height = ScanVertical(rules, size, nodes, big_enough, max_height, current, grid_coords, x, y, true);
+                ScanVertical(rules, size, nodes, big_enough, min_height, current, grid_coords, x, y, false);
 
-                // Check Right
-                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_bottom_right.x - grid_coords.x); i++)
-                {
-                    Vec2f target_grid_coords = Vec2f(grid_coords.x + i, grid_coords.y);
-                    // Check if there is a pathable node
-                    if (nodes[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        Vec2f target = Vec2f(x + i, y);
-                        writeEdge(rules, size, x,        y,        target,  i);
-                        writeEdge(rules, size, target.x, target.y, current, i);
-                        break;
-                    }
-                    // Check if there's something blocking our pathing
-                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        break;
-                    }
-                }
-
-                // Check Up
-                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_coords.y); i++)
-                {
-                    Vec2f target_grid_coords = Vec2f(grid_coords.x, grid_coords.y - i);
-                    // Check if there is a pathable node
-                    if (nodes[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        Vec2f target = Vec2f(x, y - i);
-                        writeEdge(rules, size, x,        y,        target,  i);
-                        writeEdge(rules, size, target.x, target.y, current, i);
-                        break;
-                    }
-                    // Check if there's something blocking our pathing
-                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        break;
-                    }
-                }
-
-                // Check Down
-                for (u8 i = 1; i <= Maths::Min(max_edge_length, grid_bottom_right.y - grid_coords.y); i++)
-                {
-                    Vec2f target_grid_coords = Vec2f(grid_coords.x, grid_coords.y + i);
-                    // Check if there is a pathable node
-                    if (nodes[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        Vec2f target = Vec2f(x, y + i);
-                        writeEdge(rules, size, x,        y,        target,  i);
-                        writeEdge(rules, size, target.x, target.y, current, i);
-                        break;
-                    }
-                    // Check if there's something blocking our pathing
-                    else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
-                    {
-                        break;
-                    }
-                }
+                u8 max_left = Maths::Min(max_edge_length, grid_coords.x), max_right = Maths::Min(max_edge_length, grid_bottom_right.x - grid_coords.x);
+                ScanHorizontal(rules, size, nodes, big_enough, max_left,  max_height, min_height, current, grid_coords, x, y, true);
+                ScanHorizontal(rules, size, nodes, big_enough, max_right, max_height, min_height, current, grid_coords, x, y, false);
             }
         }
     }
+}
+
+void ScanHorizontal(CRules@ rules, u8 size, bool[][] nodes, bool[][] big_enough, u8 max, u8 max_height, u8 min_height, Vec2f current, Vec2f grid_coords, s32 x, s32 y, bool left)
+{
+    for (u8 i = 1; i <= max; i++)
+    {
+        // Scan up to the max height always
+        s8 offset = left ? -i : i;
+        Vec2f target = Vec2f(x + offset, y);
+        Vec2f target_grid_coords = Vec2f(grid_coords.x + offset, grid_coords.y);
+        max_height = ScanVertical(rules, size, nodes, big_enough, max_height, current, target_grid_coords, target.x, target.y, true);
+
+        // Check if there is a pathable node
+        if (nodes[target_grid_coords.x][target_grid_coords.y])
+        {
+            writeEdge(rules, size, x,        y,        target,  i);
+            writeEdge(rules, size, target.x, target.y, current, i);
+            break;
+        }
+        // Check if there's something blocking our pathing
+        else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
+        {
+            break;
+        }
+        else
+        {
+            // Scan down
+            min_height = ScanVertical(rules, size, nodes, big_enough, min_height, current, grid_coords, x, y, false);
+        }
+    }
+}
+
+u8 ScanVertical(CRules@ rules, u8 size, bool[][] nodes, bool[][] big_enough, u8 max, Vec2f current, Vec2f grid_coords, s32 x, s32 y, bool up)
+{
+    // Check Up
+    for (u8 i = 1; i <= max; i++)
+    {
+        s8 offset = up ? -i : i;
+        Vec2f target_grid_coords = Vec2f(grid_coords.x, grid_coords.y + offset);
+        // Check if there is a pathable node
+        if (nodes[target_grid_coords.x][target_grid_coords.y])
+        {
+            Vec2f target = Vec2f(x, y + offset);
+            writeEdge(rules, size, x,        y,        target,  i);
+            writeEdge(rules, size, target.x, target.y, current, i);
+            return i;
+        }
+        // Check if there's something blocking our pathing
+        else if (!big_enough[target_grid_coords.x][target_grid_coords.y])
+        {
+            return i - 1;
+        }
+    }
+    return max;
 }
 
 // Had to attach to rules instead of map since for some reason map seems to be the only object that doesn't sync when a player joins

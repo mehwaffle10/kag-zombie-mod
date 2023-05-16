@@ -1,6 +1,9 @@
 
 #include "GenericButtonCommon.as"
 #include "ZombiesMinimapCommon.as"
+#include "ZombieBlocksCommon.as"
+
+const u8 CORRUPTION_RADIUS = 10;
 
 namespace State
 {
@@ -223,6 +226,8 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 	}
 	else if (cmd == this.getCommandID("corrupt"))
 	{
+		ModifyWorld(this, true);
+
 		// Set the state
 		this.set_u8("state", this.get_bool("is_day") ? State::inactive : State::active);
 		this.server_setTeamNum(3);
@@ -242,9 +247,12 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		}
 		Vec2f sector = this.get_Vec2f("sector");
 		map.server_AddSector(Vec2f(sector.x, 0) * map.tilesize, Vec2f(sector.y, map.tilemapheight) * map.tilesize, "no build");
+
 	}
 	else if (cmd == this.getCommandID("liberate"))
 	{
+		ModifyWorld(this, false);
+
 		// Set the state
 		this.set_u8("state", State::liberated);
 		this.server_setTeamNum(0);
@@ -264,6 +272,34 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		}
 		map.RemoveSectorsAtPosition(this.getPosition(), "no build");
 	}
+}
+
+void ModifyWorld(CBlob@ this, bool corrupt)
+{
+	CMap@ map = getMap();
+
+	if (!isServer() || map is null || this is null)
+	{
+		return;
+	}
+
+	Vec2f pos = map.getTileSpacePosition(this.getPosition());
+	for (s32 x = Maths::Max(0, pos.x - CORRUPTION_RADIUS); x < Maths::Min(map.tilemapwidth, pos.x + CORRUPTION_RADIUS); x++)
+	{
+		for (s32 y = Maths::Max(0, pos.y - CORRUPTION_RADIUS); y < Maths::Min(map.tilemapheight, pos.y + CORRUPTION_RADIUS); y++)
+		{
+			Vec2f target_pos = Vec2f(x, y);
+			if (corrupt)
+			{
+				ZombifyBlock(map, target_pos);
+			}
+			else
+			{
+				UnzombifyBlock(map, target_pos);
+			}
+		}
+	}
+	map.UpdateLightingAtPosition(this.getPosition(), CORRUPTION_RADIUS);
 }
 
 // s32 getGroundYLevel(CMap@ map, s32 x)
