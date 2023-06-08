@@ -7,6 +7,7 @@
 #include "MakeCrate.as";
 #include "MakeScroll.as";
 #include "MultiCharacterCommon.as";
+#include "ZombiesMinimapCommon.as";
 
 const bool chatCommandCooldown = false; // enable if you want cooldown on your server
 const uint chatCommandDelay = 3 * 30; // Cooldown in seconds
@@ -133,6 +134,13 @@ bool onServerProcessChat(CRules@ this, const string& in text_in, string& out tex
 		if (text_in == "!gravestone")
 		{
 			server_CreateBlob('gravestone', 3, pos);
+		}
+		else if (text_in == "!explore")
+		{
+			this.set_s32(ZOMBIE_MINIMAP_EXPLORED + "_left", -10);
+			this.Sync(ZOMBIE_MINIMAP_EXPLORED + "_left", true);
+			this.set_s32(ZOMBIE_MINIMAP_EXPLORED + "_right", 32000);
+			this.Sync(ZOMBIE_MINIMAP_EXPLORED + "_right", true);
 		}
 		else if (text_in == "!survivor")
 		{
