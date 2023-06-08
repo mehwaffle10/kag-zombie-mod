@@ -275,34 +275,6 @@ const u32[] TILEFLAGS = {
 	0
 };
 
-void ZombifyBlock(CMap@ map, Vec2f tile_pos)
-{
-	Vec2f world_pos = tile_pos * map.tilesize;
-	TileType type = map.getTile(world_pos).type;
-
-	// Skip air
-	if (type >= WORLD_OFFSET || type == 0)
-	{
-		return;
-	}
-	map.server_SetTile(world_pos, type + WORLD_OFFSET);
-}
-
-void UnzombifyBlock(CMap@ map, Vec2f tile_pos)
-{
-	Vec2f world_pos = tile_pos * map.tilesize;
-	TileType type = map.getTile(world_pos).type;
-
-	// Skip air
-	if (type < WORLD_OFFSET || type == 0)
-	{
-		return;
-	}
-
-	type -= WORLD_OFFSET;
-	map.server_SetTile(world_pos, type);
-}
-
 TileType getTile(CMap@ map, s32 x, s32 y)
 {
     return map.getTile(x + y * map.tilemapwidth).type;

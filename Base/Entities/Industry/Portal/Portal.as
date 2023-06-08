@@ -3,7 +3,7 @@
 #include "ZombiesMinimapCommon.as"
 #include "ZombieBlocksCommon.as"
 
-const u8 CORRUPTION_RADIUS = 10;
+const u8 CORRUPTION_RADIUS = 1;
 
 namespace State
 {
@@ -14,6 +14,13 @@ namespace State
 		liberated
 	};
 };
+
+class TileUpdates
+{
+	Vec2f[] queue;
+
+	// TileUpdates() {}
+}
 
 void onInit(CBlob@ this)
 {
@@ -51,6 +58,13 @@ void onInit(CBlob@ this)
 	{
 		this.set_bool("minimap_initialized", false);
 	}
+
+	// Corruption effect
+	if (isServer())
+	{
+		TileUpdates@ tile_updates = TileUpdates();
+		this.set("tile_updates", @tile_updates);
+	}
 }
 
 void UpdateAnim(CBlob@ this)
@@ -82,7 +96,6 @@ void onTick(CBlob@ this)
 	// Spawn enemies
 	if (state == State::active)
 	{
-
 		u16 points = this.get_u16("points");
 		u16 points_per_day = this.get_u16("points_per_day");
 
@@ -142,6 +155,108 @@ void onTick(CBlob@ this)
 			this.set_u16("spawn_timer", spawn_timer - 1);
 		}
 	}
+
+	// string prefix = "" + getGameTime();
+	// for (u16 i = 0; i < tile_updates.length; i++)
+	// {
+	// 	print(prefix + ": tile_updates[" + i + "] = " + tile_updates[i]);
+	// }
+
+	// Block updates
+	if (isServer()) // && XORRandom(10) == 0)
+	{
+		CMap@ map = getMap();
+		if (map is null || !this.exists("sector") || !this.exists("tile_updates"))
+		{
+			return;
+		}
+		Vec2f sector = this.get_Vec2f("sector");
+
+		TileUpdates@ tile_updates;
+		this.get("tile_updates", @tile_updates);
+		for (u8 i = 0; i < 30; i++)
+		{
+			if (tile_updates.queue.isEmpty())
+			{
+				return;
+			}
+			// Get the next item
+			u32 index = XORRandom(tile_updates.queue.length);
+			Vec2f tile_pos = tile_updates.queue[index];
+			tile_updates.queue.removeAt(index);
+			Vec2f world_pos = tile_pos * map.tilesize;
+			TileType type = map.getTile(world_pos).type;
+
+			// Check if we're out of bounds and should just move towards the portal
+			if (outOfBounds(map, tile_pos, sector))  // Out of bounds y
+			{
+				// Only move 1 tile in a cardinal direction to maintain the portal as the center
+				Vec2f offset;
+				if (tile_pos.x < sector.x)
+				{
+					offset = Vec2f(1, 0);
+				}
+				else if (tile_pos.x >= sector.y)
+				{
+					offset = Vec2f(-1, 0);
+				}
+				else if (tile_pos.y < 0)
+				{
+					offset = Vec2f(0, 1);
+				}
+				else
+				{
+					offset = Vec2f(0, -1);
+				}
+				tile_updates.queue.push_back(tile_pos + offset * CORRUPTION_RADIUS);
+				continue;
+			}
+
+			// Modify this block
+			bool corrupt = state != State::liberated;
+			Corrupt(map, world_pos, corrupt);
+
+			// Check neighbors
+			for (s8 x = -CORRUPTION_RADIUS; x <= CORRUPTION_RADIUS; x++)
+			{
+				u8 y_limit = CORRUPTION_RADIUS - Maths::Abs(x);
+				for (s8 y = -y_limit; y <= y_limit; y++)
+				{
+					Vec2f target = tile_pos + Vec2f(x, y);
+					if (target == tile_pos ||                                    // Current block
+						target.x < sector.x || target.x >= sector.y ||           // Out of bounds x
+						target.y < 0 || target.y >= map.tilemapheight ||         // Out of bounds y
+						(corrupt ? type >= WORLD_OFFSET : type < WORLD_OFFSET))  // Already converted
+					{
+						continue;
+					}
+					tile_updates.queue.push_back(target);
+				}
+			}
+
+			// Modify grass above dirt
+			if (tile_pos.y > 0 && isDirt(type))
+			{
+				Vec2f tile_above = world_pos + Vec2f(0, -map.tilesize);
+				TileType above = map.getTile(tile_above).type;
+				if (isGrass(above))
+				{
+					Corrupt(map, tile_above, corrupt);
+				}
+			}
+
+			// Modify dirt below grass
+			if (tile_pos.y < map.tilemapheight && isGrass(type))
+			{
+				Vec2f tile_below = world_pos + Vec2f(0, map.tilesize);
+				TileType below = map.getTile(tile_below).type;
+				if (isDirt(below))
+				{
+					Corrupt(map, tile_below, corrupt);
+				}
+			}
+		}
+	}
 }
 
 void Summon(CBlob@ this, string spawn, u8 cost)
@@ -195,7 +310,8 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 
 void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 {
-	if (cmd == this.getCommandID("day"))
+	u8 state = this.get_u8("state");
+	if (cmd == this.getCommandID("day") && state != State::liberated)
 	{
 		// Turn off and award points for the day
 		this.set_bool("is_day", true);
@@ -209,7 +325,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 
 		UpdateAnim(this);
 	}
-	else if (cmd == this.getCommandID("night"))
+	else if (cmd == this.getCommandID("night") && state != State::liberated)
 	{
 		// Activate! It's night time
 		this.set_bool("is_day", false);
@@ -226,8 +342,6 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 	}
 	else if (cmd == this.getCommandID("corrupt"))
 	{
-		ModifyWorld(this, true);
-
 		// Set the state
 		this.set_u8("state", this.get_bool("is_day") ? State::inactive : State::active);
 		this.server_setTeamNum(3);
@@ -238,21 +352,47 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		{
 			return;
 		}
+		Vec2f sector = this.get_Vec2f("sector");
 		setSectorBorderColor(this);
+
+		// Initiate corruption
+		if (isServer() && this.exists("tile_updates"))
+		{
+			TileUpdates@ tile_updates;
+			this.get("tile_updates", @tile_updates);
+
+			// Clear any updates outside the intended area
+			u32 i = 0;
+			while (i < tile_updates.queue.length)
+			{
+				Vec2f tile_pos = tile_updates.queue[i];
+				if (outOfBounds(map, tile_pos, sector))
+				{
+					tile_updates.queue.removeAt(i);
+				}
+				else
+				{
+					i++;
+				}
+			}
+
+			// Start from the center if we don't have anything in the queue
+			if (tile_updates.queue.isEmpty())
+			{
+				tile_updates.queue.push_back(map.getTileSpacePosition(this.getPosition()));
+			}
+		}
 
 		// Prevent players from building here
 		if (map.getSectorAtPosition(this.getPosition(), "no build") !is null)
 		{
 			return;
 		}
-		Vec2f sector = this.get_Vec2f("sector");
 		map.server_AddSector(Vec2f(sector.x, 0) * map.tilesize, Vec2f(sector.y, map.tilemapheight) * map.tilesize, "no build");
 
 	}
 	else if (cmd == this.getCommandID("liberate"))
 	{
-		ModifyWorld(this, false);
-
 		// Set the state
 		this.set_u8("state", State::liberated);
 		this.server_setTeamNum(0);
@@ -265,6 +405,49 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		}
 		setSectorBorderColor(this);
 
+		// Initiate corruption withdrawal
+		if (isServer() && this.exists("tile_updates"))
+		{
+			Vec2f sector = this.get_Vec2f("sector");
+
+			TileUpdates@ tile_updates;
+			this.get("tile_updates", @tile_updates);
+
+			// Want to center withdrawal on the portal
+			Vec2f pos = map.getTileSpacePosition(this.getPosition());
+			s32 x = Maths::Max((pos - Vec2f(sector.x,                     0)).getLength(),
+					Maths::Max((pos - Vec2f(sector.y - 1,                 0)).getLength(),
+					Maths::Max((pos - Vec2f(sector.x,     map.tilemapheight)).getLength(),
+					           (pos - Vec2f(sector.y - 1, map.tilemapheight)).getLength())));
+
+			// Use midpoint circle to create a circle so the corruption roughly withdraws back to the portal
+			s32 y = 0;
+			s32 error = 1 - x;
+
+			while (x >= y)
+			{
+				tile_updates.queue.push_back(pos + Vec2f(x, y));    // Octant 1
+				tile_updates.queue.push_back(pos + Vec2f(y, x));    // Octant 2
+				tile_updates.queue.push_back(pos + Vec2f(-y, x));   // Octant 3
+				tile_updates.queue.push_back(pos + Vec2f(-x, y));   // Octant 4
+				tile_updates.queue.push_back(pos + Vec2f(-x, -y));  // Octant 5
+				tile_updates.queue.push_back(pos + Vec2f(-y, -x));  // Octant 6
+				tile_updates.queue.push_back(pos + Vec2f(y, -x));   // Octant 7
+				tile_updates.queue.push_back(pos + Vec2f(x, -y));   // Octant 8
+
+				y += 1;
+				if (error < 0)
+				{
+					error += 2 * y + 1;
+				}
+				else
+				{
+					x -= 1;
+					error += 2 * (y - x) + 1;
+				}
+			}
+		}
+
 		// Allow players to build here
 		if (map.getSectorAtPosition(this.getPosition(), "no build") is null)
 		{
@@ -272,34 +455,6 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		}
 		map.RemoveSectorsAtPosition(this.getPosition(), "no build");
 	}
-}
-
-void ModifyWorld(CBlob@ this, bool corrupt)
-{
-	CMap@ map = getMap();
-
-	if (!isServer() || map is null || this is null)
-	{
-		return;
-	}
-
-	Vec2f pos = map.getTileSpacePosition(this.getPosition());
-	for (s32 x = Maths::Max(0, pos.x - CORRUPTION_RADIUS); x < Maths::Min(map.tilemapwidth, pos.x + CORRUPTION_RADIUS); x++)
-	{
-		for (s32 y = Maths::Max(0, pos.y - CORRUPTION_RADIUS); y < Maths::Min(map.tilemapheight, pos.y + CORRUPTION_RADIUS); y++)
-		{
-			Vec2f target_pos = Vec2f(x, y);
-			if (corrupt)
-			{
-				ZombifyBlock(map, target_pos);
-			}
-			else
-			{
-				UnzombifyBlock(map, target_pos);
-			}
-		}
-	}
-	map.UpdateLightingAtPosition(this.getPosition(), CORRUPTION_RADIUS);
 }
 
 // s32 getGroundYLevel(CMap@ map, s32 x)
@@ -326,3 +481,22 @@ void ModifyWorld(CBlob@ this, bool corrupt)
 // 	}
 // 	return -1;
 // }
+
+bool outOfBounds(CMap@ map, Vec2f tile_pos, Vec2f sector)
+{
+	return tile_pos.x < sector.x || tile_pos.x >= sector.y ||   // Out of bounds x
+		   tile_pos.y < 0 || tile_pos.y >= map.tilemapheight;  // Out of bounds y
+}
+
+void Corrupt(CMap@ map, Vec2f world_pos, bool corrupt)
+{
+	TileType type = map.getTile(world_pos).type;
+	if (corrupt && type < WORLD_OFFSET)
+	{
+		map.server_SetTile(world_pos, type + WORLD_OFFSET);
+	}
+	else if (!corrupt && type >= WORLD_OFFSET)
+	{
+		map.server_SetTile(world_pos, type - WORLD_OFFSET);
+	}
+}
