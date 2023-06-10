@@ -22,6 +22,30 @@ void Reset()
 
 void onSetTile(CMap@ this, u32 index, TileType newtile, TileType oldtile)
 {
+    // Only trigger on corruption events
+    if (newtile + WORLD_OFFSET != oldtile && oldtile + WORLD_OFFSET != newtile)
+    {
+        return;
+    }
+
+    // Corrupt blobs
+    if (!this.hasTileFlag(index, Tile::TileFlags::SOLID))
+    {
+        CBlob@[] blobs;
+        this.getBlobsAtPosition(this.getTileWorldPosition(index) + Vec2f(1, 1) * this.tilesize / 2, blobs);
+        for (u32 i = 0; i < blobs.length; i++)
+        {
+            CBlob@ blob = blobs[i];
+            if (blob !is null && (
+                blob.hasTag("tree") ||                                                             // Trees
+                blob.hasTag("scenary") ||                                                          // Bushes, flowers, and grain 
+                blob.hasTag("wooden") && blob.getShape() !is null && blob.getShape().isStatic()))  // Wooden structures
+            {
+                print("" + index + ": " + blobs[i].getName());
+            }
+        }
+    }
+
     // Only need to handle custom blocks
     if (newtile < WORLD_OFFSET || oldtile >= WORLD_OFFSET || oldtile < 0)
     {

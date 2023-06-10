@@ -18,7 +18,7 @@ namespace State
 class TileUpdates
 {
 	Vec2f[] queue;
-
+	u32 steps;
 	// TileUpdates() {}
 }
 
@@ -174,43 +174,45 @@ void onTick(CBlob@ this)
 
 		TileUpdates@ tile_updates;
 		this.get("tile_updates", @tile_updates);
-		for (u8 i = 0; i < 30; i++)
+		for (u8 i = 0; i < 3; i++)
 		{
 			if (tile_updates.queue.isEmpty())
 			{
 				return;
 			}
 			// Get the next item
-			u32 index = XORRandom(tile_updates.queue.length);
+			u32 index = tile_updates.queue.length - 1 - XORRandom(Maths::Min(tile_updates.steps * 3, tile_updates.queue.length - 1));
 			Vec2f tile_pos = tile_updates.queue[index];
 			tile_updates.queue.removeAt(index);
+			tile_updates.steps += 1;
 			Vec2f world_pos = tile_pos * map.tilesize;
 			TileType type = map.getTile(world_pos).type;
 
+			// Too many issues with the circle
 			// Check if we're out of bounds and should just move towards the portal
-			if (outOfBounds(map, tile_pos, sector))  // Out of bounds y
-			{
-				// Only move 1 tile in a cardinal direction to maintain the portal as the center
-				Vec2f offset;
-				if (tile_pos.x < sector.x)
-				{
-					offset = Vec2f(1, 0);
-				}
-				else if (tile_pos.x >= sector.y)
-				{
-					offset = Vec2f(-1, 0);
-				}
-				else if (tile_pos.y < 0)
-				{
-					offset = Vec2f(0, 1);
-				}
-				else
-				{
-					offset = Vec2f(0, -1);
-				}
-				tile_updates.queue.push_back(tile_pos + offset * CORRUPTION_RADIUS);
-				continue;
-			}
+			// if (outOfBounds(map, tile_pos, sector))  // Out of bounds y
+			// {
+			// 	// Only move 1 tile in a cardinal direction to maintain the portal as the center
+			// 	Vec2f offset;
+			// 	if (tile_pos.x < sector.x)
+			// 	{
+			// 		offset = Vec2f(1, 0);
+			// 	}
+			// 	else if (tile_pos.x >= sector.y)
+			// 	{
+			// 		offset = Vec2f(-1, 0);
+			// 	}
+			// 	else if (tile_pos.y < 0)
+			// 	{
+			// 		offset = Vec2f(0, 1);
+			// 	}
+			// 	else
+			// 	{
+			// 		offset = Vec2f(0, -1);
+			// 	}
+			// 	tile_updates.queue.push_back(tile_pos + offset * CORRUPTION_RADIUS);
+			// 	continue;
+			// }
 
 			// Modify this block
 			bool corrupt = state != State::liberated;
@@ -361,26 +363,25 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			TileUpdates@ tile_updates;
 			this.get("tile_updates", @tile_updates);
 
+			// Too many issues with the circle
 			// Clear any updates outside the intended area
-			u32 i = 0;
-			while (i < tile_updates.queue.length)
-			{
-				Vec2f tile_pos = tile_updates.queue[i];
-				if (outOfBounds(map, tile_pos, sector))
-				{
-					tile_updates.queue.removeAt(i);
-				}
-				else
-				{
-					i++;
-				}
-			}
+			// u32 i = 0;
+			// while (i < tile_updates.queue.length)
+			// {
+			// 	Vec2f tile_pos = tile_updates.queue[i];
+			// 	if (outOfBounds(map, tile_pos, sector))
+			// 	{
+			// 		tile_updates.queue.removeAt(i);
+			// 	}
+			// 	else
+			// 	{
+			// 		i++;
+			// 	}
+			// }
 
-			// Start from the center if we don't have anything in the queue
-			if (tile_updates.queue.isEmpty())
-			{
-				tile_updates.queue.push_back(map.getTileSpacePosition(this.getPosition()));
-			}
+			// Start from the center and bias towards it
+			tile_updates.queue.push_back(map.getTileSpacePosition(this.getPosition()));
+			tile_updates.steps = 0;
 		}
 
 		// Prevent players from building here
@@ -413,39 +414,44 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			TileUpdates@ tile_updates;
 			this.get("tile_updates", @tile_updates);
 
-			// Want to center withdrawal on the portal
-			Vec2f pos = map.getTileSpacePosition(this.getPosition());
-			s32 x = Maths::Max((pos - Vec2f(sector.x,                     0)).getLength(),
-					Maths::Max((pos - Vec2f(sector.y - 1,                 0)).getLength(),
-					Maths::Max((pos - Vec2f(sector.x,     map.tilemapheight)).getLength(),
-					           (pos - Vec2f(sector.y - 1, map.tilemapheight)).getLength())));
+			// Start from the center and bias towards it
+			tile_updates.queue.push_back(map.getTileSpacePosition(this.getPosition()));
+			tile_updates.steps = 0;
 
-			// Use midpoint circle to create a circle so the corruption roughly withdraws back to the portal
-			s32 y = 0;
-			s32 error = 1 - x;
+			// Too many issues with the circle
+			// // Want to center withdrawal on the portal
+			// Vec2f pos = map.getTileSpacePosition(this.getPosition());
+			// s32 x = Maths::Max((pos - Vec2f(sector.x,                     0)).getLength(),
+			// 		Maths::Max((pos - Vec2f(sector.y - 1,                 0)).getLength(),
+			// 		Maths::Max((pos - Vec2f(sector.x,     map.tilemapheight)).getLength(),
+			// 		           (pos - Vec2f(sector.y - 1, map.tilemapheight)).getLength())));
 
-			while (x >= y)
-			{
-				tile_updates.queue.push_back(pos + Vec2f(x, y));    // Octant 1
-				tile_updates.queue.push_back(pos + Vec2f(y, x));    // Octant 2
-				tile_updates.queue.push_back(pos + Vec2f(-y, x));   // Octant 3
-				tile_updates.queue.push_back(pos + Vec2f(-x, y));   // Octant 4
-				tile_updates.queue.push_back(pos + Vec2f(-x, -y));  // Octant 5
-				tile_updates.queue.push_back(pos + Vec2f(-y, -x));  // Octant 6
-				tile_updates.queue.push_back(pos + Vec2f(y, -x));   // Octant 7
-				tile_updates.queue.push_back(pos + Vec2f(x, -y));   // Octant 8
+			// // Use midpoint circle to create a circle so the corruption roughly withdraws back to the portal
+			// s32 y = 0;
+			// s32 error = 1 - x;
 
-				y += 1;
-				if (error < 0)
-				{
-					error += 2 * y + 1;
-				}
-				else
-				{
-					x -= 1;
-					error += 2 * (y - x) + 1;
-				}
-			}
+			// while (x >= y)
+			// {
+			// 	tile_updates.queue.push_back(pos + Vec2f(x, y));    // Octant 1
+			// 	tile_updates.queue.push_back(pos + Vec2f(y, x));    // Octant 2
+			// 	tile_updates.queue.push_back(pos + Vec2f(-y, x));   // Octant 3
+			// 	tile_updates.queue.push_back(pos + Vec2f(-x, y));   // Octant 4
+			// 	tile_updates.queue.push_back(pos + Vec2f(-x, -y));  // Octant 5
+			// 	tile_updates.queue.push_back(pos + Vec2f(-y, -x));  // Octant 6
+			// 	tile_updates.queue.push_back(pos + Vec2f(y, -x));   // Octant 7
+			// 	tile_updates.queue.push_back(pos + Vec2f(x, -y));   // Octant 8
+
+			// 	y += 1;
+			// 	if (error < 0)
+			// 	{
+			// 		error += 2 * y + 1;
+			// 	}
+			// 	else
+			// 	{
+			// 		x -= 1;
+			// 		error += 2 * (y - x) + 1;
+			// 	}
+			// }
 		}
 
 		// Allow players to build here
