@@ -4,6 +4,7 @@
 // #define SERVER_ONLY
 
 #include "RulesCore.as";
+#include "ZombieBlocksCommon.as";
 
 void onInit(CRules@ this)
 {
@@ -109,7 +110,7 @@ Vec2f getSpawnLocation(CPlayer@ player)
 		mid.y = y * map.tilesize;
 		TileType type = map.getTile(mid).type;
 
-		if (map.isTileGround(type))
+		if (isGround(type))
 		{
 			break;
 		}
