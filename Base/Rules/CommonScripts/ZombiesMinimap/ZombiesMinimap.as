@@ -1,6 +1,7 @@
 
 // Thanks to Guift for help with SMesh <3
 
+#include "ZombieBlocksCommon.as"
 #include "ZombiesMinimapCommon.as"
 #include "TreeCommon.as"
 
@@ -264,12 +265,12 @@ void RenderMap(int id)
             for (u8 y = 0; y < map.tilemapheight; y++)
             {
                 TileType tile_type = map.getTile(Vec2f(map_x, y) * map.tilesize).type;
-                if (!(map.isTileGround(tile_type)     || 
-                      map.isTileBedrock(tile_type)    || 
-                      map.isTileStone(tile_type)      ||
-                      map.isTileThickStone(tile_type) ||
-                      map.isTileGold(tile_type)       ||
-                      tile_type == CMap::tile_empty && !map.isInWater(Vec2f(map_x, y) * map.tilesize))) // Air blocks not spawning in water can never be flooded in my mod
+                if (!(isDirt(tile_type)     || 
+                      isBedrock(tile_type)    || 
+                      isStone(tile_type)      ||
+                      isThickStone(tile_type) ||
+                      isGold(tile_type)       ||
+                      isEmpty(tile_type) && !map.isInWater(Vec2f(map_x, y) * map.tilesize))) // Air blocks not spawning in water can never be flooded in my mod
                 {
                     y_values.push_back(y);
                 }

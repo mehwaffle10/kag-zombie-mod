@@ -110,7 +110,7 @@ Vec2f getSpawnLocation(CPlayer@ player)
 		mid.y = y * map.tilesize;
 		TileType type = map.getTile(mid).type;
 
-		if (isGround(type))
+		if (isSolid(type))
 		{
 			break;
 		}

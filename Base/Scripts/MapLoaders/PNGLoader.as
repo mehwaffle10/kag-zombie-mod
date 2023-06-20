@@ -3,9 +3,10 @@
 
 // Note for modders upgrading their mod, handlePixel's signature has changed recently!
 
-#include "LoaderColors.as";
-#include "LoaderUtilities.as";
-#include "CustomBlocks.as";
+#include "LoaderColors.as"
+#include "LoaderUtilities.as"
+#include "CustomBlocks.as"
+#include "ZombieBlocksSetTile.as"
 
 enum world_positions_enums
 {
@@ -135,6 +136,8 @@ class PNGLoader
 		u8 alpha = pixel.getAlpha();
 
 		const Vec2f position = getSpawnPosition(map, offset);
+		int map_offset = map.getTileOffset(position);
+
 		if(alpha < 255)
 		{
 			alpha &= ~0x80;
@@ -239,30 +242,122 @@ class PNGLoader
 			switch (pixel.color)
 			{
 			// Tiles
-			case map_colors::sky:					map.server_SetTile(position, CMap::tile_empty);      	   break;
-			case map_colors::tile_ground:           map.server_SetTile(position, CMap::tile_ground);           break;
-			case map_colors::tile_ground_back:      map.server_SetTile(position, CMap::tile_ground_back);      break;
-			case map_colors::tile_stone:            map.server_SetTile(position, CMap::tile_stone);            break;
-			case map_colors::tile_thickstone:       map.server_SetTile(position, CMap::tile_thickstone);       break;
-			case map_colors::tile_bedrock:          map.server_SetTile(position, CMap::tile_bedrock);          break;
-			case map_colors::tile_gold:             map.server_SetTile(position, CMap::tile_gold);             break;
-			case map_colors::tile_castle:           map.server_SetTile(position, CMap::tile_castle);           break;
-			case map_colors::tile_castle_back:      map.server_SetTile(position, CMap::tile_castle_back);      break;
-			case map_colors::tile_castle_moss:      map.server_SetTile(position, CMap::tile_castle_moss);      break;
-			case map_colors::tile_castle_back_moss: map.server_SetTile(position, CMap::tile_castle_back_moss); break;
-			case map_colors::tile_wood:             map.server_SetTile(position, CMap::tile_wood);             break;
-			case map_colors::tile_wood_back:        map.server_SetTile(position, CMap::tile_wood_back);        break;
-			case map_colors::tile_grass:            map.server_SetTile(position, CMap::tile_grass + map_random.NextRanged(3)); break;
+			case map_colors::sky:
+			{
+				TileType empty = CMap::tile_empty + WORLD_OFFSET;
+				map.server_SetTile(position, empty);
+				ZombieSetTile(map, map_offset, empty);
+				break;
+			}
+			case map_colors::tile_ground:
+			{
+				TileType ground = CMap::tile_ground + WORLD_OFFSET;
+				map.server_SetTile(position, ground);
+				ZombieSetTile(map, map_offset, ground);
+				break;
+			}
+			case map_colors::tile_ground_back:
+			{
+				TileType ground_back = CMap::tile_ground_back + WORLD_OFFSET;
+				map.server_SetTile(position, ground_back);
+				ZombieSetTile(map, map_offset, ground_back);
+				break;
+			}
+			case map_colors::tile_stone:
+			{
+				TileType stone = CMap::tile_stone + WORLD_OFFSET;
+				map.server_SetTile(position, stone);
+				ZombieSetTile(map, map_offset, stone);
+				break;
+			}
+			case map_colors::tile_thickstone:
+			{
+				TileType thickstone = CMap::tile_thickstone + WORLD_OFFSET;
+				map.server_SetTile(position, thickstone);
+				ZombieSetTile(map, map_offset, thickstone);
+				break;
+			}
+			case map_colors::tile_bedrock:
+			{
+				TileType bedrock = CMap::tile_bedrock + WORLD_OFFSET;
+				map.server_SetTile(position, bedrock);
+				ZombieSetTile(map, map_offset, bedrock);
+				break;
+			}
+			case map_colors::tile_gold:
+			{
+				TileType gold = CMap::tile_gold + WORLD_OFFSET;
+				map.server_SetTile(position, gold);
+				ZombieSetTile(map, map_offset, gold);
+				break;
+			}
+			case map_colors::tile_castle:
+			{
+				TileType castle = CMap::tile_castle + WORLD_OFFSET;
+				map.server_SetTile(position, castle);
+				ZombieSetTile(map, map_offset, castle);
+				break;
+			}
+			case map_colors::tile_castle_back:
+			{
+				TileType castle_back = CMap::tile_castle_back + WORLD_OFFSET;
+				map.server_SetTile(position, castle_back);
+				ZombieSetTile(map, map_offset, castle_back);
+				break;
+			}
+			case map_colors::tile_castle_moss:
+			{
+				TileType castle_moss = CMap::tile_castle_moss + WORLD_OFFSET;
+				map.server_SetTile(position, castle_moss);
+				ZombieSetTile(map, map_offset, castle_moss);
+				break;
+			}
+			case map_colors::tile_castle_back_moss:
+			{
+				TileType castle_back_moss = CMap::tile_castle_back_moss + WORLD_OFFSET;
+				map.server_SetTile(position, castle_back_moss);
+				ZombieSetTile(map, map_offset, castle_back_moss);
+				break;
+			}
+			case map_colors::tile_wood:
+			{
+				TileType wood = CMap::tile_wood + WORLD_OFFSET;
+				map.server_SetTile(position, wood);
+				ZombieSetTile(map, map_offset, wood);
+				break;
+			}
+			case map_colors::tile_wood_back:
+			{
+				TileType wood_back = CMap::tile_wood_back + WORLD_OFFSET;
+				map.server_SetTile(position, wood_back);
+				ZombieSetTile(map, map_offset, wood_back);
+				break;
+			}
+			case map_colors::tile_grass:
+			{
+				TileType grass = CMap::tile_grass + map_random.NextRanged(3) + WORLD_OFFSET;
+				map.server_SetTile(position, grass);
+				ZombieSetTile(map, map_offset, grass);
+				break;
+			}
 
 			// Water
 			case map_colors::water_air:
+			{
+				TileType empty = CMap::tile_empty + WORLD_OFFSET;
+				map.server_SetTile(position, empty);
+				ZombieSetTile(map, map_offset, empty);
 				map.server_setFloodWaterWorldspace(position, true);
-				map.server_SetTile(position, CMap::tile_empty);
-			break;
+				break;
+			}
 			case map_colors::water_backdirt:
+			{
+				TileType ground_back = CMap::tile_ground_back + WORLD_OFFSET;
+				map.server_SetTile(position, ground_back);
+				ZombieSetTile(map, map_offset, ground_back);
 				map.server_setFloodWaterWorldspace(position, true);
-				map.server_SetTile(position, CMap::tile_ground_back);
-			break;
+				break;
+			}
 
 			// Princess & necromancer
 			case map_colors::princess:             autotile(position); spawnBlob(map, "princess",    offset, 6); break;
@@ -372,10 +467,33 @@ class PNGLoader
 			case map_colors::bridge_noteam: autotile(position); spawnBlob(map, "bridge", offset, 255, true); break;
 
 			// Spikes
-			case map_colors::spikes:  world_positions[spike_index].push_back(position); break;
-			case map_colors::spikes_ground: world_positions[spike_index].push_back(position); map.server_SetTile(position, CMap::tile_ground_back); break;
-			case map_colors::spikes_castle: world_positions[spike_index].push_back(position); map.server_SetTile(position, CMap::tile_castle_back); break;
-			case map_colors::spikes_wood:   world_positions[spike_index].push_back(position); map.server_SetTile(position, CMap::tile_wood_back);   break;
+			case map_colors::spikes:
+				world_positions[spike_index].push_back(position);
+				break;
+			case map_colors::spikes_ground:
+			{
+				world_positions[spike_index].push_back(position);
+				TileType ground_back = CMap::tile_ground_back + WORLD_OFFSET;
+				map.server_SetTile(position, ground_back);
+				ZombieSetTile(map, map_offset, ground_back);
+				break;
+			}
+			case map_colors::spikes_castle:
+			{
+				world_positions[spike_index].push_back(position);
+				TileType castle_back = CMap::tile_ground_back + WORLD_OFFSET;
+				map.server_SetTile(position, castle_back);
+				ZombieSetTile(map, map_offset, castle_back);
+				break;
+			}
+			case map_colors::spikes_wood:
+			{
+				world_positions[spike_index].push_back(position);
+				TileType wood_back = CMap::tile_wood_back + WORLD_OFFSET;
+				map.server_SetTile(position, wood_back);
+				ZombieSetTile(map, map_offset, wood_back);
+				break;
+			}
 
 			// Misc stuff
 			case map_colors::drill: autotile(position); spawnBlob(map, "drill", offset, -1); break;
@@ -479,7 +597,10 @@ class PNGLoader
 			case tree_index:
 			{
 				// load trees only at the ground
-				if(!map.isTileSolid(world_position + Vec2f(0, map.tilesize))) return;
+				if(!isSolid(map.getTile(world_position + Vec2f(0, map.tilesize)).type))
+				{
+					return;
+				}
 
 				CBlob@ tree = server_CreateBlobNoInit(map_random.NextRanged(35) < 21 ? "tree_pine" : "tree_bushy" );
 				if(tree !is null)
@@ -487,9 +608,11 @@ class PNGLoader
 					tree.Tag("startbig");
 					tree.setPosition(world_position);
 					tree.Init();
-					if (map.getTile(world_position).type == CMap::tile_empty)
+					if (isEmpty(map.getTile(world_position).type))
 					{
-						map.server_SetTile(world_position, CMap::tile_grass + map_random.NextRanged(3));
+						TileType grass = CMap::tile_grass + map_random.NextRanged(3) + WORLD_OFFSET;
+						map.server_SetTile(world_position, grass);
+						ZombieSetTile(map, map.getTileOffset(world_position), grass); 
 					}
 				}
 				break;
@@ -585,34 +708,45 @@ class PNGLoader
 		const TileType down = map.getTile(position + Vec2f(0, map.tilesize)).type;
 		const TileType left = map.getTile(position + Vec2f(-map.tilesize, 0)).type;
 		const TileType right = map.getTile(position + Vec2f(map.tilesize, 0)).type;
+		u32 offset = map.getTileOffset(position);
 
-		if (up != CMap::tile_empty)
+		if (!isEmpty(up))
 		{
 			const TileType[] neighborhood = { up, down, left, right };
 
 			if ((neighborhood.find(CMap::tile_castle) != -1) ||
 			    (neighborhood.find(CMap::tile_castle_back) != -1))
 			{
-				map.server_SetTile(position, CMap::tile_castle_back);
+				TileType castle_back = CMap::tile_castle_back + WORLD_OFFSET;
+				map.server_SetTile(position, castle_back);
+				ZombieSetTile(map, offset, castle_back); 
 			}
 			else if ((neighborhood.find(CMap::tile_wood) != -1) ||
 			         (neighborhood.find(CMap::tile_wood_back) != -1))
 			{
-				map.server_SetTile(position, CMap::tile_wood_back );
+				TileType wood_back = CMap::tile_wood_back + WORLD_OFFSET;
+				map.server_SetTile(position, wood_back);
+				ZombieSetTile(map, offset, wood_back); 
 			}
 			else if ((neighborhood.find(CMap::tile_ground) != -1) ||
 			         (neighborhood.find(CMap::tile_ground_back) != -1))
 			{
-				map.server_SetTile(position, CMap::tile_ground_back);
+				TileType ground_back = CMap::tile_ground_back + WORLD_OFFSET;
+				map.server_SetTile(position, ground_back);
+				ZombieSetTile(map, offset, ground_back); 
 			}
 		}
-		else if(map.isTileSolid(down) && (map.isTileGrass(left) || map.isTileGrass(right)))
+		else if(isSolid(down) && (isGrass(left) || isGrass(right)))
 		{
-			map.server_SetTile(position, CMap::tile_grass + 2 + map_random.NextRanged(2));
+			TileType grass = CMap::tile_grass + 2 + map_random.NextRanged(2) + WORLD_OFFSET;
+			map.server_SetTile(position, grass);
+			ZombieSetTile(map, offset, grass); 
 		}
 		else
 		{
-			map.server_SetTile(position, CMap::tile_empty);
+			TileType empty = CMap::tile_empty + WORLD_OFFSET;
+			map.server_SetTile(position, empty);
+			ZombieSetTile(map, offset, empty); 
 		}
 	}
 
