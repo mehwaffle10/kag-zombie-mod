@@ -19,7 +19,6 @@ class TileUpdates
 {
 	Vec2f[] queue;
 	u32 steps;
-	// TileUpdates() {}
 }
 
 void onInit(CBlob@ this)
