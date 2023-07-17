@@ -2,12 +2,12 @@
 string getRandomForename(CBlob@ this)
 {
 	string[]@ forenames = this.getSexNum() == 0 ? male_forenames : female_forenames;
-	return forenames[XORRandom(forenames.length())];
+	return forenames[XORRandom(forenames.length)];
 }
 
 string getRandomSurname()
 {
-	return surnames[XORRandom(surnames.length())];
+	return surnames[XORRandom(surnames.length)];
 }
 
 string[] male_forenames = {

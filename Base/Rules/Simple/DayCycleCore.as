@@ -87,7 +87,7 @@ void onTick(CRules@ this)
 			// Update things that trigger at dusk
 			CBlob@[] tagged;
 			getBlobsByTag("night", @tagged);
-			for (u16 i = 0; i < tagged.length(); i++)
+			for (u16 i = 0; i < tagged.length; i++)
 			{
 				tagged[i].SendCommand(tagged[i].getCommandID("night"));
 			}
@@ -102,7 +102,7 @@ void onTick(CRules@ this)
 			// Update things that trigger at dawn
 			CBlob@[] tagged;
 			getBlobsByTag("day", @tagged);
-			for (u16 i = 0; i < tagged.length(); i++)
+			for (u16 i = 0; i < tagged.length; i++)
 			{
 				tagged[i].SendCommand(tagged[i].getCommandID("day"));
 			}
