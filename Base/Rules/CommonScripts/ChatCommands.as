@@ -137,10 +137,10 @@ bool onServerProcessChat(CRules@ this, const string& in text_in, string& out tex
 		}
 		else if (text_in == "!explore")
 		{
-			this.set_s32(ZOMBIE_MINIMAP_EXPLORED + "_left", -10);
-			this.Sync(ZOMBIE_MINIMAP_EXPLORED + "_left", true);
-			this.set_s32(ZOMBIE_MINIMAP_EXPLORED + "_right", 32000);
-			this.Sync(ZOMBIE_MINIMAP_EXPLORED + "_right", true);
+			ZombieMinimapCore@ zombie_minimap_core;
+    		this.get(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
+			zombie_minimap_core.left = -10;
+			zombie_minimap_core.right = 32000;
 		}
 		else if (text_in == "!survivor")
 		{

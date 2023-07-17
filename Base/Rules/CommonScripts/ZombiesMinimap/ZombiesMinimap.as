@@ -42,9 +42,16 @@ void Setup()
     }
 
     // Reset exploration borders
-    string left_string = ZOMBIE_MINIMAP_EXPLORED + "_left", right_string = ZOMBIE_MINIMAP_EXPLORED + "_right";
-    rules.set_s32(left_string, 1000000000);
-    rules.set_s32(right_string, 0);
+    ZombieMinimapCore@ zombie_minimap_core = ZombieMinimapCore();
+    u8[][] nonstatic_blocks(map.tilemapwidth, u8[](0)); 
+    zombie_minimap_core.nonstatic_blocks = nonstatic_blocks;
+    bool[] generated(map.tilemapwidth, false);
+    zombie_minimap_core.generated = generated;
+    bool[][] water(map.tilemapwidth, bool[](0)); 
+    zombie_minimap_core.water = water;
+    zombie_minimap_core.left = 1000000000;
+    zombie_minimap_core.right = 0;
+    rules.set(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
 
     if (!isClient())
     {
@@ -156,6 +163,9 @@ void RenderMap(int id)
     {
         return;
     }
+
+    ZombieMinimapCore@ zombie_minimap_core;
+    rules.get(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
     
     if (!minimap_initialized && map.tilemapwidth > 0 && map.tilemapheight > 0)
     {
@@ -192,9 +202,9 @@ void RenderMap(int id)
 
     // See if we're rendering the minimap or the full map. Also limit by exploration so that we don't know how big the map is initially
     u16 min_fog_width = exploration_width * 3;
-    s32 left = rules.get_s32(ZOMBIE_MINIMAP_EXPLORED + "_left"), right = rules.get_s32(ZOMBIE_MINIMAP_EXPLORED + "_right");
     u16 map_width = Maths::Min(
-        right - left + min_fog_width * 2,                                                    // Limit to where we've explored
+        zombie_minimap_core.right + min_fog_width * 2 < zombie_minimap_core.left ? 0 :
+        zombie_minimap_core.right - zombie_minimap_core.left + min_fog_width * 2,  // Limit to where we've explored, make sure it's positive
         Maths::Min(map.tilemapwidth,                                                         // Limit to size of map
         full_map ? (driver.getScreenWidth() - full_map_border) / tile_width : minimap_width  // Otherwise pick between our minimap size or full map size
     ));
@@ -206,7 +216,7 @@ void RenderMap(int id)
 
     // Get the left position on the tile map
     s32 full_map_left = rules.get_s32(ZOMBIE_MINIMAP_FULL_LEFT_X);
-    s32 left_scroll_limit = left - min_fog_width, right_scroll_limit = right - map_width + min_fog_width;
+    s32 left_scroll_limit = zombie_minimap_core.left - min_fog_width, right_scroll_limit = zombie_minimap_core.right - map_width + min_fog_width;
     s32 map_left = Maths::Min(
         map.tilemapwidth - map_width,                                                       // Limit to right side of map
         Maths::Max(0,                                                                       // Limit to left side of map
@@ -247,50 +257,33 @@ void RenderMap(int id)
     for (s32 x = 0; x < map_width; x++)
     {
         s32 map_x = map_left + x;
-        string x_prefix = ZOMBIE_MINIMAP_NONSTATIC_PREFIX + "_" + map_x;
-        string x_length = x_prefix + "_l";
-
-        u8[] y_values;
-        if (map.exists(x_length))
-        {
-            // Load the list of nonstatic blocks
-            for (u8 i = 0; i < map.get_u8(x_length); i++)
-            {
-                y_values.push_back(map.get_u8(x_prefix + "_" + i));
-            }
-        }
-        else
+        u8[]@ nonstatic_blocks = @zombie_minimap_core.nonstatic_blocks[map_x];
+        if (!zombie_minimap_core.generated[map_x])
         {
             // Generate the list of nonstatic blocks and save
             for (u8 y = 0; y < map.tilemapheight; y++)
             {
                 TileType tile_type = map.getTile(Vec2f(map_x, y) * map.tilesize).type;
-                if (!(isDirt(tile_type)     || 
+                if (!(isDirt(tile_type)       || 
                       isBedrock(tile_type)    || 
                       isStone(tile_type)      ||
                       isThickStone(tile_type) ||
                       isGold(tile_type)       ||
                       isEmpty(tile_type) && !map.isInWater(Vec2f(map_x, y) * map.tilesize))) // Air blocks not spawning in water can never be flooded in my mod
                 {
-                    y_values.push_back(y);
+                    nonstatic_blocks.push_back(y);
+                    zombie_minimap_core.water[map_x].push_back(false);
                 }
             }
-
-            // Save the nonstatic list
-            for (u8 i = 0; i < y_values.length(); i++)
-            {
-                map.set_u8(x_prefix + "_" + i, y_values[i]);
-            }
-            map.set_u8(x_length, y_values.length());
+            zombie_minimap_core.generated[map_x] = true;
         }
 
         // Scan for water spaces
-        for (u8 i = 0; i < y_values.length(); i++)
+        for (u8 i = 0; i < nonstatic_blocks.length; i++)
         {
-            Vec2f tile_pos = Vec2f(map_x, y_values[i]);
+            Vec2f tile_pos = Vec2f(map_x, nonstatic_blocks[i]);
             Vec2f world_pos = tile_pos * map.tilesize;
-            string water_bool = ZOMBIE_MINIMAP_WATER_PREFIX + tile_pos;
-            bool water = map.get_bool(water_bool);
+            bool water = zombie_minimap_core.water[tile_pos.x][i];
 
             // Mark that we've updated the color and update the texture
             if (water != map.isInWater(world_pos))
@@ -298,7 +291,7 @@ void RenderMap(int id)
                 dirty = true;
                 water = !water;
                 image_data.put(tile_pos.x, tile_pos.y, water ? image_data.get(tile_pos.x, tile_pos.y).getInterpolated(color_water, 0.5f) : getMapColor(rules, map, world_pos));
-                map.set_bool(water_bool, water);
+                zombie_minimap_core.water[tile_pos.x][i] = water;
             }
         }
     }
@@ -335,13 +328,13 @@ void RenderMap(int id)
     Vec2f border_size = Vec2f(border_width / 2, border_width);  // Border should overlap a bit to hide icons popping into existence
     Vec2f border_upper_left = upper_left - border_size, border_bottom_right = bottom_right + border_size;
 
-    for (u8 icon_index = 0; icon_index < minimap_icons.length(); icon_index++)
+    for (u8 icon_index = 0; icon_index < minimap_icons.length; icon_index++)
     {
         MinimapIcon icon = minimap_icons[icon_index];
         u8 icon_offset = icon.size.x / 2 * tile_width;
         CBlob@[] blobs;
         getBlobsByName(icon.name, blobs);
-        for (u8 i = 0; i < blobs.length(); i++)
+        for (u8 i = 0; i < blobs.length; i++)
         {
             // Make sure the blob exists
             CBlob@ blob = blobs[i];
@@ -371,7 +364,7 @@ void RenderMap(int id)
                         // Shorten from the right
                         while(name_right > bottom_right.x)
                         {
-                            sector_name = sector_name.substr(0, sector_name.length() - 1);
+                            sector_name = sector_name.substr(0, sector_name.length - 1);
                             GUI::GetTextDimensions(sector_name, name_size);
                             name_right = name_left + name_size.x;
                         }
@@ -381,7 +374,7 @@ void RenderMap(int id)
                         // Shorten from the left
                         while(name_left < border_upper_left.x)
                         {
-                            sector_name = sector_name.substr(1, sector_name.length());
+                            sector_name = sector_name.substr(1, sector_name.length);
                             GUI::GetTextDimensions(sector_name, name_size);
                             name_left = name_right - name_size.x;
                         }
@@ -424,9 +417,9 @@ void RenderMap(int id)
     s32 fade_gap = exploration_width - fade_width;
 
     // Left
-    if (map_left + fade_gap < left)
+    if (map_left + fade_gap < zombie_minimap_core.left)
     {
-        s32 x_width = left - map_left - fade_gap;
+        s32 x_width = zombie_minimap_core.left - map_left - fade_gap;
         SColor color = color_unexplored;
         s32 limit = Maths::Min(fade_width, x_width);
 
@@ -446,9 +439,9 @@ void RenderMap(int id)
     }
 
     // Right
-    if (map_left + map_width - fade_gap > right)
+    if (map_left + map_width - fade_gap > zombie_minimap_core.right)
     {
-        s32 x_width = map_left + map_width - fade_gap - right;
+        s32 x_width = map_left + map_width - fade_gap - zombie_minimap_core.right;
         SColor color = color_unexplored;
         s32 limit = Maths::Min(fade_width, x_width);
 
@@ -468,7 +461,7 @@ void RenderMap(int id)
     }
 
     // Mesh config 
-    if (v_raw_exploration.length() > 0)
+    if (v_raw_exploration.length > 0)
     {
         exploration_overlay.SetMaterial(exploration_material);
         exploration_overlay.SetHardwareMapping(SMesh::STATIC);
@@ -527,6 +520,8 @@ void onTick(CRules@ this)
         return;
     }
 
+    ZombieMinimapCore@ zombie_minimap_core;
+    this.get(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
     for (u8 i = 0; i < getPlayerCount(); i++)
     {
         CPlayer@ player = getPlayer(i);
@@ -543,14 +538,13 @@ void onTick(CRules@ this)
 
         // Explore horizontally
         s32 x = blob.getPosition().x / map.tilesize;
-        string left_string = ZOMBIE_MINIMAP_EXPLORED + "_left", right_string = ZOMBIE_MINIMAP_EXPLORED + "_right";
-        if (x < this.get_s32(left_string))
+        if (x < zombie_minimap_core.left)
         {
-            this.set_s32(left_string, x);
+            zombie_minimap_core.left = x;
         }
-        if (x > this.get_s32(right_string))
+        if (x > zombie_minimap_core.right)
         {
-            this.set_s32(right_string, x);
+            zombie_minimap_core.right = x;
         }
     }
 }
@@ -564,7 +558,7 @@ void RenderRectangle(Vertex[]@ vertices, u16[]@ indices, Vec2f upper_left, Vec2f
     vertices.push_back(Vertex(upper_left + Vec2f(0, size.y) * tile_width, 1000, texture_offset + Vec2f(0, texture_size.y), color));
 
     // Add indices
-    u32 vertices_length = vertices.length();
+    u32 vertices_length = vertices.length;
     indices.push_back(vertices_length - 4);
     indices.push_back(vertices_length - 3);
     indices.push_back(vertices_length - 2);

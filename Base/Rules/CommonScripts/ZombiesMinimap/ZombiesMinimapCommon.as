@@ -1,12 +1,19 @@
 
 #include "ZombieBlocksCommon.as"
 
+class ZombieMinimapCore
+{
+    u8[][] nonstatic_blocks;
+    bool[] generated;
+    bool[][] water;
+    s32 left;
+    s32 right;
+}
+
+const string ZOMBIE_MINIMAP_CORE = "zombie_minimap_core";
 const string ZOMBIE_MINIMAP_TEXTURE = "zombie_minimap";
 const string ZOMBIE_MINIMAP_EXPLORATION_TEXTURE = "pixel";
 const string ZOMBIE_MINIMAP_UPDATE_COMMAND = "zombie_minimap_update";
-const string ZOMBIE_MINIMAP_NONSTATIC_PREFIX = "zombie_minimap_nonstatic";
-const string ZOMBIE_MINIMAP_WATER_PREFIX = "zombie_minimap_water";
-const string ZOMBIE_MINIMAP_EXPLORED = "zombie_minimap_explored";
 const string ZOMBIE_MINIMAP_FULL = "zombie_minimap_render_full_map";
 const string ZOMBIE_MINIMAP_FULL_LEFT_X = "zombie_minimap_full_map_left_x";
 const string ZOMBIE_MAP_WIDTH = "zombies_map_width";
