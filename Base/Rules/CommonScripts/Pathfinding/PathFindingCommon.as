@@ -1,11 +1,12 @@
 
+const string PATHFINDING_CORE = "pathfinding_core";
 const string IS_STATIC = "is static";
 const u8 max_edge_length = 3;
 const u8[] graph_sizes = {2};
 
 // void GenerateGraph(CMap@ map)
 // {
-//     for (u8 i = 0; i < graph_sizes.length(); i++)
+//     for (u8 i = 0; i < graph_sizes.length; i++)
 //     {
 //         GenerateGraph(map, graph_sizes[i]);
 //     }
@@ -16,9 +17,37 @@ const u8[] graph_sizes = {2};
 //     UpdateGraph(map, size, Vec2f(0, 0), Vec2f(map.tilemapwidth, map.tilemapheight) - Vec2f(1, 1), Vec2f(-1.0f, -1.0f));  // Fix off by one error since UpdateGraph uses <=
 // }
 
+class Edge
+{
+    Vec2f target;
+    s8 cost;
+}
+
+class Node
+{
+    u8 y;
+    Edge[] edges;
+    Vec2f[] inbound_edges;
+
+    Node(u8 _y)
+    {
+        y = _y;
+    }
+
+    int opCmp(const Node &in other) const
+    {
+        return y - other.y;
+    }
+}
+  
+class PathfindingCore
+{
+	Node[][] nodes;
+}
+
 void UpdateGraph(CMap@ map, Vec2f top_left, Vec2f bottom_right)
 {
-    for (u8 i = 0; i < graph_sizes.length(); i++)
+    for (u8 i = 0; i < graph_sizes.length; i++)
     {
         UpdateGraph(map, graph_sizes[i], top_left, bottom_right, Vec2f(-1, -1));
     }
@@ -26,7 +55,7 @@ void UpdateGraph(CMap@ map, Vec2f top_left, Vec2f bottom_right)
 
 void UpdateGraph(CMap@ map, Vec2f center, bool destroyed)
 {
-    for (u8 i = 0; i < graph_sizes.length(); i++)
+    for (u8 i = 0; i < graph_sizes.length; i++)
     {
         UpdateGraph(map, graph_sizes[i], center, destroyed);
     }
@@ -42,21 +71,45 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f center, bool destroyed)
 void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f broken_block)
 { 
     CRules@ rules = getRules();
+    PathfindingCore@ pathfinding_core;
+    rules.get(PATHFINDING_CORE, @pathfinding_core);
+
     // TODO: Check if it's faster to insert in the middle of an array or append to the back and then sort
     // Find all valid nodes
     for (s32 x = Maths::Max(top_left.x, 0); x <= Maths::Min(bottom_right.x, map.tilemapwidth - 1); x++)
     {
+        Node[]@ nodes = @pathfinding_core.nodes[x];
         // Clear entries in the range and find starting point for insertion if splicing in 
-        u8[] y_values;
-        readX(rules, size, x, y_values);
-
         u8 index = 0;
-        while(index < y_values.length() && y_values[index] <= bottom_right.y)
+        while(index < nodes.length && nodes[index].y <= bottom_right.y)
         {
-            if (y_values[index] >= top_left.y)
+            Vec2f current_node = Vec2f(x, nodes[index].y);
+            if (current_node.y >= top_left.y)
             {
-                deleteEdges(rules, size, x, y_values[index]);
-                y_values.erase(index);
+                // Delete all inbound edges
+                for (u8 inbound_index = 0; inbound_index < nodes[index].inbound_edges.length; inbound_index++)
+                {
+                    Vec2f source = nodes[index].inbound_edges[inbound_index];
+                    Node[]@ source_nodes = @pathfinding_core.nodes[source.x];
+                    for (u8 node_index = 0; node_index < source_nodes.length; node_index++)
+                    {
+                        Node@ source_node = @source_nodes[node_index];
+                        if (source_node.y != source.y)
+                        {
+                            continue;
+                        }
+
+                        for (u8 edge_index = 0; edge_index < source_node.edges.length; edge_index++)
+                        {
+                            if (source_node.edges[edge_index].target == current_node)
+                            {
+                                source_node.edges.erase(edge_index);
+                                break;
+                            }
+                        }
+                    }
+                }
+                nodes.erase(index);
             }
             else
             {
@@ -71,61 +124,63 @@ void UpdateGraph(CMap@ map, u8 size, Vec2f top_left, Vec2f bottom_right, Vec2f b
             Vec2f pos = Vec2f(x, y);
             if (isBigEnough(pos, size, map, broken_block) && canStand(pos, size, map, broken_block))
             {
-                y_values.push_back(y);
+                nodes.push_back(Node(y));
             }
         }
 
-        // Sort before saving
-        y_values.sortAsc();
-        writeX(rules, size, x, y_values);
+        // Sort
+        nodes.sortAsc();
+        string output = "";
+        for (u8 i = 0; i < nodes.length; i++)
+        {
+            output += nodes[i].y + ", ";
+        }
     }
 
     // Update Edges
     // Create grid for lookup
-    Vec2f grid_top_left = top_left - Vec2f(Maths::Min(top_left.x, max_edge_length), Maths::Min(top_left.y, max_edge_length));
-    Vec2f grid_bottom_right = bottom_right + Vec2f(Maths::Min(map.tilemapwidth - 1 - bottom_right.x, max_edge_length), Maths::Min(map.tilemapheight - 1 - bottom_right.y, max_edge_length));
-    Vec2f grid_size = grid_bottom_right - grid_top_left;
-    bool[][] nodes(Maths::Max(grid_size.x, map.tilemapwidth), bool[](Maths::Max(grid_size.y, map.tilemapheight), false));
-    bool[][] big_enough(nodes.length(), bool[](nodes[0].length(), false));
-    for (s32 x = grid_top_left.x; x <= grid_bottom_right.x; x++)
-    {
-        u8[] y_values;
-        readX(rules, size, x, y_values);
-        for (u8 i = 0; i < y_values.length(); i++)
-        {
-            s32 y = y_values[i];
-            if (y >= grid_top_left.y && y <= grid_bottom_right.y)
-            {
-                nodes[x - grid_top_left.x][y - grid_top_left.y] = true;
-            }
-        }
+    // Vec2f grid_top_left = top_left - Vec2f(Maths::Min(top_left.x, max_edge_length), Maths::Min(top_left.y, max_edge_length));
+    // Vec2f grid_bottom_right = bottom_right + Vec2f(Maths::Min(map.tilemapwidth - 1 - bottom_right.x, max_edge_length), Maths::Min(map.tilemapheight - 1 - bottom_right.y, max_edge_length));
+    // Vec2f grid_size = grid_bottom_right - grid_top_left;
+    // bool[][] nodes(Maths::Max(grid_size.x, map.tilemapwidth), bool[](Maths::Max(grid_size.y, map.tilemapheight), false));
+    // bool[][] big_enough(nodes.length, bool[](nodes[0].length, false));
+    // for (s32 x = grid_top_left.x; x <= grid_bottom_right.x; x++)
+    // {
+    //     for (u8 i = 0; i < pathfinding_core.nodes[x].length; i++)
+    //     {
+    //         s32 y = y_values[i];
+    //         if (y >= grid_top_left.y && y <= grid_bottom_right.y)
+    //         {
+    //             nodes[x - grid_top_left.x][y - grid_top_left.y] = true;
+    //         }
+    //     }
 
-        for (s32 y = grid_top_left.y; y <= grid_bottom_right.y; y++)
-        {
-            big_enough[x - grid_top_left.x][y - grid_top_left.y] = isBigEnough(Vec2f(x, y), size, map, broken_block);
-        }
-    }
+    //     for (s32 y = grid_top_left.y; y <= grid_bottom_right.y; y++)
+    //     {
+    //         big_enough[x - grid_top_left.x][y - grid_top_left.y] = isBigEnough(Vec2f(x, y), size, map, broken_block);
+    //     }
+    // }
 
-    // Check for edges
-    for (s32 x = grid_top_left.x; x <= grid_bottom_right.x; x++)
-    {
-        for (u8 y = grid_top_left.y; y <= grid_bottom_right.y; y++)
-        {
-            Vec2f current = Vec2f(x, y);
-            Vec2f grid_coords = current - grid_top_left;
-            if (nodes[grid_coords.x][grid_coords.y])
-            {
-                // Check above and below the current node
-                u8 max_height = Maths::Min(max_edge_length, grid_coords.y), min_height = Maths::Min(max_edge_length, grid_bottom_right.y - grid_coords.y);
-                max_height = ScanVertical(rules, size, nodes, big_enough, max_height, current, grid_coords, x, y, true);
-                ScanVertical(rules, size, nodes, big_enough, min_height, current, grid_coords, x, y, false);
+    // // Check for edges
+    // for (s32 x = grid_top_left.x; x <= grid_bottom_right.x; x++)
+    // {
+    //     for (u8 y = grid_top_left.y; y <= grid_bottom_right.y; y++)
+    //     {
+    //         Vec2f current = Vec2f(x, y);
+    //         Vec2f grid_coords = current - grid_top_left;
+    //         if (nodes[grid_coords.x][grid_coords.y])
+    //         {
+    //             // Check above and below the current node
+    //             u8 max_height = Maths::Min(max_edge_length, grid_coords.y), min_height = Maths::Min(max_edge_length, grid_bottom_right.y - grid_coords.y);
+    //             max_height = ScanVertical(rules, size, nodes, big_enough, max_height, current, grid_coords, x, y, true);
+    //             ScanVertical(rules, size, nodes, big_enough, min_height, current, grid_coords, x, y, false);
 
-                u8 max_left = Maths::Min(max_edge_length, grid_coords.x), max_right = Maths::Min(max_edge_length, grid_bottom_right.x - grid_coords.x);
-                ScanHorizontal(rules, size, nodes, big_enough, max_left,  max_height, min_height, current, grid_coords, x, y, true);
-                ScanHorizontal(rules, size, nodes, big_enough, max_right, max_height, min_height, current, grid_coords, x, y, false);
-            }
-        }
-    }
+    //             u8 max_left = Maths::Min(max_edge_length, grid_coords.x), max_right = Maths::Min(max_edge_length, grid_bottom_right.x - grid_coords.x);
+    //             ScanHorizontal(rules, size, nodes, big_enough, max_left,  max_height, min_height, current, grid_coords, x, y, true);
+    //             ScanHorizontal(rules, size, nodes, big_enough, max_right, max_height, min_height, current, grid_coords, x, y, false);
+    //         }
+    //     }
+    // }
 }
 
 void ScanHorizontal(CRules@ rules, u8 size, bool[][] nodes, bool[][] big_enough, u8 max, u8 max_height, u8 min_height, Vec2f current, Vec2f grid_coords, s32 x, s32 y, bool left)
@@ -180,24 +235,6 @@ u8 ScanVertical(CRules@ rules, u8 size, bool[][] nodes, bool[][] big_enough, u8 
         }
     }
     return max;
-}
-
-// Had to attach to rules instead of map since for some reason map seems to be the only object that doesn't sync when a player joins
-void readX(CRules@ rules, u8 size, s32 x, u8[]@ y_values)
-{
-    for(u8 i = 0; i < rules.get_u8(getXLengthString(x, size)); i++)
-    {
-        y_values.push_back(rules.get_u8(getXString(x, size, i)));
-    }
-}
-
-void writeX(CRules@ rules, u8 size, s32 x, u8[]@ y_values)
-{
-    for(u8 i = 0; i < y_values.length; i++)
-    {
-        rules.set_u8(getXString(x, size, i), y_values[i]);
-    }
-    rules.set_u8(getXLengthString(x, size), y_values.length);
 }
 
 void writeEdge(CRules@ rules, u8 size, s32 x, s32 y, Vec2f target, u8 cost)

@@ -11,13 +11,15 @@ void onRender(CRules@ this)
     Vec2f mouse_screen_pos = getControls().getMouseScreenPos();
     s32 left_x = driver.getWorldPosFromScreenPos(Vec2f(0, 0)).x / map.tilesize - 1;
     s32 right_x = driver.getWorldPosFromScreenPos(Vec2f(driver.getScreenWidth(), 0)).x / map.tilesize + 1;
+
+    PathfindingCore@ pathfinding_core;
+    this.get(PATHFINDING_CORE, @pathfinding_core);
+
     for (s32 x = Maths::Max(left_x, 0); x < Maths::Min(right_x, map.tilemapwidth); x++)
     {
-        u8[] y_values;
-        readX(this, 2, x, y_values);
-        for (u8 i = 0; i < y_values.length; i++)
+        for (u8 i = 0; i < pathfinding_core.nodes[x].length; i++)
         {
-            DrawNode(map, driver, Vec2f(x, y_values[i]), 2, mouse_world_pos, mouse_screen_pos);
+            DrawNode(map, driver, Vec2f(x, pathfinding_core.nodes[x][i].y), 2, mouse_world_pos, mouse_screen_pos);
         }
     }
 }

@@ -25,10 +25,20 @@ void Reset(CRules@ this)
     current_x = 0;
     timer = delay;
     CMap@ map = getMap();
-    if (map !is null && !map.hasScript("PathFindingMapUpdates"))
+    if (map is null)
+    {
+        return;
+    }
+
+    if (!map.hasScript("PathFindingMapUpdates"))
     {
         map.AddScript("PathFindingMapUpdates");
     }
+
+    PathfindingCore@ pathfinding_core = PathfindingCore();
+    Node[][] nodes(map.tilemapwidth, Node[](0)); 
+    pathfinding_core.nodes = nodes;
+    this.set(PATHFINDING_CORE, @pathfinding_core);
 }
 
 void onTick(CRules@ this)
