@@ -41,13 +41,20 @@ void Setup()
         return;
     }
 
+    if (isServer())
+    {
+        rules.set_u32(ZOMBIE_MINIMAP_WIDTH, map.tilemapwidth);
+        rules.Sync(ZOMBIE_MINIMAP_WIDTH, true);
+    }
+
     // Reset exploration borders
+    u32 tilemapwidth = rules.get_u32(ZOMBIE_MINIMAP_WIDTH);
     ZombieMinimapCore@ zombie_minimap_core = ZombieMinimapCore();
-    u8[][] nonstatic_blocks(map.tilemapwidth, u8[](0)); 
+    u8[][] nonstatic_blocks(tilemapwidth, u8[](0)); 
     zombie_minimap_core.nonstatic_blocks = nonstatic_blocks;
-    bool[] generated(map.tilemapwidth, false);
+    bool[] generated(tilemapwidth, false);
     zombie_minimap_core.generated = generated;
-    bool[][] water(map.tilemapwidth, bool[](0)); 
+    bool[][] water(tilemapwidth, bool[](0)); 
     zombie_minimap_core.water = water;
     zombie_minimap_core.left = 1000000000;
     zombie_minimap_core.right = 0;
@@ -134,6 +141,7 @@ void onBlobCreated(CRules@ this, CBlob@ blob)
 
 void onInit(CRules@ this)
 {
+    this.addCommandID(ZOMBIE_MINIMAP_EXPLORE_SYNC_COMMAND);
     if (!GUI::isFontLoaded("snes"))
 	{
 		string snes = CFileMatcher("snes.png").getFirst();
@@ -546,6 +554,47 @@ void onTick(CRules@ this)
         {
             zombie_minimap_core.right = x;
         }
+    }
+}
+
+void onNewPlayerJoin(CRules@ this, CPlayer@ player)
+{
+    if (!isServer())
+    {
+        return;
+    }
+
+    ZombieMinimapCore@ zombie_minimap_core;
+    this.get(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
+    if (zombie_minimap_core is null)
+    {
+        return;
+    }
+
+    CBitStream params;
+    params.write_s32(zombie_minimap_core.left);
+    params.write_s32(zombie_minimap_core.right);
+    this.SendCommand(this.getCommandID(ZOMBIE_MINIMAP_EXPLORE_SYNC_COMMAND), params, player);
+}
+
+void onCommand(CRules@ this, u8 cmd, CBitStream @params)
+{
+    if (cmd == this.getCommandID(ZOMBIE_MINIMAP_EXPLORE_SYNC_COMMAND))
+    {
+        s32 left, right;
+        if (!params.saferead_s32(left) || !params.saferead_s32(right))
+        {
+            return;
+        }
+
+        ZombieMinimapCore@ zombie_minimap_core;
+        this.get(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
+        if (zombie_minimap_core is null)
+        {
+            return;
+        }
+        zombie_minimap_core.left = left;
+        zombie_minimap_core.right = right;
     }
 }
 

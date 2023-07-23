@@ -19,6 +19,8 @@ const string ZOMBIE_MINIMAP_FULL_LEFT_X = "zombie_minimap_full_map_left_x";
 const string ZOMBIE_MAP_WIDTH = "zombies_map_width";
 const string ZOMBIE_MAP_HEIGHT = "zombies_map_height";
 const string ZOMBIE_MINIMAP_SECTOR_NAME = "zombies_minimap_sector_name";
+const string ZOMBIE_MINIMAP_WIDTH = "zombies_minimap_map_width";
+const string ZOMBIE_MINIMAP_EXPLORE_SYNC_COMMAND = "zombies_minimap_explore_sync";
 
 const u8 tile_width = 2;  // pixels
 const u8 border_width = 14;  // pixels
