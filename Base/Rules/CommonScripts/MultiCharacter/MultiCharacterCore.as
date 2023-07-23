@@ -1,66 +1,40 @@
 
 #include "MultiCharacterCommon.as"
+#include "RandomNames.as"
+
+void Reset(CRules@ this)
+{
+	// Reset char lists
+	MultiCharacterCore@ multicharacter_core = MultiCharacterCore();
+	this.set(MULTICHARACTER_CORE, @multicharacter_core);
+}
 
 void onInit(CRules@ this)
 {
 	// Server commands, issued by the client
-	this.addCommandID("swap_player");
-	this.addCommandID("transfer_char");
-	this.addCommandID("move_down_char");
-	this.addCommandID("move_up_char");
-	this.addCommandID("give_char_random_name");
-
-	// Server side debugging commands
-	this.addCommandID("spawn_char");
+	this.addCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND);
+	this.addCommandID(MULTICHARACTER_TRANSFER_COMMAND);
+	this.addCommandID(MULTICHARACTER_MOVE_UP_COMMAND);
+	this.addCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND);
+	
+	// Server sync commands
+	this.addCommandID(MULTICHARACTER_SYNC_COMMAND);
 
 	// Client only, used in MultiCharacterUI.as
 	this.addCommandID("print_transfer_char");
 	this.addCommandID("move_up_char_list");
 	this.addCommandID("kill_feed");
 
-	// Only server can save + sync lists
-	if (!isServer())
-	{
-		return;
-	}
-
-	// Initialize list of the unclaimed characters if it doesn't exist yet
-	DebugPrint("Initializing unclaimed char list");
-	if (!hasCharList(""))
-	{
-		// Initialize the list and add it to our rules
-		DebugPrint("No existing unclaimed char list, initializing empty list");
-		u16[] char_networkIDs;
-		SaveCharList("", char_networkIDs);
-	}
-	else
-	{
-		DebugPrint("Unclaimed char list already exists");
-	}
+	Reset(this);
 }
 
 void onRestart(CRules@ this)
 {
-	// Clear all character lists
-	u16[] empty_char_networkIDs;
-	for (u8 player_index = 0; player_index < getPlayersCount(); player_index++)
-	{
-		CPlayer@ player = getPlayer(player_index);
-		if (player !is null)
-		{
-			SaveCharList(player.getUsername(), empty_char_networkIDs);
-		}
-	}
+	Reset(this);
 }
 
 void onInit(CPlayer@ this)
 {
-	// Only server can save + sync lists
-	if (!isServer())
-	{
-		return;
-	}
-
 	DebugPrint("Initalizing player char list");
 	// Initialize list of the player's characters if it doesn't exist yet
 	if (!hasCharList(this.getUsername()))
@@ -79,13 +53,7 @@ void onInit(CPlayer@ this)
 // Handle class changes and spawning
 void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 {
-	// Only server can set players
-	if (!isServer())
-	{
-		return;
-	}
-
-	DebugPrint("Entering onSetPlayer");
+	print("Entering onSetPlayer");
 
 	if (blob is null)
 	{
@@ -99,21 +67,53 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 		return;
 	}
 
-	if (player.exists("previous_char_networkID"))
+	MultiCharacterCore@ multicharacter_core;
+	this.get(MULTICHARACTER_CORE, @multicharacter_core);
+	MultiCharacterPlayerInfo@ player_info;
+	multicharacter_core.players.get(player.getUsername(), @player_info);
+	if (player_info is null)
+	{
+		@player_info = MultiCharacterPlayerInfo();
+		multicharacter_core.players.set(player.getUsername(), @player_info);
+	}
+
+	if (player_info.previous_char != 0)
 	{
 		DebugPrint("Player has previous char networkID");
 
 		// Check if the previous blob was in the char's list or the unclaimed list
-		u16 previous_char_networkID = player.get_u16("previous_char_networkID");
-		CBlob@ previous_char = getBlobByNetworkID(previous_char_networkID);
+		CBlob@ previous_char = getBlobByNetworkID(player_info.previous_char);
 
 		u16[] player_char_networkIDs;
-		readCharList(player.getUsername(), @player_char_networkIDs);
-		int player_char_list_index = player_char_networkIDs.find(previous_char_networkID);
+		readCharList(player.getUsername(), player_char_networkIDs);
+		int player_char_list_index = player_char_networkIDs.find(player_info.previous_char);
+
+		print("PLAYER CHAR LIST");
+		PrintCharList(player_char_networkIDs);
 
 		u16[] unclaimed_char_networkIDs;
-		readCharList("", @player_char_networkIDs);
-		int unclaimed_char_list_index = player_char_networkIDs.find(previous_char_networkID);
+		readCharList("", player_char_networkIDs);
+		int unclaimed_char_list_index = player_char_networkIDs.find(player_info.previous_char);
+
+		print("UNCLAIMED CHAR LIST");
+		PrintCharList(unclaimed_char_networkIDs);
+
+		if (previous_char is null)
+		{
+			print("previous_char is null");
+		}
+		else if (previous_char.hasTag("dead"))
+		{
+			print("previous_char.hasTag(dead)");
+		}
+		else if (previous_char.getHealth() <= 0.0f)
+		{
+			print("previous_char.getHealth() <= 0.0f");
+		}
+		else if (blob.getTickSinceCreated() <= 1)
+		{
+			print("blob.getTickSinceCreated() <= 1");
+		}
 
 		// Check if previous blob doesn't exist anymore or is dead or was just created
 		if (previous_char is null || previous_char.hasTag("dead") || previous_char.getHealth() <= 0.0f || blob.getTickSinceCreated() <= 1)
@@ -128,10 +128,10 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 				if (previous_char !is null)
 				{
 					// Name
-					if (previous_char.exists("forename") || previous_char.exists("surname"))
+					if (previous_char.exists(FORENAME) || previous_char.exists(SURNAME))
 					{
-						blob.set_string("forename", previous_char.get_string("forename"));
-						blob.set_string("surname", previous_char.get_string("surname"));
+						blob.set_string(FORENAME, previous_char.get_string(FORENAME));
+						blob.set_string(SURNAME, previous_char.get_string(SURNAME));
 					}
 
 					// Appearance
@@ -181,7 +181,7 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 	}
 
 	// Set the new char networkID
-	player.set_u16("previous_char_networkID", blob.getNetworkID());
+	player_info.previous_char = blob.getNetworkID();
 }
 
 void onPlayerLeave(CRules@ this, CPlayer@ player)
@@ -195,9 +195,9 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 
 	// Move all characters in this players list to the unclaimed list
 	u16[] player_char_networkIDs;
-	if (readCharList(player.getUsername(), @player_char_networkIDs))
+	if (readCharList(player.getUsername(), player_char_networkIDs))
 	{
-		for(u8 i = 0; i < player_char_networkIDs.length(); i++)
+		for(u8 i = 0; i < player_char_networkIDs.length; i++)
 		{
 			TransferCharToPlayerList(getBlobByNetworkID(player_char_networkIDs[i]), "", -1);
 		}
@@ -207,16 +207,16 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 void onBlobDie(CRules@ this, CBlob@ blob)
 {
 	// Safety Checks
-	if (!isServer() || blob is null)
+	if (blob is null)
 	{
 		return;
 	}
 
-	if (blob.hasTag("player") && blob.exists("owning_player") && !blob.hasTag("switch class"))
+	if (blob.hasTag("player") && blob.exists(OWNING_PLAYER) && !blob.hasTag("switch class"))
 	{
 		// Tell clients to add the char to the kill feed
 		CBitStream params;
-		params.write_string(blob.get_string("owning_player"));
+		params.write_string(blob.get_string(OWNING_PLAYER));
 		params.write_netid(blob.getNetworkID());
 
 		this.SendCommand(this.getCommandID("kill_feed"), params);
@@ -228,15 +228,15 @@ void onBlobDie(CRules@ this, CBlob@ blob)
 
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 {
-	// Only server responds to commands
-	if (!isServer() || params is null)
+	// Safety check
+	if (params is null)
 	{
 		return;
 	}
 
 	// No need for safety checks, methods already have them
-	DebugPrint("Server Received Command");
-	if (cmd == this.getCommandID("swap_player"))
+	DebugPrint("Received Command");
+	if (cmd == this.getCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND))
 	{
 		DebugPrint("Command is swap_player");
 		string player_to_swap_username;
@@ -252,7 +252,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 		SwapPlayerControl(player_to_swap_username, target_blob_networkID);
 	}
-	else if (cmd == this.getCommandID("transfer_char"))
+	else if (cmd == this.getCommandID(MULTICHARACTER_TRANSFER_COMMAND))
 	{
 		DebugPrint("Command is transfer_char");
 		string sending_player;
@@ -290,15 +290,15 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 			message += " the " + blob.getName();
 			
 			// Add the first name
-			if (blob.exists("forename"))
+			if (blob.exists(FORENAME))
 			{
-				message += " " + blob.get_string("forename");
+				message += " " + blob.get_string(FORENAME);
 			}
 
 			// Add the last name
-			if (blob.exists("surname"))
+			if (blob.exists(SURNAME))
 			{
-				message += " " + blob.get_string("surname");
+				message += " " + blob.get_string(SURNAME);
 			}
 
 			// Tell clients to print the char transfer
@@ -310,7 +310,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), player_to_swap_username, -1);
 	}
-	else if (cmd == this.getCommandID("move_up_char"))
+	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_UP_COMMAND))
 	{
 		DebugPrint("Command is move_up_char");
 		string sending_player;
@@ -351,7 +351,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), unclaimed ? "" : sending_player, index - 1);
 	}
-	else if (cmd == this.getCommandID("move_down_char"))
+	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND))
 	{
 		DebugPrint("Command is move_down_char");
 		string sending_player;
@@ -385,52 +385,138 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 		int index = char_networkIDs.find(target_blob_networkID);
 
 		// Do nothing if at the bottom of the list already
-		if (index >= char_networkIDs.length() - 1)
+		if (index >= char_networkIDs.length - 1)
 		{
 			return;
 		}
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), unclaimed ? "" : sending_player, index + 1);
 	}
-	else if (cmd == this.getCommandID("give_char_random_name"))
-	{
-		DebugPrint("Command is give_char_random_name");
-		u16 target_blob_networkID;
-		if (!params.saferead_netid(target_blob_networkID))
+	else if (cmd == this.getCommandID(MULTICHARACTER_SYNC_COMMAND))
+    {
+		MultiCharacterCore@ multicharacter_core;
+		this.get(MULTICHARACTER_CORE, @multicharacter_core);
+
+		u8 unclaimed_list_length;
+		if (!params.saferead_u8(unclaimed_list_length))
 		{
 			return;
-		}
-		CBlob@ char = getBlobByNetworkID(target_blob_networkID);
-		if (char is null)
-		{
-			return;
-		}
-
-		// Give the char a name if they don't have one already
-		if (!char.exists("forename"))
-		{
-			char.set_string("forename", getRandomForename(char));
-			char.set_string("surname", getRandomSurname());
-		}
-
-		char.Sync("forename", true);
-		char.Sync("surname", true);
-	}
-	else if (cmd == this.getCommandID("spawn_char"))  // This is just for debugging purposes
-	{
-		DebugPrint("Command is spawn_char");
-
-		CMap@ map = getMap();
-		if (map is null)
-		{
-			return;
-		}
 		
-		CBlob@ newBlob = server_CreateBlobNoInit(this.get_string("default class"));
-		newBlob.server_setTeamNum(0);
-		u64 x = map.tilemapwidth * map.tilesize;
-		newBlob.setPosition(Vec2f(x / 2, map.getLandYAtX(x) * map.tilesize / 2));
-		newBlob.Init();
-		TransferCharToPlayerList(newBlob, "", -1);
+		}
+		u16 net_id;
+		u16[] unclaimed_net_ids;
+		for (u8 i = 0; i < unclaimed_list_length; i++)
+		{
+			if(!params.saferead_netid(net_id))
+			{
+				return;
+			}
+			unclaimed_net_ids.push_back(net_id);
+		}
+		multicharacter_core.unclaimed_char_list = unclaimed_net_ids;
+
+        u8 player_count;
+		if (!params.saferead_u8(player_count))
+		{
+			return;
+		}
+
+		for (u8 player_index = 0; player_index < player_count; player_index++)
+		{
+			string player_name;
+			if (!params.saferead_string(player_name))
+			{
+				return;
+			}
+			
+			u8 length;
+			if (!params.saferead_u8(length))
+			{
+				return;
+			}
+
+			u16[] net_ids;
+			for (u8 i = 0; i < length; i++)
+			{
+				if(!params.saferead_netid(net_id))
+				{
+					return;
+				}
+				net_ids.push_back(net_id);
+			}
+
+			MultiCharacterPlayerInfo@ player_info;
+			multicharacter_core.players.get(player_name, @player_info);
+			if (player_info is null)
+			{
+				@player_info = MultiCharacterPlayerInfo();
+				multicharacter_core.players.set(player_name, @player_info);
+			}
+			player_info.char_list = net_ids;
+		}
+    }
+}
+
+void onBlobCreated(CRules@ this, CBlob@ blob)
+{
+	if (blob.hasTag(SURVIVOR_TAG))
+	{
+		getRandomName(blob);
+		if (!blob.exists(OWNING_PLAYER) || blob.get_string(OWNING_PLAYER) == "")
+		{
+			TransferCharToPlayerList(blob, "", -1);
+		}
 	}
+}
+
+void onNewPlayerJoin(CRules@ this, CPlayer@ player)
+{
+    if (!isServer())
+    {
+        return;
+    }
+
+	MultiCharacterCore@ multicharacter_core;
+	this.get(MULTICHARACTER_CORE, @multicharacter_core);
+	if (multicharacter_core is null)
+    {
+        return;
+    }
+
+	// Sync unclaimed list
+	CBitStream params;
+	params.write_u8(multicharacter_core.unclaimed_char_list.length);
+	for (u8 i = 0; i < multicharacter_core.unclaimed_char_list.length; i++)
+	{
+		params.write_netid(multicharacter_core.unclaimed_char_list[i]);
+	}
+
+	// Sync player lists
+	u8 player_count = getPlayerCount();
+	params.write_u8(player_count);
+	for (u8 player_index = 0; player_index < player_count; player_index++)
+	{
+		CPlayer@ player = getPlayer(player_index);
+		if (player is null)
+		{
+			return;
+		}
+		string player_name = player.getUsername();
+		params.write_string(player_name);
+		
+		MultiCharacterPlayerInfo@ player_info;
+		multicharacter_core.players.get(player_name, @player_info);
+		if (player_info is null)
+		{
+			@player_info = MultiCharacterPlayerInfo();
+			multicharacter_core.players.set(player_name, @player_info);
+		}
+
+		params.write_u8(player_info.char_list.length);
+		for (u8 i = 0; i < player_info.char_list.length; i++)
+		{
+			params.write_netid(player_info.char_list[i]);
+		}
+	}
+    this.SendCommand(this.getCommandID(MULTICHARACTER_SYNC_COMMAND), params, player);
 }

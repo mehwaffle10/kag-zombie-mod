@@ -1,6 +1,7 @@
 
-
 #define CLIENT_ONLY
+
+#include "MultiCharacterCommon.as"
 
 string RENDER_BINDINGS_MENU_STRING = "render_bindings_menu";
 string BINDINGS_MENU_OFFSET_STRING = "bindings_menu_offset";
@@ -203,7 +204,7 @@ void SendSwapPlayerCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_string(player.getUsername());
 	params.write_netid(char_networkID);
 
-	rules.SendCommand(rules.getCommandID("swap_player"), params);
+	rules.SendCommand(rules.getCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND), params);
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
@@ -221,7 +222,7 @@ void SendClaimCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_string(claimed ? "" : player.getUsername());
 	params.write_netid(char_networkID);
 
-	rules.SendCommand(rules.getCommandID("transfer_char"), params);
+	rules.SendCommand(rules.getCommandID(MULTICHARACTER_TRANSFER_COMMAND), params);
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
@@ -243,7 +244,7 @@ void SendMoveUpCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_string(player.getUsername());
 	params.write_netid(char_networkID);
 
-	rules.SendCommand(rules.getCommandID("move_up_char"), params);
+	rules.SendCommand(rules.getCommandID(MULTICHARACTER_MOVE_UP_COMMAND), params);
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }
 
@@ -265,6 +266,6 @@ void SendMoveDownCharCmd(CPlayer@ player, u16 char_networkID, bool claimed)
 	params.write_string(player.getUsername());
 	params.write_netid(char_networkID);
 
-	rules.SendCommand(rules.getCommandID("move_down_char"), params);
+	rules.SendCommand(rules.getCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND), params);
 	rules.set_u8(UI_ACTION_COOLDOWN_STRING, getTicksASecond() / 2);
 }

@@ -1,15 +1,29 @@
 
 #include "RandomNames.as";
 
+const string MULTICHARACTER_CORE = "multicharacter_core";
+const string SURVIVOR_TAG = "survivor";
+const string OWNING_PLAYER = "owning_player";
+const string MULTICHARACTER_SWAP_PLAYER_COMMAND = "swap_player";
+const string MULTICHARACTER_TRANSFER_COMMAND = "transfer_char";
+const string MULTICHARACTER_MOVE_UP_COMMAND = "move_down_char";
+const string MULTICHARACTER_MOVE_DOWN_COMMAND = "transfer_char";
+const string MULTICHARACTER_SYNC_COMMAND = "multicharacter_sync";
+
+class MultiCharacterPlayerInfo {
+	u16[] char_list;
+	u16 previous_char;
+}
+
+class MultiCharacterCore
+{
+	u16[] unclaimed_char_list;
+	dictionary players;
+}
+
 // Transfers control of a player to a target blob if the player owns that blob
 void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID)
 {
-	// Only server can swap players around
-	if (!isServer())
-	{
-		return;
-	}
-
 	DebugPrint("Attempting to swap the player " + player_to_swap_username + "'s control to " + target_blob_networkID);
 
 	// Safety checks
@@ -90,12 +104,6 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 // DebugPrint needs to be set to true for this to print anything
 void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 {
-	// Only server can save + sync lists
-	if (!isServer())
-	{
-		return;
-	}
-
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
@@ -103,7 +111,7 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 	}
 
 	DebugPrint(new_owner != "" ?
-		"Attempting to transfer char to " + new_owner + "'s' player list" :
+		"Attempting to transfer char to " + new_owner + "'s player list" :
 		"Attempting to transfer char to unclaimed player list");
 
 	// Safety checks
@@ -151,7 +159,7 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 	PrintCharList(char_networkIDs);
 
 	// Add the blob to player's char list
-	if (index < 0 || index >= char_networkIDs.length())
+	if (index < 0 || index >= char_networkIDs.length)
 	{
 		char_networkIDs.push_back(this.getNetworkID());
 	}
@@ -167,21 +175,14 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 	SaveCharList(new_owner, char_networkIDs);
 
 	// Set the object's new owner
-	this.set_string("owning_player", new_owner);
+	this.set_string(OWNING_PLAYER, new_owner);
 }
 
 // Remove this blob from the owning char list or unclaimed char list if possible
 // DebugPrint needs to be set to true for this to print anything
 void RemoveCharFromPlayerList(CBlob@ this)
 {
-	// Only server can save + sync lists
-	if (!isServer())
-	{
-		return;
-	}
-
 	DebugPrint("Attempting to remove char from char list");
-
 	// Safety checks
 	if (this is null)
 	{
@@ -189,19 +190,20 @@ void RemoveCharFromPlayerList(CBlob@ this)
 		return;
 	}
 
-	if (!this.hasTag("player"))
+	string name = this.getName();
+	if (!this.hasTag("player") && name != "knight" && name != "builder" && name != "archer")
 	{
 		DebugPrint("Non-player blob");
 		return;
 	}
 
 	// Player that claimed this blob, or empty if unclaimed
-	string owning_player = this.exists("owning_player") ? this.get_string("owning_player") : "";
+	string owning_player = this.exists(OWNING_PLAYER) ? this.get_string(OWNING_PLAYER) : "";
 	DebugPrint(owning_player != "" ? "Owned by player " + owning_player : "Potentially in unclaimed char list");
 	
 	// Get the player's char list
 	u16[] char_networkIDs;
-	if (!readCharList(owning_player, @char_networkIDs))
+	if (!readCharList(owning_player, char_networkIDs))
 	{
 		return;
 	}
@@ -232,16 +234,16 @@ void RemoveCharFromPlayerList(CBlob@ this)
 
 	// Tell clients to move up the appropriate char list
 	CRules@ rules = getRules();
-	if (rules !is null && this !is null && this.exists("owning_player"))
+	if (rules !is null && this !is null && this.exists(OWNING_PLAYER))
 	{
 		CBitStream params;
-		params.write_string(this.get_string("owning_player"));
+		params.write_string(this.get_string(OWNING_PLAYER));
 
 		rules.SendCommand(rules.getCommandID("move_up_char_list"), params);
 	}
 
 	// Remove the object's owner
-	this.set_string("owning_player", "");
+	this.set_string(OWNING_PLAYER, "");
 }
 
 // Returns true if the player has a char list and the networkID provided is in it
@@ -270,7 +272,7 @@ bool hasClaimedChar(string player_name, u16 char_networkID)
 	
 	// Get the player's char list
 	u16[] char_networkIDs;
-	if (!readCharList(player_name, @char_networkIDs))
+	if (!readCharList(player_name, char_networkIDs))
 	{
 		return false;
 	}
@@ -295,7 +297,7 @@ bool hasClaimedChar(string player_name, u16 char_networkID)
 // DebugPrint needs to be set to true for this to print anything
 void PrintCharList(u16[]@ char_networkIDs)
 {
-	for (u8 i = 0; i < char_networkIDs.length(); i++)
+	for (u8 i = 0; i < char_networkIDs.length; i++)
 	{
 		DebugPrint("" + char_networkIDs[i]);
 	}
@@ -306,7 +308,7 @@ void PrintCharList(u16[]@ char_networkIDs)
 void DebugPrint(string message)
 {
 	// Set this to true if you want to print debug information
-	if (false)
+	if (true)
 	{
 		print(message);
 	}
@@ -316,12 +318,6 @@ void DebugPrint(string message)
 // DebugPrint needs to be set to true for this to print anything
 void SaveCharList(string player_name, u16[]@ char_networkIDs)
 {
-	// Only server can save + sync lists
-	if (!isServer())
-	{
-		return;
-	}
-
 	DebugPrint(player_name != "" ?
 		"Attempting to save player " + player_name + "'s char list" :
 		"Attempting to save unclaimed char list");
@@ -346,35 +342,27 @@ void SaveCharList(string player_name, u16[]@ char_networkIDs)
 		return;
 	}
 
+	MultiCharacterCore@ multicharacter_core;
+	rules.get(MULTICHARACTER_CORE, @multicharacter_core);
+
 	// Write the char list
 	if (player_name != "")  // Write the player's char list
 	{
-		for (u8 i = 0; i < char_networkIDs.length(); i++)
+		MultiCharacterPlayerInfo@ player_info;
+		if (multicharacter_core.players.exists(player_name))
 		{
-			string player_list_name = player_name + "_player_char_list_" + i;
-			rules.set_u16(player_list_name, char_networkIDs[i]);
-			rules.Sync(player_list_name, true);
+			multicharacter_core.players.get(player_name, @player_info);
 		}
-
-		string player_list_length_name = player_name + "_player_char_list_length";
-		rules.set_u8(player_list_length_name, char_networkIDs.length());
-		rules.Sync(player_list_length_name, true);
-
+		else
+		{
+			@player_info = MultiCharacterPlayerInfo();
+		}
+		player_info.char_list = char_networkIDs;
 		DebugPrint(player_name + "'s char list saved successfully");
 	}
 	else  // Write the unclaimed char list
 	{
-		for (u8 i = 0; i < char_networkIDs.length(); i++)
-		{
-			string unclaimed_list_name = "unclaimed_char_list_" + i;
-			rules.set_u16(unclaimed_list_name, char_networkIDs[i]);
-			rules.Sync(unclaimed_list_name, true);
-		}
-
-		string unclaimed_list_length_name = "unclaimed_char_list_length";
-		rules.set_u8(unclaimed_list_length_name, char_networkIDs.length());
-		rules.Sync(unclaimed_list_length_name, true);
-
+		multicharacter_core.unclaimed_char_list = char_networkIDs;
 		DebugPrint("Unclaimed char list saved successfully");
 	}
 }
@@ -383,7 +371,7 @@ void SaveCharList(string player_name, u16[]@ char_networkIDs)
 // If player_name is empty, returns the unclaimed list instead
 // DebugPrint needs to be set to true for this to print anything
 // Returns true if the list was read successfully
-bool readCharList(string player_name, u16[]@ char_networkIDs)
+bool readCharList(string player_name, u16[] &out char_networkIDs)
 {
 	/*
 	DebugPrint(player_name != "" ?
@@ -419,26 +407,27 @@ bool readCharList(string player_name, u16[]@ char_networkIDs)
 		return false;
 	}
 
+	MultiCharacterCore@ multicharacter_core;
+	rules.get(MULTICHARACTER_CORE, @multicharacter_core);
+	if (multicharacter_core is null)
+	{
+		DebugPrint("multicharacter_core is null");
+		return false;
+	}
+
 	// Read the char list
 	if (player_name != "")  // Read the player char list
 	{
-		for (u8 i = 0; i < rules.get_u8(player_name + "_player_char_list_length"); i++)
-		{
-			string player_list_name = player_name + "_player_char_list_" + i;
-			char_networkIDs.push_back(rules.get_u16(player_list_name));
-		}
+		MultiCharacterPlayerInfo@ player_info;
+		multicharacter_core.players.get(player_name, @player_info);
+		char_networkIDs = player_info.char_list;
 		// DebugPrint(player_name + "'s char list read successfully");
 	}
 	else  // Read the unclaimed char list
 	{
-		for (u8 i = 0; i < rules.get_u8("unclaimed_char_list_length"); i++)
-		{
-			string player_list_name = "unclaimed_char_list_" + i;
-			char_networkIDs.push_back(rules.get_u16(player_list_name));
-		}
+		char_networkIDs = multicharacter_core.unclaimed_char_list;
 		// DebugPrint("Unclaimed char list read successfully");
 	}
-	
 	return true;
 }
 
@@ -454,11 +443,13 @@ bool hasCharList(string player_name)
 
 	if (player_name != "")
 	{
-		return rules.exists(player_name + "_player_char_list_length");
+		MultiCharacterCore@ multicharacter_core;
+		rules.get(MULTICHARACTER_CORE, @multicharacter_core);
+		return multicharacter_core !is null && multicharacter_core.players.exists(player_name);
 	}
 	else
 	{
-		return rules.exists("unclaimed_char_list_length");
+		return true;
 	}
 }
 
@@ -506,4 +497,55 @@ void SetBody(CSprite@ sprite, string char_class, bool male, bool gold, bool cape
 			sprite_layer.ReloadSprite(filename);
 		}
 	}
+}
+
+CBlob@ SpawnSurvivor(Vec2f pos)
+{
+	CMap@ map = getMap();
+	if (!isServer() || map is null)
+	{
+		return null;
+	}
+	
+	string[] classes = {"Archer", "Knight", "Builder"};
+	string char_class = classes[XORRandom(classes.length)];
+	CBlob@ survivor = server_CreateBlobNoInit(char_class.toLower());
+	if (survivor !is null)
+	{
+		survivor.server_setTeamNum(0);
+		survivor.setPosition(pos);
+		survivor.Tag(SURVIVOR_TAG);
+		survivor.Init();
+		u8 gender = XORRandom(2);
+		survivor.setSexNum(gender);  // 50/50 Male/Female
+		survivor.setHeadNum(XORRandom(100));  // Random head
+
+		// Chance to make the char have gold armor or a cape
+		CSprite@ sprite = survivor.getSprite();
+		if (sprite !is null)
+		{
+			bool gold = false;
+			bool cape = false;
+
+			// Add special armor types
+			if (XORRandom(4) == 0)  // 25% chance to be special
+			{ 
+				// 25% chance to have a cape
+				if (XORRandom(4) == 0)
+				{
+					cape = true;
+				}
+				else
+				{
+					gold = true;
+				}
+			}
+
+			SetBody(sprite, char_class, gender == 0, gold, cape);
+
+			// TODO add support for swapping classes
+			// TODO add support in multichar ui
+		}
+	}
+	return survivor;
 }

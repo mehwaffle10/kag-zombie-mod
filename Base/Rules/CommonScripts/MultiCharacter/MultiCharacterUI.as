@@ -128,7 +128,7 @@ void onRender(CRules@ this)
 		{
 			CBlob@[] blobsInRadius;
 			map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
-			for (u16 i = 0; i < blobsInRadius.length(); i++)
+			for (u16 i = 0; i < blobsInRadius.length; i++)
 			{
 				if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
 				{
@@ -140,13 +140,13 @@ void onRender(CRules@ this)
 
 		// Get player's char list
 		u16[] player_char_networkIDs;
-		if (readCharList(player.getUsername(), @player_char_networkIDs))
+		if (readCharList(player.getUsername(), player_char_networkIDs))
 		{
 			// Check if the player is trying to use hotkeys to swap to another char
 			if (cooldown == 0 && controls.isKeyPressed(this.get_s32(SWAP_ON_NUMBER_MODIFIER_STRING)))
 			{
 				int[] hotkeys = {KEY_KEY_1, KEY_KEY_2, KEY_KEY_3, KEY_KEY_4, KEY_KEY_5, KEY_KEY_6, KEY_KEY_7, KEY_KEY_8, KEY_KEY_9, KEY_KEY_0};
-				for (u8 i = 0; i < Maths::Min(player_char_networkIDs.length(), hotkeys.length()); i++)
+				for (u8 i = 0; i < Maths::Min(player_char_networkIDs.length, hotkeys.length); i++)
 				{
 					if (controls.isKeyPressed(hotkeys[i]))
 					{
@@ -161,7 +161,7 @@ void onRender(CRules@ this)
 			{
 				CBlob@[] blobsInRadius;
 				map.getBlobsInRadius(controls.getMouseWorldPos(), 1.0f, @blobsInRadius);
-				for (u16 i = 0; i < blobsInRadius.length(); i++)
+				for (u16 i = 0; i < blobsInRadius.length; i++)
 				{
 					if (blobsInRadius[i] !is null && blobsInRadius[i].hasTag("player"))
 					{
@@ -305,10 +305,10 @@ void RenderOtherPlayerCards()
 	s32 min_y = 0;
 
 	// Middle of the screen shifted by player count
-	Vec2f upper_left = Vec2f(getScreenWidth() / 2, min_y) - Vec2f(frame_width / 2.0f, 0) * players.length();
+	Vec2f upper_left = Vec2f(getScreenWidth() / 2, min_y) - Vec2f(frame_width / 2.0f, 0) * players.length;
 
 	// Draw each player's character list
-	for (u8 player_index = 0; player_index < players.length(); player_index++)
+	for (u8 player_index = 0; player_index < players.length; player_index++)
 	{
 		// Safety check
 		CPlayer@ player = players[player_index];

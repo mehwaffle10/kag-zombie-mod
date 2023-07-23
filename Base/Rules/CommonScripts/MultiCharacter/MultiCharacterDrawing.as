@@ -1,4 +1,6 @@
 
+#include "RandomNames.as"
+
 // Renders a player list from top to bottom as far as possible from the start position
 // Renders the unclaimed list if player list is null
 void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width, bool simple)
@@ -20,7 +22,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width, bool 
 
 	// Get player's char list
 	u16[] char_networkIDs;
-	if (readCharList(player !is null ? player.getUsername() : "", @char_networkIDs))
+	if (readCharList(player !is null ? player.getUsername() : "", char_networkIDs))
 	{
 		// Render the player's name
 		// Draw the bounding box
@@ -58,7 +60,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width, bool 
 
 		// Render claimed players starting from the top right corner under the button
 		bool ended_early = false;
-		for (u8 i = char_display_index; i < char_networkIDs.length(); i++)
+		for (u8 i = char_display_index; i < char_networkIDs.length; i++)
 		{
 			// Check that there's enough room for the move down button and the frame
 			// The extra distance from the bottom of the screen is to protect the day timer, HUD, and chat on the bottom
@@ -75,7 +77,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width, bool 
 			}
 			else
 			{
-				DrawCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i], player !is null, false, false, i == 0, i == char_networkIDs.length() - 1);
+				DrawCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i], player !is null, false, false, i == 0, i == char_networkIDs.length - 1);
 			}
 
 			// Move the top left corner down
@@ -267,9 +269,9 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 				// I moved this down to make it always draw the name over the character,
 				// although now it doesn't draw top to bottom
 				Vec2f name_middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
-				if (char.exists("forename"))
+				if (char.exists(FORENAME))
 				{
-					GUI::DrawShadowedTextCentered(char.get_string("forename"), name_middle, SColor(255, 255, 255, 255));
+					GUI::DrawShadowedTextCentered(char.get_string(FORENAME), name_middle, SColor(255, 255, 255, 255));
 				}
 				else
 				{
@@ -291,9 +293,9 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 					}
 				}
 				name_middle.y += 12;
-				if (char.exists("surname"))
+				if (char.exists(SURNAME))
 				{
-					GUI::DrawShadowedTextCentered(char.get_string("surname"), name_middle, SColor(255, 255, 255, 255));
+					GUI::DrawShadowedTextCentered(char.get_string(SURNAME), name_middle, SColor(255, 255, 255, 255));
 				}
 
 				// Draw health bar
@@ -304,7 +306,12 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 				u16 button_width = 24;
 				u8 frame_offset = 4;
 
-				string[] button_names = {"move_up_char", "move_down_char", "swap_player", "claim_char"};
+				string[] button_names = {
+					MULTICHARACTER_MOVE_UP_COMMAND,
+					MULTICHARACTER_MOVE_DOWN_COMMAND,
+					MULTICHARACTER_SWAP_PLAYER_COMMAND,
+					"claim_char"
+				};
 				Vec2f[] button_upper_lefts = {
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - 2 * button_width - frame_offset),
 					Vec2f(bottom_right.x - frame_offset - button_width, bottom_right.y - button_width - frame_offset),
@@ -319,7 +326,7 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 				bool[] locked = {lock_up, lock_down, dead || char_player !is null || lock_swap, dead || (char_player !is null && char_player !is player) || lock_claim};
 
 				// Create buttons
-				for (u8 i = 0; i < button_names.length(); i++)
+				for (u8 i = 0; i < button_names.length; i++)
 				{
 					if (DrawButton(
 						button_names[i] + "_" + char.getNetworkID(),
@@ -674,11 +681,11 @@ string fit_string(string str, u16 frame_width)
 {
 	Vec2f size;
 	string substring;
-	u8 index = str.length();
+	u8 index = str.length;
 	do
 	{
 		substring = str.substr(0, index);
-		if (index < str.length())
+		if (index < str.length)
 		{
 			substring += "...";
 		}

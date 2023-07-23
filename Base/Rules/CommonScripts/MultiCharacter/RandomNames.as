@@ -1,13 +1,13 @@
 
-string getRandomForename(CBlob@ this)
-{
-	string[]@ forenames = this.getSexNum() == 0 ? male_forenames : female_forenames;
-	return forenames[XORRandom(forenames.length)];
-}
+const string FORENAME = "forename";
+const string SURNAME = "surname";
 
-string getRandomSurname()
+void getRandomName(CBlob@ this)
 {
-	return surnames[XORRandom(surnames.length)];
+	Random@ random = Random(this.getNetworkID());
+	string[]@ forenames = this.getSexNum() == 0 ? male_forenames : female_forenames;
+	this.set_string(FORENAME, forenames[random.NextRanged(forenames.length)]);
+	this.set_string(SURNAME, surnames[random.NextRanged(surnames.length)]);
 }
 
 string[] male_forenames = {

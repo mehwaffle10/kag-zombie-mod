@@ -153,7 +153,7 @@ void setSectorBorderColor(CBlob@ portal)
 	Vec2f sector = portal.get_Vec2f("sector");
 
 	s32[] borders = {sector.x, sector.y - 1};
-	for (u8 i = 0; i < borders.length(); i++)
+	for (u8 i = 0; i < borders.length; i++)
 	{
 		s32 x = Maths::Round(borders[i]);
 		string border_id = "sector_border_" + x;

@@ -4,10 +4,12 @@
 
 #define CLIENT_ONLY
 
-#include "Hitters.as";
-#include "TeamColour.as";
-#include "HoverMessage.as";
-#include "MultiCharacterButtonLogic.as";
+#include "Hitters.as"
+#include "TeamColour.as"
+#include "HoverMessage.as"
+#include "MultiCharacterButtonLogic.as"
+#include "MultiCharacterCommon.as"
+#include "RandomNames.as"
 
 int fade_time = 300;
 // Offset to compensate for the player's char list.
@@ -27,10 +29,10 @@ class MultiCharacterKillMessage
 	{
 		if (_victim !is null)
 		{
-			if (_victim.exists("forename"))
+			if (_victim.exists(FORENAME))
 			{
-				victim = _victim.get_string("forename");
-				victim += _victim.exists("surname") ? " " + _victim.get_string("surname") : "";
+				victim = _victim.get_string(FORENAME);
+				victim += _victim.exists(SURNAME) ? " " + _victim.get_string(SURNAME) : "";
 			}
 			else
 			{
@@ -47,10 +49,10 @@ class MultiCharacterKillMessage
 
 		if (_attacker !is null)
 		{
-			if (_attacker.exists("forename"))
+			if (_attacker.exists(FORENAME))
 			{
-				attacker = _attacker.get_string("forename");
-				attacker += _attacker.exists("surname") ? " " + _attacker.get_string("surname") : "";
+				attacker = _attacker.get_string(FORENAME);
+				attacker += _attacker.exists(SURNAME) ? " " + _attacker.get_string(SURNAME) : "";
 			}
 			else
 			{
@@ -251,7 +253,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 		CBlob@ victim = getBlobByNetworkID(victim_blob_networkID);
 
-		if (victim !is null && victim.hasTag("player") && victim.exists("owning_player"))
+		if (victim !is null && victim.hasTag("player") && victim.exists(OWNING_PLAYER))
 		{
 			// Move up the corresponding player list
 			MoveUpPlayerList(player_list_to_move_up == "" ? null : getPlayerByUsername(player_list_to_move_up));
