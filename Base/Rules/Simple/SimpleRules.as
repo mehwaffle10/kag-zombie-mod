@@ -3,8 +3,9 @@
 
 // #define SERVER_ONLY
 
-#include "RulesCore.as";
-#include "ZombieBlocksCommon.as";
+#include "RulesCore.as"
+#include "ZombieBlocksCommon.as"
+#include "MultiCharacterCommon.as"
 
 void onInit(CRules@ this)
 {
@@ -56,6 +57,7 @@ CBlob@ Respawn(CRules@ this, CPlayer@ player)
 		newBlob.server_setTeamNum(0);
 		newBlob.setPosition(getSpawnLocation(player));
 		newBlob.server_SetPlayer(player);
+		newBlob.Tag(SURVIVOR_TAG);
 		newBlob.Init();
 		return newBlob;
 	}
