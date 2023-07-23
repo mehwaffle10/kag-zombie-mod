@@ -137,55 +137,14 @@ bool onServerProcessChat(CRules@ this, const string& in text_in, string& out tex
 		}
 		else if (text_in == "!explore")
 		{
-			ZombieMinimapCore@ zombie_minimap_core;
-    		this.get(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
-			zombie_minimap_core.left = -10;
-			zombie_minimap_core.right = 32000;
+			CBitStream params;
+			params.write_s32(-10);
+			params.write_s32(32000);
+			this.SendCommand(this.getCommandID(ZOMBIE_MINIMAP_EXPLORE_SYNC_COMMAND), params);
 		}
 		else if (text_in == "!survivor")
 		{
-			string[] classes = {"Archer", "Knight", "Builder"};
-			string char_class = classes[XORRandom(classes.length)];
-			CBlob@ survivor = server_CreateBlobNoInit(char_class.toLower());
-			survivor.server_setTeamNum(team);
-			survivor.setPosition(pos);
-			survivor.Init();
-			u8 gender = XORRandom(2);
-			survivor.setSexNum(gender);  // 50/50 Male/Female
-			survivor.setHeadNum(XORRandom(100));  // Random head
-			TransferCharToPlayerList(survivor, "", -1);
-
-			// Give the char a random name
-			CBitStream params;
-			params.write_netid(survivor.getNetworkID());
-			this.SendCommand(this.getCommandID("give_char_random_name"), params);
-
-			// Chance to make the char have gold armor or a cape
-			CSprite@ sprite = survivor.getSprite();
-			if (sprite !is null)
-			{
-				bool gold = false;
-				bool cape = false;
-
-				// Add special armor types
-				if (XORRandom(4) == 0)  // 25% chance to be special
-				{ 
-					// 25% chance to have a cape
-					if (XORRandom(4) == 0)
-					{
-						cape = true;
-					}
-					else
-					{
-						gold = true;
-					}
-				}
-
-				SetBody(sprite, char_class, gender == 0, gold, cape);
-
-				// TODO add support for swapping classes
-				// TODO add support in multichar ui
-			}
+			SpawnSurvivor(pos);
 		}
 		else if (text_in == "!tree") // pine tree (seed)
 		{
