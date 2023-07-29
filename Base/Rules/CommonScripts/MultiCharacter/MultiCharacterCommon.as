@@ -24,13 +24,13 @@ class MultiCharacterCore
 // Transfers control of a player to a target blob if the player owns that blob
 void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID)
 {
-	DebugPrint("Attempting to swap the player " + player_to_swap_username + "'s control to " + target_blob_networkID);
+	// DebugPrint("Attempting to swap the player " + player_to_swap_username + "'s control to " + target_blob_networkID);
 
 	// Safety checks
 	// Let the player swap if the target blob is in their char list or the unclaimed char list
 	if (!hasClaimedChar(player_to_swap_username, target_blob_networkID) && !hasClaimedChar("", target_blob_networkID))
 	{
-		DebugPrint("Player " + player_to_swap_username + " can not swap to " + target_blob_networkID);
+		// DebugPrint("Player " + player_to_swap_username + " can not swap to " + target_blob_networkID);
 		return;
 	}
 
@@ -38,7 +38,7 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	CPlayer@ player = getPlayerByUsername(player_to_swap_username);
 	if (player is null)
 	{
-		DebugPrint("Player " + player_to_swap_username + " was null");
+		// DebugPrint("Player " + player_to_swap_username + " was null");
 		return;
 	}
 
@@ -46,22 +46,22 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	CBlob@ target_blob = getBlobByNetworkID(target_blob_networkID);
 	if (target_blob is null)
 	{
-		DebugPrint("Target blob with networkID " + target_blob_networkID + " was null");
+		// DebugPrint("Target blob with networkID " + target_blob_networkID + " was null");
 		return;
 	}
 	if (target_blob.hasTag("dead") || target_blob.getHealth() <= 0.0f)
 	{
-		DebugPrint("Target blob with networkID " + target_blob_networkID + " was dead");
+		// DebugPrint("Target blob with networkID " + target_blob_networkID + " was dead");
 		return;
 	}
 	if (target_blob.getPlayer() !is null)
 	{
-		DebugPrint("Target blob with networkID " + target_blob_networkID +
-			" had player " + target_blob.getPlayer().getUsername());
+		// DebugPrint("Target blob with networkID " + target_blob_networkID +
+			// " had player " + target_blob.getPlayer().getUsername());
 		return;
 	}
 
-	DebugPrint("Attempting to clear previous character's commands");
+	// DebugPrint("Attempting to clear previous character's commands");
 
 	CBlob@ previous_character = player.getBlob();
 	if (previous_character !is null)
@@ -80,12 +80,12 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	}
 	else
 	{
-		DebugPrint("Player " + player_to_swap_username + "'s previous character was null, abandoning command clearing");
+		// DebugPrint("Player " + player_to_swap_username + "'s previous character was null, abandoning command clearing");
 	}
 
 	// Set the player to control the target blob
 	// Need to store the characters attributes and reapply them when swapping for some reason
-	DebugPrint("Transferring control");
+	// DebugPrint("Transferring control");
 	u8 sex = target_blob.getSexNum();
 	u8 head = target_blob.getHeadNum();
 	target_blob.server_SetPlayer(player);
@@ -110,29 +110,29 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 		return;
 	}
 
-	DebugPrint(new_owner != "" ?
-		"Attempting to transfer char to " + new_owner + "'s player list" :
-		"Attempting to transfer char to unclaimed player list");
+	// DebugPrint(new_owner != "" ?
+	// 	"Attempting to transfer char to " + new_owner + "'s player list" :
+	// 	"Attempting to transfer char to unclaimed player list");
 
 	// Safety checks
 	// Check that the char is not null
 	if (this is null)
 	{
-		DebugPrint("Null blob");
+		// DebugPrint("Null blob");
 		return;
 	}
 
 	// Check if the new owner exists
 	if (new_owner != "" && getPlayerByUsername(new_owner) is null)
 	{
-		DebugPrint("Failed to find new owning player " + new_owner);
+		// DebugPrint("Failed to find new owning player " + new_owner);
 		return;
 	}
 
 	// Check that the blob does not have a different player if taking from the unclaimed list
 	if (new_owner != "" && this.getPlayer() !is null && this.getPlayer().getUsername() != new_owner)
 	{
-		DebugPrint("Player " + new_owner + " tried to claim char controlled by player " + this.getPlayer().getUsername());
+		// DebugPrint("Player " + new_owner + " tried to claim char controlled by player " + this.getPlayer().getUsername());
 		return;
 	}
 
@@ -143,20 +143,20 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 	u16[] char_networkIDs;
 	if (hasCharList(new_owner))
 	{
-		DebugPrint(new_owner != "" ?
-			"Player char list for " + new_owner + " found" :
-			"Unclaimed char list found");
+		// DebugPrint(new_owner != "" ?
+		// 	"Player char list for " + new_owner + " found" :
+		// 	"Unclaimed char list found");
 		readCharList(new_owner, char_networkIDs);
 	}
 	else
 	{
-		DebugPrint(new_owner != "" ?
-			"Failed to find player list for " + new_owner + ", creating new list" :
-			"Failed to find unclaimed char list, creating new list");
+		// DebugPrint(new_owner != "" ?
+		// 	"Failed to find player list for " + new_owner + ", creating new list" :
+		// 	"Failed to find unclaimed char list, creating new list");
 	}
 
-	DebugPrint("Char list before addition:");
-	PrintCharList(char_networkIDs);
+	// DebugPrint("Char list before addition:");
+	// PrintCharList(char_networkIDs);
 
 	// Add the blob to player's char list
 	if (index < 0 || index >= char_networkIDs.length)
@@ -168,8 +168,8 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 		char_networkIDs.insertAt(index, this.getNetworkID());
 	}
 	
-	DebugPrint("Char list after addition:");
-	PrintCharList(char_networkIDs);
+	// DebugPrint("Char list after addition:");
+	// PrintCharList(char_networkIDs);
 
 	// Reset the list in rules
 	SaveCharList(new_owner, char_networkIDs);
@@ -182,24 +182,24 @@ void TransferCharToPlayerList(CBlob@ this, string new_owner, int index)
 // DebugPrint needs to be set to true for this to print anything
 void RemoveCharFromPlayerList(CBlob@ this)
 {
-	DebugPrint("Attempting to remove char from char list");
+	// DebugPrint("Attempting to remove char from char list");
 	// Safety checks
 	if (this is null)
 	{
-		DebugPrint("Null blob");
+		// DebugPrint("Null blob");
 		return;
 	}
 
 	string name = this.getName();
 	if (!this.hasTag("player") && name != "knight" && name != "builder" && name != "archer")
 	{
-		DebugPrint("Non-player blob");
+		// DebugPrint("Non-player blob");
 		return;
 	}
 
 	// Player that claimed this blob, or empty if unclaimed
 	string owning_player = this.exists(OWNING_PLAYER) ? this.get_string(OWNING_PLAYER) : "";
-	DebugPrint(owning_player != "" ? "Owned by player " + owning_player : "Potentially in unclaimed char list");
+	// DebugPrint(owning_player != "" ? "Owned by player " + owning_player : "Potentially in unclaimed char list");
 	
 	// Get the player's char list
 	u16[] char_networkIDs;
@@ -214,20 +214,20 @@ void RemoveCharFromPlayerList(CBlob@ this)
 
 	if (index < 0)
 	{
-		DebugPrint(owning_player != "" ?
-			"Failed to find networkID " + networkID + " in " + owning_player + "'s char list" :
-			"Failed to find networkID " + networkID + " in unclaimed char list");
+		// DebugPrint(owning_player != "" ?
+		// 	"Failed to find networkID " + networkID + " in " + owning_player + "'s char list" :
+		// 	"Failed to find networkID " + networkID + " in unclaimed char list");
 		return;
 	}
 
-	DebugPrint("Found networkID in char list, removing");
-	DebugPrint("Char list before removal:");
-	PrintCharList(char_networkIDs);
+	// DebugPrint("Found networkID in char list, removing");
+	// DebugPrint("Char list before removal:");
+	// PrintCharList(char_networkIDs);
 
 	// Remove the blob from the char list
 	char_networkIDs.erase(index);
-	DebugPrint("Char list after removal:");
-	PrintCharList(char_networkIDs);
+	// DebugPrint("Char list after removal:");
+	// PrintCharList(char_networkIDs);
 
 	// Reset the list in rules
 	SaveCharList(owning_player, char_networkIDs);
@@ -238,7 +238,6 @@ void RemoveCharFromPlayerList(CBlob@ this)
 	{
 		CBitStream params;
 		params.write_string(this.get_string(OWNING_PLAYER));
-
 		rules.SendCommand(rules.getCommandID("move_up_char_list"), params);
 	}
 
@@ -250,15 +249,15 @@ void RemoveCharFromPlayerList(CBlob@ this)
 // If player_name is empty, returns true if the unclaimed list exists and the networkID provided is in it instead
 bool hasClaimedChar(string player_name, u16 char_networkID)
 {
-	DebugPrint(player_name != "" ?
-		"Checking if player " + player_name + " has claimed " + char_networkID :
-		"Checking if " + char_networkID + " is in the unclaimed char list");
+	// DebugPrint(player_name != "" ?
+	// 	"Checking if player " + player_name + " has claimed " + char_networkID :
+	// 	"Checking if " + char_networkID + " is in the unclaimed char list");
 	
 	// Get the player
 	CPlayer@ player_to_swap = getPlayerByUsername(player_name);
 	if (player_name != "" && player_to_swap is null)
 	{
-		DebugPrint("Player " + player_name + " not found");
+		// DebugPrint("Player " + player_name + " not found");
 		return false;
 	}
 
@@ -266,7 +265,7 @@ bool hasClaimedChar(string player_name, u16 char_networkID)
 	CBlob@ target_blob = getBlobByNetworkID(char_networkID);
 	if (target_blob is null)
 	{
-		DebugPrint("Failed to find a blob with networkID " + char_networkID);
+		// DebugPrint("Failed to find a blob with networkID " + char_networkID);
 		return false;
 	}
 	
@@ -276,69 +275,69 @@ bool hasClaimedChar(string player_name, u16 char_networkID)
 	{
 		return false;
 	}
-	PrintCharList(char_networkIDs);
+	// PrintCharList(char_networkIDs);
 
 	// Check that the target blob is in the target char list
 	if (char_networkIDs.find(char_networkID) < 0)
 	{
-		DebugPrint(player_name != "" ?
-			"Player " + player_name + " has not claimed target blob with networkID " + char_networkID :
-			"Target blob with networkID " + char_networkID + " is not in unclaimed char list");
+		// DebugPrint(player_name != "" ?
+		// 	"Player " + player_name + " has not claimed target blob with networkID " + char_networkID :
+		// 	"Target blob with networkID " + char_networkID + " is not in unclaimed char list");
 		return false;
 	}
 
-	DebugPrint(player_name != "" ?
-		"Player "  + player_name + " has claimed target blob" :
-		"Target blob with networkID " + char_networkID + " is in unclaimed char list");
+	// DebugPrint(player_name != "" ?
+	// 	"Player "  + player_name + " has claimed target blob" :
+	// 	"Target blob with networkID " + char_networkID + " is in unclaimed char list");
 	return true;
 }
 
 // Prints each networkID in the char list provided
 // DebugPrint needs to be set to true for this to print anything
-void PrintCharList(u16[]@ char_networkIDs)
-{
-	for (u8 i = 0; i < char_networkIDs.length; i++)
-	{
-		DebugPrint("" + char_networkIDs[i]);
-	}
-}
+// void PrintCharList(u16[]@ char_networkIDs)
+// {
+// 	for (u8 i = 0; i < char_networkIDs.length; i++)
+// 	{
+// 		DebugPrint("" + char_networkIDs[i]);
+// 	}
+// }
 
 // Print wrapper so I can turn off debugging prints later
 // Controls printing for everything in this script
-void DebugPrint(string message)
-{
-	// Set this to true if you want to print debug information
-	if (true)
-	{
-		print(message);
-	}
-}
+// void DebugPrint(string message)
+// {
+// 	// Set this to true if you want to print debug information
+// 	if (true)
+// 	{
+// 		print(message);
+// 	}
+// }
 
 // Saves a char list as a bunch of individual networkIDs because you can't sync lists from server to client
 // DebugPrint needs to be set to true for this to print anything
 void SaveCharList(string player_name, u16[]@ char_networkIDs)
 {
-	DebugPrint(player_name != "" ?
-		"Attempting to save player " + player_name + "'s char list" :
-		"Attempting to save unclaimed char list");
+	// DebugPrint(player_name != "" ?
+	// 	"Attempting to save player " + player_name + "'s char list" :
+	// 	"Attempting to save unclaimed char list");
 
 	// Safety checks
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
-		DebugPrint("Null rules");
+		// DebugPrint("Null rules");
 		return;
 	}
 
 	if (player_name != "" && getPlayerByUsername(player_name) is null)
 	{
-		DebugPrint("Failed to find player " + player_name);
+		// DebugPrint("Failed to find player " + player_name);
 		return;
 	}
 
 	if (char_networkIDs is null)
 	{
-		DebugPrint("Player " + player_name + " not found");
+		// DebugPrint("Player " + player_name + " not found");
 		return;
 	}
 
@@ -358,12 +357,12 @@ void SaveCharList(string player_name, u16[]@ char_networkIDs)
 			@player_info = MultiCharacterPlayerInfo();
 		}
 		player_info.char_list = char_networkIDs;
-		DebugPrint(player_name + "'s char list saved successfully");
+		// DebugPrint(player_name + "'s char list saved successfully");
 	}
 	else  // Write the unclaimed char list
 	{
 		multicharacter_core.unclaimed_char_list = char_networkIDs;
-		DebugPrint("Unclaimed char list saved successfully");
+		// DebugPrint("Unclaimed char list saved successfully");
 	}
 }
 
@@ -373,37 +372,35 @@ void SaveCharList(string player_name, u16[]@ char_networkIDs)
 // Returns true if the list was read successfully
 bool readCharList(string player_name, u16[] &out char_networkIDs)
 {
-	/*
-	DebugPrint(player_name != "" ?
-		"Attempting to read player " + player_name + "'s char list" :
-		"Attempting to read unclaimed char list");
-	*/
+	// DebugPrint(player_name != "" ?
+	// 	"Attempting to read player " + player_name + "'s char list" :
+	// 	"Attempting to read unclaimed char list");
 
 	// Safety checks
 	CRules@ rules = getRules();
 	if (rules is null)
 	{
-		DebugPrint("Null rules");
+		// DebugPrint("Null rules");
 		return false;
 	}
 
 	if (player_name != "" && getPlayerByUsername(player_name) is null)
 	{
-		DebugPrint("Failed to find player " + player_name);
+		// DebugPrint("Failed to find player " + player_name);
 		return false;
 	}
 
 	if (char_networkIDs is null)
 	{
-		DebugPrint("Null array");
+		// DebugPrint("Null array");
 		return false;
 	}
 
 	if (!hasCharList(player_name))
 	{
-		DebugPrint(player_name != "" ?
-			"Failed to find char list for " + player_name :
-			"Failed to find unclaimed char list");
+		// DebugPrint(player_name != "" ?
+		// 	"Failed to find char list for " + player_name :
+		// 	"Failed to find unclaimed char list");
 		return false;
 	}
 
@@ -411,7 +408,7 @@ bool readCharList(string player_name, u16[] &out char_networkIDs)
 	rules.get(MULTICHARACTER_CORE, @multicharacter_core);
 	if (multicharacter_core is null)
 	{
-		DebugPrint("multicharacter_core is null");
+		// DebugPrint("multicharacter_core is null");
 		return false;
 	}
 

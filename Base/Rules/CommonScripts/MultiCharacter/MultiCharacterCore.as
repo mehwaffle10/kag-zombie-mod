@@ -35,35 +35,33 @@ void onRestart(CRules@ this)
 
 void onInit(CPlayer@ this)
 {
-	DebugPrint("Initalizing player char list");
+	// DebugPrint("Initalizing player char list");
 	// Initialize list of the player's characters if it doesn't exist yet
 	if (!hasCharList(this.getUsername()))
 	{
 		// Initialize the list and add it to our rules
-		DebugPrint("Player " + this.getUsername() + " does not have a char list, initializing empty list");
+		// DebugPrint("Player " + this.getUsername() + " does not have a char list, initializing empty list");
 		u16[] char_networkIDs;
 		SaveCharList(this.getUsername(), char_networkIDs);
 	}
 	else
 	{
-		DebugPrint("Player " + this.getUsername() + " already has a char list");
+		// DebugPrint("Player " + this.getUsername() + " already has a char list");
 	}
 }
 
 // Handle class changes and spawning
 void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 {
-	print("Entering onSetPlayer");
-
 	if (blob is null)
 	{
-		DebugPrint("Blob was null");
+		// DebugPrint("Blob was null");
 		return;
 	}
 
 	if (player is null)
 	{
-		DebugPrint("Player was null");
+		// DebugPrint("Player was null");
 		return;
 	}
 
@@ -79,7 +77,7 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 
 	if (player_info.previous_char != 0)
 	{
-		DebugPrint("Player has previous char networkID");
+		// DebugPrint("Player has previous char networkID");
 
 		// Check if the previous blob was in the char's list or the unclaimed list
 		CBlob@ previous_char = getBlobByNetworkID(player_info.previous_char);
@@ -88,37 +86,20 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 		readCharList(player.getUsername(), player_char_networkIDs);
 		int player_char_list_index = player_char_networkIDs.find(player_info.previous_char);
 
-		print("PLAYER CHAR LIST");
-		PrintCharList(player_char_networkIDs);
+		// print("PLAYER CHAR LIST");
+		// PrintCharList(player_char_networkIDs);
 
 		u16[] unclaimed_char_networkIDs;
 		readCharList("", player_char_networkIDs);
 		int unclaimed_char_list_index = player_char_networkIDs.find(player_info.previous_char);
 
-		print("UNCLAIMED CHAR LIST");
-		PrintCharList(unclaimed_char_networkIDs);
-
-		if (previous_char is null)
-		{
-			print("previous_char is null");
-		}
-		else if (previous_char.hasTag("dead"))
-		{
-			print("previous_char.hasTag(dead)");
-		}
-		else if (previous_char.getHealth() <= 0.0f)
-		{
-			print("previous_char.getHealth() <= 0.0f");
-		}
-		else if (blob.getTickSinceCreated() <= 1)
-		{
-			print("blob.getTickSinceCreated() <= 1");
-		}
+		// print("UNCLAIMED CHAR LIST");
+		// PrintCharList(unclaimed_char_networkIDs);
 
 		// Check if previous blob doesn't exist anymore or is dead or was just created
 		if (previous_char is null || previous_char.hasTag("dead") || previous_char.getHealth() <= 0.0f || blob.getTickSinceCreated() <= 1)
 		{
-			DebugPrint("Previous char was null or dead or blob was just created");
+			// DebugPrint("Previous char was null or dead or blob was just created");
 
 			// Replace the blob with the new one if possible
 			// It should never be in both lists at once, the second one wouldn't update otherwise
@@ -169,12 +150,12 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 		else
 		{
 			// Just swapping chars. Don't transfer any chars between lists
-			DebugPrint("Previous char was not null or dead and the new blob was not just created");
+			// DebugPrint("Previous char was not null or dead and the new blob was not just created");
 		}
 	}
 	else  // Player 
 	{
-		DebugPrint("Player does not have previous char networkID");
+		// DebugPrint("Player does not have previous char networkID");
 
 		// Add to the end of the list
 		TransferCharToPlayerList(blob, player.getUsername(), -1);
@@ -189,7 +170,7 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 	// Safety checks
 	if (player is null)
 	{
-		DebugPrint("Player was null");
+		// DebugPrint("Player was null");
 		return;
 	}
 
@@ -235,10 +216,10 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 
 	// No need for safety checks, methods already have them
-	DebugPrint("Received Command");
+	// DebugPrint("Received Command");
 	if (cmd == this.getCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND))
 	{
-		DebugPrint("Command is swap_player");
+		// DebugPrint("Command is swap_player");
 		string player_to_swap_username;
 		if (!params.saferead_string(player_to_swap_username))
 		{
@@ -254,7 +235,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 	else if (cmd == this.getCommandID(MULTICHARACTER_TRANSFER_COMMAND))
 	{
-		DebugPrint("Command is transfer_char");
+		// DebugPrint("Command is transfer_char");
 		string sending_player;
 		if (!params.saferead_string(sending_player))
 		{
@@ -312,7 +293,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_UP_COMMAND))
 	{
-		DebugPrint("Command is move_up_char");
+		// DebugPrint("Command is move_up_char");
 		string sending_player;
 		if (!params.saferead_string(sending_player))
 		{
@@ -353,7 +334,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND))
 	{
-		DebugPrint("Command is move_down_char");
+		// DebugPrint("Command is move_down_char");
 		string sending_player;
 		if (!params.saferead_string(sending_player))
 		{

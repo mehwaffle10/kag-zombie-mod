@@ -228,7 +228,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	*/
 
 	// Only client responds to these commands, but no need to check because of #define CLIENT_ONLY
-	DebugPrint("Client Received Command");
+	// DebugPrint("Client Received Command");
 	if (cmd == this.getCommandID("move_up_char_list"))
 	{
 		string player_list_to_move_up;
@@ -242,7 +242,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 	else if (cmd == this.getCommandID("print_transfer_char"))
 	{
-		DebugPrint("Command is print_transfer_char");
+		// DebugPrint("Command is print_transfer_char");
 		string message;
 		if (!params.saferead_string(message))
 		{
