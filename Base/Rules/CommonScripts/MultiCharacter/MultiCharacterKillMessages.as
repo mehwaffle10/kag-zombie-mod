@@ -237,7 +237,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 	}
 
 	// Only client responds to these commands, but no need to check because of #define CLIENT_ONLY
-	if (cmd == this.getCommandID("kill_feed"))
+	if (cmd == this.getCommandID(MULTICHARACTER_KILL_FEED))
 	{
 		string player_list_to_move_up;
 		if (!params.saferead_string(player_list_to_move_up))

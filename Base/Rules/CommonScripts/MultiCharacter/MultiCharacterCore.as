@@ -21,9 +21,9 @@ void onInit(CRules@ this)
 	this.addCommandID(MULTICHARACTER_SYNC_COMMAND);
 
 	// Client only, used in MultiCharacterUI.as
-	this.addCommandID("print_transfer_char");
-	this.addCommandID("move_up_char_list");
-	this.addCommandID("kill_feed");
+	this.addCommandID(MULTICHARACTER_PRINT_TRANSFER_COMMAND);
+	this.addCommandID(MULTICHARACTER_MOVE_LIST_UP_COMMAND);
+	this.addCommandID(MULTICHARACTER_KILL_FEED);
 
 	Reset(this);
 }
@@ -200,7 +200,7 @@ void onBlobDie(CRules@ this, CBlob@ blob)
 		params.write_string(blob.get_string(OWNING_PLAYER));
 		params.write_netid(blob.getNetworkID());
 
-		this.SendCommand(this.getCommandID("kill_feed"), params);
+		this.SendCommand(this.getCommandID(MULTICHARACTER_KILL_FEED), params);
 	}
 
 	// Clean up dead blobs
