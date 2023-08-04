@@ -1,6 +1,4 @@
 
-// Simple rules logic script
-
 // #define SERVER_ONLY
 
 #include "RulesCore.as"
