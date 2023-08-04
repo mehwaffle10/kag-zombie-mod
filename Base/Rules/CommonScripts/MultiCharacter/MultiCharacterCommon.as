@@ -4,10 +4,13 @@
 const string MULTICHARACTER_CORE = "multicharacter_core";
 const string SURVIVOR_TAG = "survivor";
 const string OWNING_PLAYER = "owning_player";
-const string MULTICHARACTER_SWAP_PLAYER_COMMAND = "swap_player";
-const string MULTICHARACTER_TRANSFER_COMMAND = "transfer_char";
-const string MULTICHARACTER_MOVE_UP_COMMAND = "move_down_char";
-const string MULTICHARACTER_MOVE_DOWN_COMMAND = "transfer_char";
+const string MULTICHARACTER_SWAP_PLAYER_COMMAND = "multicharacter_swap_player";
+const string MULTICHARACTER_TRANSFER_COMMAND = "multicharacter_transfer_char";
+const string MULTICHARACTER_MOVE_UP_COMMAND = "multicharacter_move_up_char";
+const string MULTICHARACTER_MOVE_DOWN_COMMAND = "multicharacter_move_down_char";
+const string MULTICHARACTER_MOVE_LIST_UP_COMMAND = "multicharacter_move_up_char_list";
+const string MULTICHARACTER_PRINT_TRANSFER_COMMAND = "multicharacter_print_transfer_char";
+const string MULTICHARACTER_KILL_FEED = "multicharacter_kill_feed";
 const string MULTICHARACTER_SYNC_COMMAND = "multicharacter_sync";
 
 class MultiCharacterPlayerInfo {
@@ -238,7 +241,7 @@ void RemoveCharFromPlayerList(CBlob@ this)
 	{
 		CBitStream params;
 		params.write_string(this.get_string(OWNING_PLAYER));
-		rules.SendCommand(rules.getCommandID("move_up_char_list"), params);
+		rules.SendCommand(rules.getCommandID(MULTICHARACTER_MOVE_LIST_UP_COMMAND), params);
 	}
 
 	// Remove the object's owner
@@ -355,6 +358,7 @@ void SaveCharList(string player_name, u16[]@ char_networkIDs)
 		else
 		{
 			@player_info = MultiCharacterPlayerInfo();
+			multicharacter_core.players.set(player_name, @player_info);
 		}
 		player_info.char_list = char_networkIDs;
 		// DebugPrint(player_name + "'s char list saved successfully");
