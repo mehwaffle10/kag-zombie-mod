@@ -5,18 +5,22 @@
 #include "Hitters.as";
 #include "FireCommon.as";
 
+const string COOLDOWN = "cooldown";
+const string DOOR = "door";
+const string OPEN_DOOR = "door open";
+const u8 door_open_time = 2;
+
 u8[] SPAWNER_LOOT_TABLE = INDEX_KNIGHT;
 u8 MAX_COOLDOWN = 5 * getTicksASecond(), MIN_COOLDOWN = 2 * getTicksASecond();
 
 void setRandomCooldown(CBlob@ this)
 {
-	this.set_u8("cooldown", MIN_COOLDOWN + XORRandom(MAX_COOLDOWN - MIN_COOLDOWN));
+	this.set_u8(COOLDOWN, MIN_COOLDOWN + XORRandom(MAX_COOLDOWN - MIN_COOLDOWN));
 }
 
 void onInit(CBlob@ this)
 {
 	setRandomCooldown(this);
-	this.set_bool("active", false);
 	addLoot(this, SPAWNER_LOOT_TABLE, 1, 0);
 	this.Tag("heavy weight");
 	this.Tag("ignore fall");
@@ -26,7 +30,38 @@ void onInit(CBlob@ this)
 void onInit(CSprite@ this)
 {
 	this.SetZ(-4.0f);
+
+	CSpriteLayer@ door = this.addSpriteLayer(DOOR);
+	if (door !is null)
+	{
+		Animation@ open = door.addAnimation(OPEN_DOOR, door_open_time, false);
+		if (open !is null)
+		{
+			open.AddFrame(4);
+			open.AddFrame(5);
+			open.AddFrame(6);
+			open.AddFrame(7);
+			door.SetAnimation(open);
+			open.backward = true;
+		}
+	}
 }
+
+// void onTick(CSprite@ this)
+// {
+// 	if (getGameTime() % (getTicksASecond() * 5) != 0)
+// 	{
+// 		return;
+// 	}
+
+// 	CSpriteLayer@ door = this.getSpriteLayer(DOOR);
+// 	if (door is null)
+// 	{
+// 		return;
+// 	}
+	
+// 	door.animation.backward = !door.animation.backward;
+// }
 
 void onDie(CBlob@ this)
 {
@@ -61,37 +96,40 @@ void onTick(CBlob@ this)
 	{
 		if (nearby_player)
 		{
-			if (this.get_u8("cooldown") > 0)
+			if (this.get_u8(COOLDOWN) > 0)
 			{
-				this.set_u8("cooldown", this.get_u8("cooldown") - 1);
+				this.set_u8(COOLDOWN, this.get_u8(COOLDOWN) - 1);
 			}
 			else
 			{
 				setRandomCooldown(this);
 				Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
-				CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
+				// CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
 			}
 		}
 	}
 	else
 	{
-		if (nearby_player && !this.get_bool("active"))
+		CSprite@ sprite = this.getSprite();
+		if (sprite is null)
 		{
-			this.set_bool("active", true);
-			CSprite@ sprite = this.getSprite();
-			if (sprite !is null)
-			{
-				sprite.PlaySound("bridge_open.ogg", 3.0f);
-			}
+			return;
 		}
-		else if (!nearby_player && this.get_bool("active"))
+		CSpriteLayer@ door = sprite.getSpriteLayer(DOOR);
+		if (door is null)
 		{
-			this.set_bool("active", false);
-			CSprite@ sprite = this.getSprite();
-			if (sprite !is null)
-			{
-				sprite.PlaySound("bridge_close.ogg", 3.0f);
-			}
+			return;
+		}
+
+		if (nearby_player && door.animation.backward)
+		{
+			door.animation.backward = false;
+			sprite.PlaySound("bridge_open.ogg", 3.0f);
+		}
+		else if (!nearby_player && !door.animation.backward)
+		{
+			door.animation.backward = true;
+			sprite.PlaySound("bridge_close.ogg", 3.0f);
 		}
 	}
 	/*
