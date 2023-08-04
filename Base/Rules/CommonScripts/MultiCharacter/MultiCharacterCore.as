@@ -286,7 +286,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 			CBitStream params;
 			params.write_string(message);
 
-			this.SendCommand(this.getCommandID("print_transfer_char"), params);
+			this.SendCommand(this.getCommandID(MULTICHARACTER_PRINT_TRANSFER_COMMAND), params);
 		}
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), player_to_swap_username, -1);
