@@ -5,6 +5,15 @@
 
 const u8 CORRUPTION_RADIUS = 1;
 
+const string PORTAL_SPRITE_LAYER = "portal";
+const string PORTAL_ANIMATION = "portal";
+
+const string FIRE_SPRITE_LAYER = "fire";
+const string FIRE_ANIMATION = "fire";
+
+const string FLAMES_SPRITE_LAYER = "flames";
+const string FLAMES_ANIMATION = "flames";
+
 namespace State
 {
 	enum state_type
@@ -50,6 +59,51 @@ void onInit(CBlob@ this)
 		u16 netID = this.getNetworkID();
 		sprite.animation.frame = (netID % sprite.animation.getFramesCount());
 		sprite.SetZ(-10.0f);
+
+        // Portal
+        CSpriteLayer@ portal = sprite.addSpriteLayer(PORTAL_SPRITE_LAYER);
+        if (portal !is null)
+        {
+            portal.ReloadSprite("Portal.png", 48, 64);
+            portal.SetRelativeZ(10.0f);
+            portal.SetOffset(Vec2f(0, -4));
+            Animation@ animation = portal.addAnimation(PORTAL_ANIMATION, 5, true);
+            if (animation !is null)
+            {
+                s32[] frames = {12, 13, 14};
+                animation.AddFrames(frames);
+            }
+        }
+
+        // Fire under portal
+        CSpriteLayer@ fire = sprite.addSpriteLayer(FIRE_SPRITE_LAYER);
+        if (fire !is null)
+        { 
+            fire.ReloadSprite("Portal.png", 48, 16);
+            fire.SetRelativeZ(20.0f);
+            fire.SetOffset(Vec2f(0, 16));
+            Animation@ animation = fire.addAnimation(FIRE_ANIMATION, 5, true);
+            if (animation !is null)
+            {
+                s32[] frames = {2, 8, 14};
+                animation.AddFrames(frames);
+            }
+        }
+
+        // Flames above portal
+        CSpriteLayer@ flames = sprite.addSpriteLayer(FLAMES_SPRITE_LAYER);
+        if (flames !is null)
+        { 
+            flames.ReloadSprite("Portal.png", 48, 16);
+            flames.SetRelativeZ(20.0f);
+            flames.SetOffset(Vec2f(0, -18));
+            Animation@ animation = flames.addAnimation(FLAMES_ANIMATION, 5, true);
+            if (animation !is null)
+            {
+                s32[] frames = {1, 7, 13};
+                animation.AddFrames(frames);
+            }
+        }
 	}
 
 	// Minimap. We want this to be initialized every time the client joins so don't set it on the server
@@ -69,17 +123,17 @@ void onInit(CBlob@ this)
 void UpdateAnim(CBlob@ this)
 {
 	CSprite@ sprite = this.getSprite();
-	u8 state = this.get_u8("state");
-	if (state == State::inactive && !sprite.isAnimation("inactive"))
-	{
-		sprite.SetAnimation("closed");
-		this.SetLightRadius(this.getRadius() * 1.1f);
-	}
-	else if (state == State::active && !sprite.isAnimation("active"))
-	{
-		sprite.SetAnimation("open");
-		this.SetLightRadius(this.getRadius() * 1.5f);
-	}
+	// u8 state = this.get_u8("state");
+	// if (state == State::inactive && !sprite.isAnimation("inactive"))
+	// {
+	// 	sprite.SetAnimation("closed");
+	// 	this.SetLightRadius(this.getRadius() * 1.1f);
+	// }
+	// else if (state == State::active && !sprite.isAnimation("active"))
+	// {
+	// 	sprite.SetAnimation("open");
+	// 	this.SetLightRadius(this.getRadius() * 1.5f);
+	// }
 }
 
 void onTick(CBlob@ this)
