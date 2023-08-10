@@ -18,7 +18,7 @@ void ZombieSetTile(CMap@ this, u32 index, TileType newtile)
     bool on_top = y == 0;
     bool on_right = x == this.tilemapwidth-1;
     bool on_bottom = y == this.tilemapheight-1;
-
+    
     switch (tile_type)
     {
         case CMap::tile_ground:
@@ -285,9 +285,9 @@ void ZombieSetTile(CMap@ this, u32 index, TileType newtile)
     {
         front = false;
         TileType around = ((on_top    || isEmpty(getTile(this, x, y - 1))) ? 1 : 0) |
-                            ((on_bottom || isEmpty(getTile(this, x, y + 1))) ? 2 : 0) |
-                            ((on_left   || isEmpty(getTile(this, x - 1, y))) ? 4 : 0) |
-                            ((on_right  || isEmpty(getTile(this, x + 1, y))) ? 8 : 0);
+                          ((on_bottom || isEmpty(getTile(this, x, y + 1))) ? 2 : 0) |
+                          ((on_left   || isEmpty(getTile(this, x - 1, y))) ? 4 : 0) |
+                          ((on_right  || isEmpty(getTile(this, x + 1, y))) ? 8 : 0);
 
         if (around != 0)
         {
@@ -382,37 +382,32 @@ void ZombieSetTile(CMap@ this, u32 index, TileType newtile)
     //     MakeTileVariation_Legacy( x, y, tback, dummy, backmirror, backflip, backrotate, dummybool, dummybool, dummybool, dummybool );
     // }
     
-    u32 flags = TILEFLAGS[tile_type];
-    if (mirror)
-    {
-        flags |= Tile::TileFlags::MIRROR;
-    }
-    if (flip)
-    {
-        flags |= Tile::TileFlags::FLIP;
-    }
-    if (rotate)
-    {
-        flags |= Tile::TileFlags::ROTATE;
-    }
-    if (front)
-    {
-        flags &= ~Tile::TileFlags::BACKGROUND;
-    }
-
     if (!isServer())
     {
         this.SetTile(index, newtile);
     }
-
-    if (isSolid(newtile))
+    
+    u32 new_flags = ZOMBIE_TILE_FLAGS[tile_type];
+    if (mirror)
     {
-        this.RemoveTileFlag(index, Tile::BACKGROUND | Tile::LIGHT_PASSES | Tile::LIGHT_SOURCE | Tile::WATER_PASSES);
+        new_flags |= Tile::MIRROR;
     }
-    else
+    if (flip)
     {
-        this.RemoveTileFlag(index, Tile::SOLID | Tile::COLLISION);
+        new_flags |= Tile::FLIP;
     }
-
-    this.AddTileFlag(index, flags);
+    if (rotate)
+    {
+        new_flags |= Tile::ROTATE;
+    }
+    if (!front)
+    {
+        // flags |= Tile::SOLID;
+        new_flags &= ~Tile::TileFlags::BACKGROUND;
+    }
+    
+    u32 old_flags = this.getTileFlags(index);
+    this.RemoveTileFlag(index, old_flags & ~new_flags);
+    this.AddTileFlag(index, new_flags & ~old_flags);
+    // this.SetTileSupport(index, 255);
 }

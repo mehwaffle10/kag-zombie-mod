@@ -15,11 +15,11 @@ namespace State
 	};
 };
 
-class TileUpdates
-{
-	Vec2f[] queue;
-	u32 steps;
-}
+// class TileUpdates
+// {
+// 	Vec2f[] queue;
+// 	u32 steps;
+// }
 
 void onInit(CBlob@ this)
 {
@@ -59,11 +59,11 @@ void onInit(CBlob@ this)
 	}
 
 	// Corruption effect
-	if (isServer())
-	{
-		TileUpdates@ tile_updates = TileUpdates();
-		this.set("tile_updates", @tile_updates);
-	}
+	// if (isServer())
+	// {
+	// 	TileUpdates@ tile_updates = TileUpdates();
+	// 	this.set("tile_updates", @tile_updates);
+	// }
 }
 
 void UpdateAnim(CBlob@ this)
@@ -161,6 +161,7 @@ void onTick(CBlob@ this)
 	// 	print(prefix + ": tile_updates[" + i + "] = " + tile_updates[i]);
 	// }
 
+    /*
 	// Block updates
 	if (isServer()) // && XORRandom(10) == 0)
 	{
@@ -258,6 +259,7 @@ void onTick(CBlob@ this)
 			}
 		}
 	}
+    */
 }
 
 void Summon(CBlob@ this, string spawn, u8 cost)
@@ -356,6 +358,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		Vec2f sector = this.get_Vec2f("sector");
 		setSectorBorderColor(this);
 
+        /*
 		// Initiate corruption
 		if (isServer() && this.exists("tile_updates"))
 		{
@@ -382,6 +385,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			tile_updates.queue.push_back(map.getTileSpacePosition(this.getPosition()));
 			tile_updates.steps = 0;
 		}
+        */
 
 		// Prevent players from building here
 		if (map.getSectorAtPosition(this.getPosition(), "no build") !is null)
@@ -405,6 +409,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		}
 		setSectorBorderColor(this);
 
+        /*
 		// Initiate corruption withdrawal
 		if (isServer() && this.exists("tile_updates"))
 		{
@@ -452,6 +457,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			// 	}
 			// }
 		}
+        */
 
 		// Allow players to build here
 		if (map.getSectorAtPosition(this.getPosition(), "no build") is null)

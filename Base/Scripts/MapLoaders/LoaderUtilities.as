@@ -1,5 +1,6 @@
 // LoaderUtilities.as
 
+#include "ZombieBlocksCommon.as"
 #include "ZombieBlocksSetTile.as"
 
 // bool onMapTileCollapse(CMap@ map, u32 offset)
@@ -23,27 +24,5 @@ TileType server_onTileHit(CMap@ this, f32 damage, u32 index, TileType oldTileTyp
 
 void onSetTile(CMap@ this, u32 index, TileType newtile, TileType oldtile)
 {
-	ZombieSetTile(this, index, newtile);
-	// if(isDummyTile(tile_new))
-	// {
-	// 	map.SetTileSupport(index, 10);
-
-	// 	switch(tile_new)
-	// 	{
-	// 		case Dummy::SOLID:
-	// 		case Dummy::OBSTRUCTOR:
-	// 			map.AddTileFlag(index, Tile::SOLID | Tile::COLLISION);
-	// 			break;
-	// 		case Dummy::BACKGROUND:
-	// 		case Dummy::OBSTRUCTOR_BACKGROUND:
-	// 			map.AddTileFlag(index, Tile::BACKGROUND | Tile::LIGHT_PASSES | Tile::WATER_PASSES);
-	// 			break;
-	// 		case Dummy::LADDER:
-	// 			map.AddTileFlag(index, Tile::BACKGROUND | Tile::LIGHT_PASSES | Tile::LADDER | Tile::WATER_PASSES);
-	// 			break;
-	// 		case Dummy::PLATFORM:
-	// 			map.AddTileFlag(index, Tile::PLATFORM);
-	// 			break;
-	// 	}
-	// }
+	// ZombieSetTile(this, index, newtile);
 }

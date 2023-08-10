@@ -19,7 +19,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 	CRules@ rules = getRules();
 	rules.set_u8("portal_count", 0);
 	// MiniMap::Initialise();
-
+    
 	if (!isServer() || filename == "")
 	{
 		SetupMap(map, 0, 0);
@@ -191,9 +191,9 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 				if (cave_n > 1.0f - cave_amount)
 				{
-					TileType ground_back = CMap::tile_ground_back + WORLD_OFFSET;
-					map.server_SetTile(world_pos, ground_back);
-					ZombieSetTile(map, offset, ground_back);
+					TileType ground_back = CMap::tile_ground_back;  // + WORLD_OFFSET;
+					// map.server_SetTile(world_pos, ground_back);
+					map.SetTile(offset, ground_back);
 					add_dirt = false;
 
 					overhang -= _n * 2.0f + 0.5f;
@@ -205,28 +205,28 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 					if (material_frac < 0.7f && n > bedrock_thresh)
 					{
-						TileType bedrock = CMap::tile_bedrock + WORLD_OFFSET;
-						map.server_SetTile(world_pos, bedrock);
-						ZombieSetTile(map, offset, bedrock);
+						TileType bedrock = CMap::tile_bedrock;  // + WORLD_OFFSET;
+						// map.server_SetTile(world_pos, bedrock);
+						map.SetTile(offset, bedrock);
 					}
 					else if (material_frac > -0.5f && material_frac < -0.25f &&
 					         n_plus < 0.8f)
 					{
-						TileType gold = CMap::tile_gold + WORLD_OFFSET;
-						map.server_SetTile(world_pos, gold);
-						ZombieSetTile(map, offset, gold);
+						TileType gold = CMap::tile_gold;  // + WORLD_OFFSET;
+						// map.server_SetTile(world_pos, gold);
+						map.SetTile(offset, gold);
 					}
 					else if (material_frac > 0.4f && n > 0.9f)
 					{
-						TileType thickstone = CMap::tile_thickstone + WORLD_OFFSET;
-						map.server_SetTile(world_pos, thickstone);
-						ZombieSetTile(map, offset, thickstone);
+						TileType thickstone = CMap::tile_thickstone;  // + WORLD_OFFSET;
+						// map.server_SetTile(world_pos, thickstone);
+						map.SetTile(offset, thickstone);
 					}
 					else if (material_frac > 0.1f && n_plus > 0.8f)
 					{
-						TileType stone = CMap::tile_stone + WORLD_OFFSET;
-						map.server_SetTile(world_pos, stone);
-						ZombieSetTile(map, offset, stone);
+						TileType stone = CMap::tile_stone;  // + WORLD_OFFSET;
+						// map.server_SetTile(world_pos, stone);
+						map.SetTile(offset, stone);
 					}
 					else
 					{
@@ -236,9 +236,9 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 				if (add_dirt)
 				{
-					TileType dirt = CMap::tile_ground + WORLD_OFFSET;
-					map.server_SetTile(world_pos, dirt);
-					ZombieSetTile(map, offset, dirt);
+					TileType dirt = CMap::tile_ground;  // + WORLD_OFFSET;
+					// map.server_SetTile(world_pos, dirt);
+					map.SetTile(offset, dirt);
 					if (overhang == 0 && y > 1)
 					{
 						naturemap[x] = y;
@@ -250,9 +250,9 @@ bool loadMap(CMap@ _map, const string& in filename)
 			else if (overhang > 0.3f)
 			{
 				overhang -= _n * 2.0f + 0.5f;
-				TileType dirt_back = CMap::tile_ground_back + WORLD_OFFSET;
-				map.server_SetTile(world_pos, dirt_back);
-				ZombieSetTile(map, offset, dirt_back);
+				TileType dirt_back = CMap::tile_ground_back;  // + WORLD_OFFSET;
+				// map.server_SetTile(world_pos, dirt_back);
+				map.SetTile(offset, dirt_back);
 			}
 		}
 	}
@@ -279,7 +279,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 
 		const int _roofheight = 3 + ruins_random.NextRanged(2);
-		TileType ground_back = CMap::tile_ground_back + WORLD_OFFSET;
+		TileType ground_back = CMap::tile_ground_back;  // + WORLD_OFFSET;
 
 		for (int x_step = 0; x_step < _size; ++x_step)
 		{
@@ -292,9 +292,9 @@ bool loadMap(CMap@ _map, const string& in filename)
 
 			if (ruins_random.NextRanged(10) > 3)
 			{
-				TileType castle = CMap::tile_castle + WORLD_OFFSET;
-				map.server_SetTile(Vec2f(_x, floor_height) * map.tilesize, castle);
-				ZombieSetTile(map, offset, castle);
+				TileType castle = CMap::tile_castle;  // + WORLD_OFFSET;
+				// map.server_SetTile(Vec2f(_x, floor_height) * map.tilesize, castle);
+				map.SetTile(offset, castle);
 			}
 			int _upheight = (ruins_random.NextRanged(_roofheight + 1) +
 			                 ruins_random.NextRanged(_roofheight + 1) +
@@ -346,24 +346,24 @@ bool loadMap(CMap@ _map, const string& in filename)
 				backtile += WORLD_OFFSET;
 				if (_upstep == _roofheight)
 				{
-					map.server_SetTile(world_pos, solidtile);
-					ZombieSetTile(map, offset, solidtile);
+					// map.server_SetTile(world_pos, solidtile);
+					map.SetTile(offset, solidtile);
 					break;
 				}
 				else if (is_edge)
 				{
-					map.server_SetTile(world_pos, solidtile);
-					ZombieSetTile(map, offset, solidtile);
+					// map.server_SetTile(world_pos, solidtile);
+					map.SetTile(offset, solidtile);
 				}
 				else if (_upstep < _upheight)
 				{
-					map.server_SetTile(world_pos, backtile);
-					ZombieSetTile(map, offset, backtile);
+					// map.server_SetTile(world_pos, backtile);
+					map.SetTile(offset, backtile);
 				}
 				else
 				{
-					map.server_SetTile(world_pos, ground_back);
-					ZombieSetTile(map, offset, ground_back);
+					// map.server_SetTile(world_pos, ground_back);
+					map.SetTile(offset, ground_back);
 				}
 				_upoffset -= width;
 			}
@@ -453,7 +453,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 			
 			// Sector boundaries
 			s32[] borders = {left_x, right_x - 1};
-			for (u8 j = 0; j < borders.length(); j++)
+			for (u8 j = 0; j < borders.length; j++)
 			{
 				// Find the highest block for two sector borders
 				bool left = j % 2 == 0;
@@ -486,8 +486,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 				while(!unique)
 				{
 					unique = true;
-					name = sector_names[map_random.NextRanged(sector_names.length())];
-					for (u8 i = 0; i < current_sector_names.length(); i++)
+					name = sector_names[map_random.NextRanged(sector_names.length)];
+					for (u8 i = 0; i < current_sector_names.length; i++)
 					{
 						if (name == current_sector_names[i])
 						{
@@ -578,14 +578,14 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// }
 
 	// Add variants
-	for (s32 x = 0; x < width; x++)
-	{
-		for (s32 y = 0; y < height; y++)
-		{
-			u32 offset = x + y * width;
-			ZombieSetTile(map, offset, map.getTile(offset).type);
-		}
-	}
+	// for (s32 x = 0; x < width; x++)
+	// {
+	// 	for (s32 y = 0; y < height; y++)
+	// 	{
+	// 		u32 offset = x + y * width;
+	// 		map.SetTile(offset, map.getTile(offset).type);
+	// 	}
+	// }
 
 	SetupBackgrounds(map);
 	return true;
@@ -649,7 +649,7 @@ class StructureGrabBag
 		counts.push_back(0);
 
 		// Count the number of variants for each type of structure and width of each variant
-		for (u8 type_index = 0; type_index < types.length(); type_index++)
+		for (u8 type_index = 0; type_index < types.length; type_index++)
 		{
 			u8 variant_count = 0;
 			u8[] variants;
@@ -669,7 +669,7 @@ class StructureGrabBag
 			variant_widths.push_back(variants);
 		}
 
-		for (u8 type_index = 0; type_index < types.length(); type_index++)
+		for (u8 type_index = 0; type_index < types.length; type_index++)
 		{
 			print(types[type_index] + ": " + counts[type_index]);
 		}
@@ -726,7 +726,7 @@ void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 r
 	bool lootable_spawned = false;
 	const s32 tree_limit = 2;
 	const s32 bush_limit = 3;
-	TileType corrupt_air = CMap::tile_empty + WORLD_OFFSET;
+	TileType corrupt_air = CMap::tile_empty;  // + WORLD_OFFSET;
 	for (s32 x = left_x; x < right_x; x++)
 	{
 		if (naturemap[x] == -1)
@@ -740,8 +740,8 @@ void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 r
 			u32 offset = x + y * map.tilemapwidth;
 			if (isEmpty(map.getTile(offset).type))
 			{
-				map.server_SetTile(Vec2f(x, y) * map.tilesize, corrupt_air);
-				ZombieSetTile(map, offset, corrupt_air);
+				// map.server_SetTile(Vec2f(x, y) * map.tilesize, corrupt_air);
+				map.SetTile(offset, corrupt_air);
 			}
 		}
 
@@ -782,9 +782,9 @@ void Populate(CMap@ map, int[]@ naturemap, Random@ map_random, s32 left_x, s32 r
 			}
 
 			// grass control random
-			TileType grass_tile = CMap::tile_grass + WORLD_OFFSET + (spawned ? 0 : map_random.NextRanged(4));
-			map.server_SetTile(Vec2f(x, y - 1) * map.tilesize, grass_tile);
-			ZombieSetTile(map, x + (y - 1) * width, grass_tile);
+			TileType grass_tile = CMap::tile_grass;  // + WORLD_OFFSET + (spawned ? 0 : map_random.NextRanged(4));
+			// map.server_SetTile(Vec2f(x, y - 1) * map.tilesize, grass_tile);
+			map.SetTile(map.getTileOffsetFromTileSpace(Vec2f(x, y - 1)), grass_tile);
 		}
 
 		// Spawn lootables
@@ -888,7 +888,7 @@ u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, 
 
 	// Update naturemap
 	ending_heightmap = GetHeightmap(map, left_erode_x, 2 * edge_erode_width + structure_width);
-	for (u16 x_offset = 0; x_offset < ending_heightmap.length(); x_offset++)
+	for (u16 x_offset = 0; x_offset < ending_heightmap.length; x_offset++)
 	{
 		naturemap[left_erode_x + x_offset] = ending_heightmap[x_offset];
 	}
@@ -957,14 +957,14 @@ void Erode(s32 erode_cycles, int[]@ heightmap, bool fix_left)
 	{
 		if (fix_left)
 		{
-			for (int x = 0; x < heightmap.length() - 1; x++)
+			for (int x = 0; x < heightmap.length - 1; x++)
 			{
 				heightmap[x + 1] += (heightmap[x] - heightmap[x + 1]) / 2;
 			}
 		}
 		else
 		{
-			for (int x = heightmap.length() - 1; x > 0; x--)
+			for (int x = heightmap.length - 1; x > 0; x--)
 			{
 				heightmap[x - 1] += (heightmap[x] - heightmap[x - 1]) / 2;
 			}
@@ -976,7 +976,7 @@ void Erode(s32 erode_cycles, int[]@ heightmap)
 {
 	for (int erode_cycle = 0; erode_cycle < erode_cycles; ++erode_cycle) //cycles
 	{
-		for (int x = 1; x < heightmap.length() - 1; x++)
+		for (int x = 1; x < heightmap.length - 1; x++)
 		{
 			s32 diffleft = heightmap[x] - heightmap[x - 1];
 			s32 diffright = heightmap[x] - heightmap[x + 1];
@@ -1003,7 +1003,7 @@ void Erode(s32 erode_cycles, int[]@ heightmap)
 		}
 	}
 	heightmap[0] = heightmap[1];
-	heightmap[heightmap.length() - 1] = heightmap[heightmap.length() - 2];
+	heightmap[heightmap.length - 1] = heightmap[heightmap.length - 2];
 }
 
 int[] GetHeightmap(CMap@ map, s32 left_x, u16 width)
@@ -1036,16 +1036,16 @@ s32 getHeighestBlock(CMap@ map, s32 x)
 
 void Fill(CMap@ map, s32 left_x, int[]@ starting_heightmap, int[]@ ending_heightmap)
 {
-	for (s32 x = 0; x < starting_heightmap.length(); x++)
+	for (s32 x = 0; x < starting_heightmap.length; x++)
 	{
 		// Fill up with dirt or clear with sky
 		Vec2f position = Vec2f(left_x + x, 0);
 		bool fill = starting_heightmap[x] > ending_heightmap[x];
-		TileType to_fill = (fill ? CMap::tile_ground : CMap::tile_empty) + WORLD_OFFSET;
+		TileType to_fill = (fill ? CMap::tile_ground : CMap::tile_empty);  // + WORLD_OFFSET;
 		for (position.y = (fill ? ending_heightmap[x] : starting_heightmap[x]); position.y < (fill ? starting_heightmap[x] : ending_heightmap[x]); position.y++)
 		{
-			map.server_SetTile(position * map.tilesize, to_fill);
-			ZombieSetTile(map, position.x + position.y * map.tilemapwidth, to_fill);
+			// map.server_SetTile(position * map.tilesize, to_fill);
+			map.SetTile(position.x + position.y * map.tilemapwidth, to_fill);
 		}
 	}
 }
