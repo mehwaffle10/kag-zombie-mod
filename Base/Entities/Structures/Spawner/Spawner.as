@@ -80,7 +80,7 @@ bool nearbyPlayer(CBlob@ this)
     getBlobsByTag("player", @players);
 	for (u8 i = 0; i < players.length; i++)
 	{
-		if (players[i] !is null && (players[i].getPosition() - this.getPosition()).Length() < 20.0f * tilesize)
+		if (players[i] !is null && !players[i].hasTag("dead") && (players[i].getPosition() - this.getPosition()).Length() < 20.0f * tilesize)
 		{
 			return true;
 		}
@@ -104,7 +104,12 @@ void onTick(CBlob@ this)
 			{
 				setRandomCooldown(this);
 				Vec2f spawn_offset = Vec2f(0.0f, -3.0f);
-				// CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
+				CBlob@ enemy = server_CreateBlob("log", 3, this.getPosition() + spawn_offset);
+				if (enemy !is null)
+				{
+					enemy.server_SetTimeToDie(30 + XORRandom(15));
+					// enemy.AddScript("DieOnDayBreak.as");
+				}
 			}
 		}
 	}
