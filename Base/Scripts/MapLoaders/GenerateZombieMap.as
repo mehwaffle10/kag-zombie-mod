@@ -853,6 +853,11 @@ u8 GenerateStructure(CMap@ map, int[]@ naturemap, Random@ map_random, string typ
 
 u8 SpawnStructure(CMap@ map, int[]@ naturemap, Random@ map_random, bool mirror, string file_name, s32 left_x, u8 edge_erode_width, u8 edge_erode_cycles)
 {
+    if (naturemap[left_x] == -1)
+    {
+        naturemap[left_x] = getHeighestBlock(map, left_x);
+    }
+
 	Vec2f structure_seed = Vec2f(left_x, naturemap[left_x]);
 	PNGLoader@ png_loader = PNGLoader();
 	u8 structure_width = png_loader.loadStructure(file_name);
