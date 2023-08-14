@@ -6,10 +6,12 @@
 const u8 CORRUPTION_RADIUS = 1;
 
 const string PORTAL_SPRITE_LAYER = "portal";
-const string PORTAL_ANIMATION = "portal";
+const string PORTAL_ACTIVE_ANIMATION = "portal";
+const string PORTAL_OPEN_ANIMATION = "portal_open";
 
 const string FIRE_SPRITE_LAYER = "fire";
 const string FIRE_ANIMATION = "fire";
+const f32 FIRE_RELATIVE_Z = 11.0f;
 
 const string FLAMES_SPRITE_LAYER = "flames";
 const string FLAMES_ANIMATION = "flames";
@@ -64,13 +66,18 @@ void onInit(CBlob@ this)
         CSpriteLayer@ portal = sprite.addSpriteLayer(PORTAL_SPRITE_LAYER);
         if (portal !is null)
         {
-            portal.ReloadSprite("Portal.png", 48, 64);
             portal.SetRelativeZ(10.0f);
             portal.SetOffset(Vec2f(0, -4));
-            Animation@ animation = portal.addAnimation(PORTAL_ANIMATION, 5, true);
+            Animation@ animation = portal.addAnimation(PORTAL_ACTIVE_ANIMATION, 5, true);
             if (animation !is null)
             {
                 s32[] frames = {12, 13, 14};
+                animation.AddFrames(frames);
+            }
+            @animation = portal.addAnimation(PORTAL_OPEN_ANIMATION, 5, false);
+            if (animation !is null)
+            {
+                s32[] frames = {6, 7, 8};
                 animation.AddFrames(frames);
             }
         }
@@ -79,8 +86,8 @@ void onInit(CBlob@ this)
         CSpriteLayer@ fire = sprite.addSpriteLayer(FIRE_SPRITE_LAYER);
         if (fire !is null)
         { 
-            fire.ReloadSprite("Portal.png", 48, 16);
-            fire.SetRelativeZ(20.0f);
+            fire.ReloadSprite("Portal.png", 48, 16, 3, 0);
+            fire.SetRelativeZ(FIRE_RELATIVE_Z);
             fire.SetOffset(Vec2f(0, 16));
             Animation@ animation = fire.addAnimation(FIRE_ANIMATION, 5, true);
             if (animation !is null)
@@ -94,8 +101,9 @@ void onInit(CBlob@ this)
         CSpriteLayer@ flames = sprite.addSpriteLayer(FLAMES_SPRITE_LAYER);
         if (flames !is null)
         { 
-            flames.ReloadSprite("Portal.png", 48, 16);
-            flames.SetRelativeZ(20.0f);
+            
+            flames.ReloadSprite("Portal.png", 48, 16, 3, 0);
+            flames.SetRelativeZ(FIRE_RELATIVE_Z);
             flames.SetOffset(Vec2f(0, -18));
             Animation@ animation = flames.addAnimation(FLAMES_ANIMATION, 5, true);
             if (animation !is null)
@@ -123,17 +131,29 @@ void onInit(CBlob@ this)
 void UpdateAnim(CBlob@ this)
 {
 	CSprite@ sprite = this.getSprite();
-	// u8 state = this.get_u8("state");
-	// if (state == State::inactive && !sprite.isAnimation("inactive"))
-	// {
-	// 	sprite.SetAnimation("closed");
-	// 	this.SetLightRadius(this.getRadius() * 1.1f);
-	// }
-	// else if (state == State::active && !sprite.isAnimation("active"))
-	// {
-	// 	sprite.SetAnimation("open");
-	// 	this.SetLightRadius(this.getRadius() * 1.5f);
-	// }
+    if (sprite is null)
+    {
+        return;
+    }
+    CSpriteLayer@ portal = sprite.getSpriteLayer(PORTAL_SPRITE_LAYER);
+    if (portal is null)
+    {
+        return;
+    }
+
+	u8 state = this.get_u8("state");
+	if (state == State::inactive && !portal.isAnimation(PORTAL_OPEN_ANIMATION))
+	{
+		portal.SetAnimation(PORTAL_OPEN_ANIMATION);
+        portal.animation.backward = true;
+		this.SetLightRadius(this.getRadius() * 1.1f);
+	}
+	else if (state == State::active && !portal.isAnimation(PORTAL_ACTIVE_ANIMATION))
+	{
+		portal.SetAnimation(PORTAL_OPEN_ANIMATION);
+        portal.animation.backward = false;
+		this.SetLightRadius(this.getRadius() * 1.5f);
+	}
 }
 
 void onTick(CBlob@ this)
@@ -145,6 +165,17 @@ void onTick(CBlob@ this)
 	{
 		setSectorBorderColor(this);
 	}
+
+    // Sprite updates
+    CSprite@ sprite = this.getSprite();
+    if (sprite !is null)
+    {
+        CSpriteLayer@ portal = sprite.getSpriteLayer(PORTAL_SPRITE_LAYER);
+        if (portal !is null && portal.isAnimation(PORTAL_OPEN_ANIMATION) && portal.isAnimationEnded() && !portal.animation.backward)
+        {
+            portal.SetAnimation(PORTAL_ACTIVE_ANIMATION);
+        }
+    }
 
 	// Spawn enemies
 	if (state == State::active)
