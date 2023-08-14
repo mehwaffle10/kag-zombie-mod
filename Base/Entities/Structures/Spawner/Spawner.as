@@ -25,6 +25,7 @@ void onInit(CBlob@ this)
 	this.Tag("heavy weight");
 	this.Tag("ignore fall");
 	this.set_s16(burn_duration, 30 * getTicksASecond());
+    this.SetLightRadius(this.getRadius() * 1.1f);
 }
 
 void onInit(CSprite@ this)
