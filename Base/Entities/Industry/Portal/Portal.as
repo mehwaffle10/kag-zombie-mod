@@ -77,7 +77,7 @@ void onInit(CBlob@ this)
             @animation = portal.addAnimation(PORTAL_OPEN_ANIMATION, 5, false);
             if (animation !is null)
             {
-                s32[] frames = {6, 7, 8};
+                s32[] frames = {0, 6, 7, 8};
                 animation.AddFrames(frames);
             }
         }
@@ -113,6 +113,7 @@ void onInit(CBlob@ this)
             }
         }
 	}
+    UpdateAnim(this);
 
 	// Minimap. We want this to be initialized every time the client joins so don't set it on the server
 	if (isClient())
@@ -142,13 +143,17 @@ void UpdateAnim(CBlob@ this)
     }
 
 	u8 state = this.get_u8("state");
-	if (state == State::inactive && !portal.isAnimation(PORTAL_OPEN_ANIMATION))
+	if (state == State::inactive)
 	{
-		portal.SetAnimation(PORTAL_OPEN_ANIMATION);
+        if (!portal.isAnimation(PORTAL_OPEN_ANIMATION))
+        {
+            portal.SetAnimation(PORTAL_OPEN_ANIMATION);
+            portal.SetFrameIndex(portal.animation.getFramesCount() - 1);
+        }
         portal.animation.backward = true;
 		this.SetLightRadius(this.getRadius() * 1.1f);
 	}
-	else if (state == State::active && !portal.isAnimation(PORTAL_ACTIVE_ANIMATION))
+	else
 	{
 		portal.SetAnimation(PORTAL_OPEN_ANIMATION);
         portal.animation.backward = false;
@@ -178,67 +183,67 @@ void onTick(CBlob@ this)
     }
 
 	// Spawn enemies
-	if (state == State::active)
-	{
-		u16 points = this.get_u16("points");
-		u16 points_per_day = this.get_u16("points_per_day");
+	// if (state == State::active)
+	// {
+	// 	u16 points = this.get_u16("points");
+	// 	u16 points_per_day = this.get_u16("points_per_day");
 
-		string rank = this.get_string("rank");
-		u16 spawn_timer = this.get_u16("spawn_timer");
-		u16 spawn_delay = this.get_u16("spawn delay");
+	// 	string rank = this.get_string("rank");
+	// 	u16 spawn_timer = this.get_u16("spawn_timer");
+	// 	u16 spawn_delay = this.get_u16("spawn delay");
 
-		u8 action = XORRandom(100);
+	// 	u8 action = XORRandom(100);
 
-		u8 skeleton_cost = 1;
-		u8 zombie_cost = 3;
-		u8 upgrade_cost = 10;
+	// 	u8 skeleton_cost = 1;
+	// 	u8 zombie_cost = 3;
+	// 	u8 upgrade_cost = 10;
 
-		// Close if we're out of points
-		if (points == 0)
-		{
-			this.set_u8("state", State::inactive);
-			this.Sync("state", true);
-			UpdateAnim(this);
-			return;
-		}
+	// 	// Close if we're out of points
+	// 	if (points == 0)
+	// 	{
+	// 		this.set_u8("state", State::inactive);
+	// 		this.Sync("state", true);
+	// 		UpdateAnim(this);
+	// 		return;
+	// 	}
 
-		// Try to spend points
-		if (spawn_timer == 0)
-		{
-			if (rank == "basic")
-			{
-				if (action < 70) // Spawn skeleton
-				{
-					if (points >= skeleton_cost)
-					{
-						Summon(this, "skeleton", skeleton_cost);
-					}
-				}
-				else if (action >= 70 && action < 95) // Spawn zombie
-				{
-					if (points >= zombie_cost)
-					{
-						Summon(this, "log", zombie_cost);
-					}
-				}
-				else // 95 <= action < 100 // Upgrade to advanced
-				{
-					if (points >= upgrade_cost)
-					{
-						this.set_u16("points", points - upgrade_cost);
-						this.set_u16("spawn_timer", spawn_delay);
+	// 	// Try to spend points
+	// 	if (spawn_timer == 0)
+	// 	{
+	// 		if (rank == "basic")
+	// 		{
+	// 			if (action < 70) // Spawn skeleton
+	// 			{
+	// 				if (points >= skeleton_cost)
+	// 				{
+	// 					Summon(this, "skeleton", skeleton_cost);
+	// 				}
+	// 			}
+	// 			else if (action >= 70 && action < 95) // Spawn zombie
+	// 			{
+	// 				if (points >= zombie_cost)
+	// 				{
+	// 					Summon(this, "log", zombie_cost);
+	// 				}
+	// 			}
+	// 			else // 95 <= action < 100 // Upgrade to advanced
+	// 			{
+	// 				if (points >= upgrade_cost)
+	// 				{
+	// 					this.set_u16("points", points - upgrade_cost);
+	// 					this.set_u16("spawn_timer", spawn_delay);
 
-						this.set_u16("points_per_day", points_per_day * 2);
-						this.set_string("rank", "advanced");
-					}
-				}
-			}
-		}
-		else
-		{
-			this.set_u16("spawn_timer", spawn_timer - 1);
-		}
-	}
+	// 					this.set_u16("points_per_day", points_per_day * 2);
+	// 					this.set_string("rank", "advanced");
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		this.set_u16("spawn_timer", spawn_timer - 1);
+	// 	}
+	// }
 
 	// string prefix = "" + getGameTime();
 	// for (u16 i = 0; i < tile_updates.length; i++)
@@ -393,6 +398,23 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 				liberate_button.enableRadius = 32.0f;
 			}
 		}
+        // Add close button. Debug only
+        if (this.get_u8("state") == State::active)
+        {
+            CButton@ close_button = caller.CreateGenericButton(12, Vec2f(8, 8), this, this.getCommandID("day"), getTranslatedString("Close Portal"), params);
+            if (close_button !is null)
+            {
+                close_button.enableRadius = 32.0f;
+            }
+        }
+        else
+        {
+            CButton@ open_button = caller.CreateGenericButton(12, Vec2f(8, 8), this, this.getCommandID("night"), getTranslatedString("Open Portal"), params);
+            if (open_button !is null)
+            {
+                open_button.enableRadius = 32.0f;
+            }
+        }
 	}
 }
 
