@@ -19,6 +19,7 @@ void onInit(CRules@ this)
 	
 	// Server sync commands
 	this.addCommandID(MULTICHARACTER_SYNC_COMMAND);
+    this.addCommandID(MULTICHARACTER_SYNC_CHARACTER);
 
 	// Client only, used in MultiCharacterUI.as
 	this.addCommandID(MULTICHARACTER_PRINT_TRANSFER_COMMAND);
@@ -435,6 +436,31 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 			}
 			player_info.char_list = net_ids;
 		}
+    }
+    else if (cmd == this.getCommandID(MULTICHARACTER_SYNC_CHARACTER))
+    {
+        u16 network_id;
+        if (!params.saferead_netid(network_id))
+        {
+            return;
+        }
+        bool gold;
+        if (!params.saferead_bool(gold))
+        {
+            return;
+        }
+        bool cape;
+        if (!params.saferead_bool(cape))
+        {
+            return;
+        }
+        CBlob@ survivor = getBlobByNetworkID(network_id);
+        if (survivor is null || survivor.getSprite() is null)
+        {
+            return;
+        }
+        string name = survivor.getName();
+        SetBody(survivor.getSprite(), name.substr(0, 1).toUpper() + name.substr(1), survivor.getSexNum() == 0, gold, cape);
     }
 }
 

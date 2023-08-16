@@ -12,6 +12,7 @@ const string MULTICHARACTER_MOVE_LIST_UP_COMMAND = "multicharacter_move_up_char_
 const string MULTICHARACTER_PRINT_TRANSFER_COMMAND = "multicharacter_print_transfer_char";
 const string MULTICHARACTER_KILL_FEED = "multicharacter_kill_feed";
 const string MULTICHARACTER_SYNC_COMMAND = "multicharacter_sync";
+const string MULTICHARACTER_SYNC_CHARACTER = "multicharacter_sync_character";
 
 class MultiCharacterPlayerInfo {
 	u16[] char_list;
@@ -468,7 +469,7 @@ void SetBody(CSprite@ sprite, string char_class, bool male, bool gold, bool cape
 	{
 		filename += "Gold";
 	}
-	else
+	else if (cape)
 	{
 		filename += "Cape";
 	}
@@ -521,32 +522,31 @@ CBlob@ SpawnSurvivor(Vec2f pos)
 		survivor.setSexNum(gender);  // 50/50 Male/Female
 		survivor.setHeadNum(XORRandom(100));  // Random head
 
-		// Chance to make the char have gold armor or a cape
-		CSprite@ sprite = survivor.getSprite();
-		if (sprite !is null)
-		{
-			bool gold = false;
-			bool cape = false;
+        // Send gold/cape update
 
-			// Add special armor types
-			if (XORRandom(4) == 0)  // 25% chance to be special
-			{ 
-				// 25% chance to have a cape
-				if (XORRandom(4) == 0)
-				{
-					cape = true;
-				}
-				else
-				{
-					gold = true;
-				}
-			}
+        bool gold = false;
+        bool cape = false;
 
-			SetBody(sprite, char_class, gender == 0, gold, cape);
-
-			// TODO add support for swapping classes
-			// TODO add support in multichar ui
-		}
+        // Add special armor types
+        if (XORRandom(4) == 0)  // 25% chance to be special
+        { 
+            // 25% chance to have a cape
+            if (XORRandom(4) == 0)
+            {
+                cape = true;
+            }
+            else
+            {
+                gold = true;
+            }
+        }
+        
+        CBitStream params;
+        params.write_netid(survivor.getNetworkID());
+        params.write_bool(gold);
+        params.write_bool(cape);
+        CRules@ rules = getRules();
+        rules.SendCommand(rules.getCommandID(MULTICHARACTER_SYNC_CHARACTER), params);
 	}
 	return survivor;
 }
