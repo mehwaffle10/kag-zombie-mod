@@ -25,7 +25,7 @@ void onInit(CBlob@ this)
 	this.Tag("heavy weight");
 	this.Tag("ignore fall");
 	this.set_s16(burn_duration, 30 * getTicksASecond());
-    this.SetLightRadius(this.getRadius() * 1.1f);
+    this.SetLightRadius(32.0f);
 }
 
 void onInit(CSprite@ this)
@@ -131,11 +131,13 @@ void onTick(CBlob@ this)
 		{
 			door.animation.backward = false;
 			sprite.PlaySound("bridge_open.ogg", 3.0f);
+            this.SetLightRadius(64.0f);
 		}
 		else if (!nearby_player && !door.animation.backward)
 		{
 			door.animation.backward = true;
 			sprite.PlaySound("bridge_close.ogg", 3.0f);
+            this.SetLightRadius(32.0f);
 		}
 	}
 	/*

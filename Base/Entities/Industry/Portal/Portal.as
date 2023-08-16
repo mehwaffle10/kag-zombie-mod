@@ -151,13 +151,13 @@ void UpdateAnim(CBlob@ this)
             portal.SetFrameIndex(portal.animation.getFramesCount() - 1);
         }
         portal.animation.backward = true;
-		this.SetLightRadius(this.getRadius() * 1.1f);
+		this.SetLightRadius(50.0f);
 	}
-	else
+	else if (!portal.isAnimation(PORTAL_ACTIVE_ANIMATION))
 	{
 		portal.SetAnimation(PORTAL_OPEN_ANIMATION);
         portal.animation.backward = false;
-		this.SetLightRadius(this.getRadius() * 1.5f);
+		this.SetLightRadius(80.0f);
 	}
 }
 
@@ -397,57 +397,61 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 			{
 				liberate_button.enableRadius = 32.0f;
 			}
+            // Add close button. Debug only
+            if (this.get_u8("state") == State::active)
+            {
+                CButton@ close_button = caller.CreateGenericButton(12, Vec2f(8, 8), this, this.getCommandID("day"), getTranslatedString("Close Portal"), params);
+                if (close_button !is null)
+                {
+                    close_button.enableRadius = 32.0f;
+                }
+            }
+            else
+            {
+                CButton@ open_button = caller.CreateGenericButton(12, Vec2f(8, 8), this, this.getCommandID("night"), getTranslatedString("Open Portal"), params);
+                if (open_button !is null)
+                {
+                    open_button.enableRadius = 32.0f;
+                }
+            }
 		}
-        // Add close button. Debug only
-        if (this.get_u8("state") == State::active)
-        {
-            CButton@ close_button = caller.CreateGenericButton(12, Vec2f(8, 8), this, this.getCommandID("day"), getTranslatedString("Close Portal"), params);
-            if (close_button !is null)
-            {
-                close_button.enableRadius = 32.0f;
-            }
-        }
-        else
-        {
-            CButton@ open_button = caller.CreateGenericButton(12, Vec2f(8, 8), this, this.getCommandID("night"), getTranslatedString("Open Portal"), params);
-            if (open_button !is null)
-            {
-                open_button.enableRadius = 32.0f;
-            }
-        }
 	}
 }
 
 void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 {
 	u8 state = this.get_u8("state");
-	if (cmd == this.getCommandID("day") && state != State::liberated)
+	if (cmd == this.getCommandID("day"))
 	{
-		// Turn off and award points for the day
-		this.set_bool("is_day", true);
-		if (isServer())
-		{
-			this.set_u8("state", State::inactive);
-			this.Sync("state", true);
-			this.set_u16("points", this.get_u16("points") + this.get_u16("points_per_day"));
-			this.Sync("points", true);
-		}
-
+        if (state != State::liberated)
+        {
+            // Turn off and award points for the day
+            this.set_bool("is_day", true);
+            if (isServer())
+            {
+                this.set_u8("state", State::inactive);
+                this.Sync("state", true);
+                this.set_u16("points", this.get_u16("points") + this.get_u16("points_per_day"));
+                this.Sync("points", true);
+            }
+        }
 		UpdateAnim(this);
 	}
-	else if (cmd == this.getCommandID("night") && state != State::liberated)
+	else if (cmd == this.getCommandID("night"))
 	{
-		// Activate! It's night time
-		this.set_bool("is_day", false);
-		if (isServer())
-		{
-			this.set_u8("state", State::active);
-			this.Sync("state", true);
+        if (state != State::liberated)
+        {
+            // Activate! It's night time
+            this.set_bool("is_day", false);
+            if (isServer())
+            {
+                this.set_u8("state", State::active);
+                this.Sync("state", true);
 
-			// Give portals a random spawn timer so that they don't all spawn at the same time
-			this.set_u16("spawn_timer", XORRandom(this.get_u16("spawn_delay")));
-		}
-
+                // Give portals a random spawn timer so that they don't all spawn at the same time
+                this.set_u16("spawn_timer", XORRandom(this.get_u16("spawn_delay")));
+            }
+        }
 		UpdateAnim(this);
 	}
 	else if (cmd == this.getCommandID("corrupt"))
@@ -455,6 +459,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		// Set the state
 		this.set_u8("state", this.get_bool("is_day") ? State::inactive : State::active);
 		this.server_setTeamNum(3);
+        UpdateAnim(this);
 
 		// Update the minimap border colors
 		CMap@ map = getMap();
@@ -507,6 +512,7 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		// Set the state
 		this.set_u8("state", State::liberated);
 		this.server_setTeamNum(0);
+        UpdateAnim(this);
 
 		// Update the minimap border colors
 		CMap@ map = getMap();
