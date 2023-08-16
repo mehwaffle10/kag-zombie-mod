@@ -209,18 +209,18 @@ void RenderMap(int id)
     }
 
     // See if we're rendering the minimap or the full map. Also limit by exploration so that we don't know how big the map is initially
-    u16 min_fog_width = exploration_width * 3;
+    u16 min_fog_width = EXPLORATION_WIDTH * 3;
     u16 map_width = Maths::Min(
         zombie_minimap_core.right + min_fog_width * 2 < zombie_minimap_core.left ? 0 :
-        zombie_minimap_core.right - zombie_minimap_core.left + min_fog_width * 2,  // Limit to where we've explored, make sure it's positive
+        zombie_minimap_core.right - zombie_minimap_core.left + min_fog_width * 2,            // Limit to where we've explored, make sure it's positive
         Maths::Min(map.tilemapwidth,                                                         // Limit to size of map
-        full_map ? (driver.getScreenWidth() - full_map_border) / tile_width : minimap_width  // Otherwise pick between our minimap size or full map size
+        full_map ? (driver.getScreenWidth() - FULL_MAP_BORDER) / TILE_WIDTH : MINIMAP_WIDTH  // Otherwise pick between our minimap size or full map size
     ));
 
     // Setup
     Render::SetTransformScreenspace();
     s32 middle = driver.getScreenWidth() / 2;
-    Vec2f upper_left = Vec2f(middle - map_width / 2 * tile_width, 40), bottom_right = upper_left + Vec2f(map_width, map.tilemapheight) * tile_width;
+    Vec2f upper_left = Vec2f(middle - map_width / 2 * TILE_WIDTH, 40), bottom_right = upper_left + Vec2f(map_width, map.tilemapheight) * TILE_WIDTH;
 
     // Get the left position on the tile map
     s32 full_map_left = rules.get_s32(ZOMBIE_MINIMAP_FULL_LEFT_X);
@@ -245,15 +245,15 @@ void RenderMap(int id)
         if (mouse_screen_pos.y > upper_left.y && mouse_screen_pos.y < bottom_right.y)
         {
             // Scroll left
-            if (mouse_screen_pos.x > upper_left.x && mouse_screen_pos.x < upper_left.x + scroll_width && map_left > left_scroll_limit)
+            if (mouse_screen_pos.x > upper_left.x && mouse_screen_pos.x < upper_left.x + SCROLL_WIDTH && map_left > left_scroll_limit)
             {
                 // Can only scroll as far as explored or to edge of map
-                map_left = Maths::Max(0, Maths::Max(left_scroll_limit, map_left - scroll_speed));
+                map_left = Maths::Max(0, Maths::Max(left_scroll_limit, map_left - SCROLL_SPEED));
             }
             // Scroll right
-            if (mouse_screen_pos.x < bottom_right.x && mouse_screen_pos.x > bottom_right.x - scroll_width && map_left < right_scroll_limit)
+            if (mouse_screen_pos.x < bottom_right.x && mouse_screen_pos.x > bottom_right.x - SCROLL_WIDTH && map_left < right_scroll_limit)
             {
-                map_left = Maths::Min(map.tilemapwidth - map_width, Maths::Min(right_scroll_limit, map_left + scroll_speed));
+                map_left = Maths::Min(map.tilemapwidth - map_width, Maths::Min(right_scroll_limit, map_left + SCROLL_SPEED));
             }
             rules.set_s32(ZOMBIE_MINIMAP_FULL_LEFT_X, map_left);
         }
@@ -298,7 +298,7 @@ void RenderMap(int id)
             {
                 dirty = true;
                 water = !water;
-                image_data.put(tile_pos.x, tile_pos.y, water ? image_data.get(tile_pos.x, tile_pos.y).getInterpolated(color_water, 0.5f) : getMapColor(rules, map, world_pos));
+                image_data.put(tile_pos.x, tile_pos.y, water ? image_data.get(tile_pos.x, tile_pos.y).getInterpolated(COLOR_WATER, 0.5f) : getMapColor(rules, map, world_pos));
                 zombie_minimap_core.water[tile_pos.x][i] = water;
             }
         }
@@ -314,9 +314,9 @@ void RenderMap(int id)
     SColor color = SColor(0xffffffff);
     v_raw.clear();
     v_raw.push_back(Vertex(upper_left,                                                    1000, Vec2f(f32(map_left)             / map.tilemapwidth, 0), color));
-    v_raw.push_back(Vertex(upper_left + Vec2f(map_width, 0)                 * tile_width, 1000, Vec2f(f32(map_left + map_width) / map.tilemapwidth, 0), color));
-    v_raw.push_back(Vertex(upper_left + Vec2f(map_width, map.tilemapheight) * tile_width, 1000, Vec2f(f32(map_left + map_width) / map.tilemapwidth, 1), color));
-    v_raw.push_back(Vertex(upper_left + Vec2f(0,         map.tilemapheight) * tile_width, 1000, Vec2f(f32(map_left)             / map.tilemapwidth, 1), color));
+    v_raw.push_back(Vertex(upper_left + Vec2f(map_width, 0)                 * TILE_WIDTH, 1000, Vec2f(f32(map_left + map_width) / map.tilemapwidth, 0), color));
+    v_raw.push_back(Vertex(upper_left + Vec2f(map_width, map.tilemapheight) * TILE_WIDTH, 1000, Vec2f(f32(map_left + map_width) / map.tilemapwidth, 1), color));
+    v_raw.push_back(Vertex(upper_left + Vec2f(0,         map.tilemapheight) * TILE_WIDTH, 1000, Vec2f(f32(map_left)             / map.tilemapwidth, 1), color));
 
     // Mesh config 
     minimap.SetMaterial(zombie_map);
@@ -333,13 +333,13 @@ void RenderMap(int id)
     s32 world_right = (map_left + map_width) * map.tilesize;
 
     // Border vars
-    Vec2f border_size = Vec2f(border_width / 2, border_width);  // Border should overlap a bit to hide icons popping into existence
+    Vec2f border_size = Vec2f(BORDER_WIDTH / 2, BORDER_WIDTH);  // Border should overlap a bit to hide icons popping into existence
     Vec2f border_upper_left = upper_left - border_size, border_bottom_right = bottom_right + border_size;
 
     for (u8 icon_index = 0; icon_index < minimap_icons.length; icon_index++)
     {
         MinimapIcon icon = minimap_icons[icon_index];
-        u8 icon_offset = icon.size.x / 2 * tile_width;
+        u8 icon_offset = icon.size.x / 2 * TILE_WIDTH;
         CBlob@[] blobs;
         getBlobsByName(icon.name, blobs);
         for (u8 i = 0; i < blobs.length; i++)
@@ -360,7 +360,7 @@ void RenderMap(int id)
                 string sector_name = blob.get_string(ZOMBIE_MINIMAP_SECTOR_NAME);
                 Vec2f name_size;
                 GUI::GetTextDimensions(sector_name, name_size);
-                s32 sector_middle = upper_left.x + (sector.y - world_left / map.tilesize - (sector.y - sector.x) / 2) * tile_width;
+                s32 sector_middle = upper_left.x + (sector.y - world_left / map.tilesize - (sector.y - sector.x) / 2) * TILE_WIDTH;
                 s32 name_left = sector_middle - name_size.x / 2, name_right = name_left + name_size.x;
                 
                 // Check if we're anywhere on the minimap
@@ -409,7 +409,7 @@ void RenderMap(int id)
                 icon.file,
                 icon.frame(blob),
                 icon.size,
-                upper_left + (pos - Vec2f(world_left + 1, 0)) / map.tilesize * tile_width + Vec2f(blob.isFacingLeft() ? icon.size.x * 1.25f : -icon.size.x, -icon.size.y),
+                upper_left + (pos - Vec2f(world_left + 1, 0)) / map.tilesize * TILE_WIDTH + Vec2f(blob.isFacingLeft() ? icon.size.x * 1.25f : -icon.size.x, -icon.size.y),
                 scale * (blob.isFacingLeft() ? -1 : 1),
                 scale,
                 blob.getTeamNum(),
@@ -421,14 +421,14 @@ void RenderMap(int id)
     // Overlay the exploration mesh
     v_raw_exploration.clear();
     v_i_exploration.clear();
-    u8 fade_width = exploration_width / 2;
-    s32 fade_gap = exploration_width - fade_width;
+    u8 fade_width = EXPLORATION_WIDTH / 2;
+    s32 fade_gap = EXPLORATION_WIDTH - fade_width;
 
     // Left
     if (map_left + fade_gap < zombie_minimap_core.left)
     {
         s32 x_width = zombie_minimap_core.left - map_left - fade_gap;
-        SColor color = color_unexplored;
+        SColor color = COLOR_UNEXPLORED;
         s32 limit = Maths::Min(fade_width, x_width);
 
         for (u8 i = 0; i <= limit; i++)
@@ -437,7 +437,7 @@ void RenderMap(int id)
             RenderRectangle(
                 v_raw_exploration,
                 v_i_exploration,
-                upper_left + Vec2f(i == fade_width ? 0 : x_width - i, 0) * tile_width,
+                upper_left + Vec2f(i == fade_width ? 0 : x_width - i, 0) * TILE_WIDTH,
                 Vec2f(i == fade_width ? x_width - i + 1 : 1, map.tilemapheight),
                 Vec2f(0, 0),
                 Vec2f(1, 1),
@@ -450,7 +450,7 @@ void RenderMap(int id)
     if (map_left + map_width - fade_gap > zombie_minimap_core.right)
     {
         s32 x_width = map_left + map_width - fade_gap - zombie_minimap_core.right;
-        SColor color = color_unexplored;
+        SColor color = COLOR_UNEXPLORED;
         s32 limit = Maths::Min(fade_width, x_width);
 
         for (u8 i = 0; i <= limit; i++)
@@ -459,7 +459,7 @@ void RenderMap(int id)
             RenderRectangle(
                 v_raw_exploration,
                 v_i_exploration,
-                upper_left + Vec2f(map_width - x_width + i, 0) * tile_width,
+                upper_left + Vec2f(map_width - x_width + i, 0) * TILE_WIDTH,
                 Vec2f(i == fade_width ? x_width - i : 1, map.tilemapheight),
                 Vec2f(0, 0),
                 Vec2f(1, 1),
@@ -482,8 +482,8 @@ void RenderMap(int id)
     }
 
     // Draw the border
-    GUI::DrawFramedPane(border_upper_left,                                             Vec2f(upper_left.x + border_width / 2, border_bottom_right.y));  // Left side
-    GUI::DrawFramedPane(Vec2f(bottom_right.x - border_width / 2, border_upper_left.y), border_bottom_right);                                            // Right Side
+    GUI::DrawFramedPane(border_upper_left,                                             Vec2f(upper_left.x + BORDER_WIDTH / 2, border_bottom_right.y));  // Left side
+    GUI::DrawFramedPane(Vec2f(bottom_right.x - BORDER_WIDTH / 2, border_upper_left.y), border_bottom_right);                                            // Right Side
     GUI::DrawFramedPane(border_upper_left,                                             Vec2f(border_bottom_right.x, upper_left.y));                     // Top
     GUI::DrawFramedPane(Vec2f(border_upper_left.x, bottom_right.y),                    border_bottom_right);                                            // Bottom
 }
@@ -602,9 +602,9 @@ void RenderRectangle(Vertex[]@ vertices, u16[]@ indices, Vec2f upper_left, Vec2f
 {
     // Add vertices
     vertices.push_back(Vertex(upper_left,                                 1000, texture_offset,                            color));
-    vertices.push_back(Vertex(upper_left + Vec2f(size.x, 0) * tile_width, 1000, texture_offset + Vec2f(texture_size.x, 0), color));
-    vertices.push_back(Vertex(upper_left + size             * tile_width, 1000, texture_offset + texture_size,             color));
-    vertices.push_back(Vertex(upper_left + Vec2f(0, size.y) * tile_width, 1000, texture_offset + Vec2f(0, texture_size.y), color));
+    vertices.push_back(Vertex(upper_left + Vec2f(size.x, 0) * TILE_WIDTH, 1000, texture_offset + Vec2f(texture_size.x, 0), color));
+    vertices.push_back(Vertex(upper_left + size             * TILE_WIDTH, 1000, texture_offset + texture_size,             color));
+    vertices.push_back(Vertex(upper_left + Vec2f(0, size.y) * TILE_WIDTH, 1000, texture_offset + Vec2f(0, texture_size.y), color));
 
     // Add indices
     u32 vertices_length = vertices.length;

@@ -22,37 +22,37 @@ const string ZOMBIE_MINIMAP_SECTOR_NAME = "zombies_minimap_sector_name";
 const string ZOMBIE_MINIMAP_WIDTH = "zombies_minimap_map_width";
 const string ZOMBIE_MINIMAP_EXPLORE_SYNC_COMMAND = "zombies_minimap_explore_sync";
 
-const u8 tile_width = 2;  // pixels
-const u8 border_width = 14;  // pixels
-const u16 minimap_width = 200;  // number of tiles
-const u8 exploration_width = 16;  // number of tiles
-const u16 full_map_border = 500;  // pixels
-const u16 scroll_width = 300;  // pixels
-const u8 scroll_speed = 4;  // number of tiles
+const u8 TILE_WIDTH = 2;          // pixels
+const u8 BORDER_WIDTH = 14;       // pixels
+const u16 MINIMAP_WIDTH = 200;    // number of tiles
+const u8 EXPLORATION_WIDTH = 16;  // number of tiles
+const u16 FULL_MAP_BORDER = 500;  // pixels
+const u16 SCROLL_WIDTH = 300;     // pixels
+const u8 SCROLL_SPEED = 4;        // number of tiles
 
 
 // Minimap colors from MinimapHook.as
-f32 interpolation = 0.85f;
-SColor color_fade            = SColor(0xff2a0b47);
-SColor color_corruption      = SColor(0xff2a0b47);
-SColor color_sky             = SColor(0xffa5bdc8).getInterpolated(color_fade, interpolation);
-SColor color_dirt            = SColor(0xff844715).getInterpolated(color_fade, interpolation);
-SColor color_dirt_backwall   = SColor(0xff3b1406).getInterpolated(color_fade, interpolation);
-SColor color_stone           = SColor(0xff8b6849).getInterpolated(color_fade, interpolation);
-SColor color_thickstone      = SColor(0xff42484b).getInterpolated(color_fade, interpolation);
-SColor color_gold            = SColor(0xfffea53d).getInterpolated(color_fade, interpolation);
-SColor color_bedrock         = SColor(0xff2d342d).getInterpolated(color_fade, interpolation);
-SColor color_wood            = SColor(0xffc48715).getInterpolated(color_fade, interpolation);
-SColor color_wood_backwall   = SColor(0xff552a11).getInterpolated(color_fade, interpolation);
-SColor color_castle          = SColor(0xff637160).getInterpolated(color_fade, interpolation);
-SColor color_castle_backwall = SColor(0xff313412).getInterpolated(color_fade, interpolation);
-SColor color_water           = SColor(0xff2cafde).getInterpolated(color_fade, interpolation);
-SColor color_fire            = SColor(0xffd5543f).getInterpolated(color_fade, interpolation);
-SColor color_grass           = SColor(0xff649b0d).getInterpolated(color_fade, interpolation);
-SColor color_moss            = SColor(0xff315212).getInterpolated(color_fade, interpolation);
-SColor color_unexplored      = SColor(0xffedcca6);
-SColor color_team_blue       = SColor(0xff1d85ab);
-SColor color_team_purple     = SColor(0xff9e3abb);
+const f32 INTERPOLATION = 0.85f;
+const SColor COLOR_FADE            = SColor(0xff2a0b47);
+const SColor COLOR_CORRUPTION      = SColor(0xff2a0b47);
+const SColor COLOR_SKY             = SColor(0xffa5bdc8).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_DIRT            = SColor(0xff844715).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_DIRT_BACKWALL   = SColor(0xff3b1406).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_STONE           = SColor(0xff8b6849).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_THICKSTONE      = SColor(0xff42484b).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_GOLD            = SColor(0xfffea53d).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_BEDROCK         = SColor(0xff2d342d).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_WOOD            = SColor(0xffc48715).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_WOOD_BACKWALL   = SColor(0xff552a11).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_CASTLE          = SColor(0xff637160).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_CASTLE_BACKWALL = SColor(0xff313412).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_WATER           = SColor(0xff2cafde).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_FIRE            = SColor(0xffd5543f).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_GRASS           = SColor(0xff649b0d).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_MOSS            = SColor(0xff315212).getInterpolated(COLOR_FADE, INTERPOLATION);
+const SColor COLOR_UNEXPLORED      = SColor(0xffedcca6);
+const SColor COLOR_TEAM_BLUE       = SColor(0xff1d85ab);
+const SColor COLOR_TEAM_PURPLE     = SColor(0xff9e3abb);
 
 SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos)
 {
@@ -70,61 +70,61 @@ SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos, TileType tile_type
 
     if (isDirt(tile_type))
     {
-        color = color_dirt;
+        color = COLOR_DIRT;
     } 
     else if (isBedrock(tile_type))
     {
-        color = color_bedrock;
+        color = COLOR_BEDROCK;
     }
     else if (isStone(tile_type))
     {
-        color = color_stone;
+        color = COLOR_STONE;
     }
     else if (isThickStone(tile_type))
     {
-        color = color_thickstone;
+        color = COLOR_THICKSTONE;
     }
     else if (isGold(tile_type))
     {
-        color = color_gold;
+        color = COLOR_GOLD;
     }
     else if (isWood(tile_type)) 
     { 
-        color = color_wood;
+        color = COLOR_WOOD;
     } 
     else if (isCastle(tile_type))      
     { 
         // Check for Mossy Stone Backwall
-        color = isMossyCastle(tile_type) ? color_castle.getInterpolated(color_moss, 0.5f) : color_castle;
+        color = isMossyCastle(tile_type) ? COLOR_CASTLE.getInterpolated(COLOR_MOSS, 0.5f) : COLOR_CASTLE;
     } 
     else
     {
         if (isDirtBackwall(tile_type))  // Dirt Backwall
         {
-            color = color_dirt_backwall;
+            color = COLOR_DIRT_BACKWALL;
         }
         else if (isWoodBackwall(tile_type))
         {
-            color = color_wood_backwall;
+            color = COLOR_WOOD_BACKWALL;
         }
         else if (isCastleBackwall(tile_type))
         {
-            color = isMossyCastleBackwall(tile_type) ? color_castle_backwall.getInterpolated(color_moss, 0.5f) : color_castle_backwall;
+            color = isMossyCastleBackwall(tile_type) ? COLOR_CASTLE_BACKWALL.getInterpolated(COLOR_MOSS, 0.5f) : COLOR_CASTLE_BACKWALL;
         }
         else if (isGrass(tile_type))
         {
-            color = color_grass;
+            color = COLOR_GRASS;
         }
         else 
         {
-            color = color_sky;
+            color = COLOR_SKY;
         } 
     }
 
     // Add corruption
     if (corrupt)
     {
-        color = color.getInterpolated(color_corruption, 0.5f);
+        color = color.getInterpolated(COLOR_CORRUPTION, 0.5f);
     }
 
     // Add sector borders
@@ -134,7 +134,7 @@ SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos, TileType tile_type
         CBlob@ border = getBlobByNetworkID(rules.get_netid(border_id));
         if (border !is null)
         {
-            color = color.getInterpolated(border.getTeamNum() == 0 ? color_team_blue : color_team_purple, 0.5f);
+            color = color.getInterpolated(border.getTeamNum() == 0 ? COLOR_TEAM_BLUE : COLOR_TEAM_PURPLE, 0.5f);
         }
     }
     return color;
