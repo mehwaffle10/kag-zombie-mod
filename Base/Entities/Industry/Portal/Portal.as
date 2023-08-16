@@ -113,7 +113,6 @@ void onInit(CBlob@ this)
             }
         }
 	}
-    UpdateAnim(this);
 
 	// Minimap. We want this to be initialized every time the client joins so don't set it on the server
 	if (isClient())
@@ -127,6 +126,10 @@ void onInit(CBlob@ this)
 	// 	TileUpdates@ tile_updates = TileUpdates();
 	// 	this.set("tile_updates", @tile_updates);
 	// }
+
+    // Set up no build and anims
+    CBitStream params;
+    this.SendCommand(this.getCommandID("corrupt"), params);
 }
 
 void UpdateAnim(CBlob@ this)
