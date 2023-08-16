@@ -41,21 +41,14 @@ void Setup()
         return;
     }
 
-    if (isServer())
-    {
-        rules.set_u32(ZOMBIE_MINIMAP_WIDTH, map.tilemapwidth);
-        rules.Sync(ZOMBIE_MINIMAP_WIDTH, true);
-    }
+    // if (isServer())
+    // {
+    //     rules.set_u32(ZOMBIE_MINIMAP_WIDTH, map.tilemapwidth);
+    //     rules.Sync(ZOMBIE_MINIMAP_WIDTH, true);
+    // }
 
     // Reset exploration borders
-    u32 tilemapwidth = rules.get_u32(ZOMBIE_MINIMAP_WIDTH);
     ZombieMinimapCore@ zombie_minimap_core = ZombieMinimapCore();
-    u8[][] nonstatic_blocks(tilemapwidth, u8[](0)); 
-    zombie_minimap_core.nonstatic_blocks = nonstatic_blocks;
-    bool[] generated(tilemapwidth, false);
-    zombie_minimap_core.generated = generated;
-    bool[][] water(tilemapwidth, bool[](0)); 
-    zombie_minimap_core.water = water;
     zombie_minimap_core.left = 1000000000;
     zombie_minimap_core.right = 0;
     rules.set(ZOMBIE_MINIMAP_CORE, @zombie_minimap_core);
@@ -198,6 +191,13 @@ void RenderMap(int id)
         zombie_map.SetFlag(SMaterial::ZWRITE_ENABLE, true);
         zombie_map.SetMaterialType(SMaterial::TRANSPARENT_VERTEX_ALPHA); //this might need to be changed
 
+        u8[][] nonstatic_blocks(map.tilemapwidth, u8[](0));
+        zombie_minimap_core.nonstatic_blocks = nonstatic_blocks;
+        bool[] generated(map.tilemapwidth, false);
+        zombie_minimap_core.generated = generated;
+        bool[][] water(map.tilemapwidth, bool[](0)); 
+        zombie_minimap_core.water = water;
+
         minimap_initialized = true;
     }
 
@@ -212,7 +212,7 @@ void RenderMap(int id)
     u16 min_fog_width = EXPLORATION_WIDTH * 3;
     u16 map_width = Maths::Min(
         zombie_minimap_core.right + min_fog_width * 2 < zombie_minimap_core.left ? 0 :
-        zombie_minimap_core.right - zombie_minimap_core.left + min_fog_width * 2,            // Limit to where we've explored, make sure it's positive
+        zombie_minimap_core.right - zombie_minimap_core.left + min_fog_width * 2,            // Limit to where we've explored, make sure it doesn't underflow
         Maths::Min(map.tilemapwidth,                                                         // Limit to size of map
         full_map ? (driver.getScreenWidth() - FULL_MAP_BORDER) / TILE_WIDTH : MINIMAP_WIDTH  // Otherwise pick between our minimap size or full map size
     ));
@@ -257,7 +257,8 @@ void RenderMap(int id)
             }
             rules.set_s32(ZOMBIE_MINIMAP_FULL_LEFT_X, map_left);
         }
-    }    
+    }
+    print("map.tilemapwidth: " + map.tilemapwidth + ", nonstatic_blocks.length: " + zombie_minimap_core.nonstatic_blocks.length + ", map_width: " + map_width +  ", map_left: " + map_left);
 
     // Scan for water
     ImageData@ image_data = Texture::data(ZOMBIE_MINIMAP_TEXTURE);
