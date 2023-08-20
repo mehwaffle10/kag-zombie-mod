@@ -77,7 +77,8 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width, bool 
 			}
 			else
 			{
-				DrawCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i], player !is null, false, false, i == 0, i == char_networkIDs.length - 1);
+                bool lock_buttons = player !is null && player !is getLocalPlayer();
+				DrawCharacterFrame(frame_width, upper_left, 1.5f, char_networkIDs[i], player !is null, lock_buttons, lock_buttons, i == 0 || lock_buttons, i == char_networkIDs.length - 1 || lock_buttons);
 			}
 
 			// Move the top left corner down
