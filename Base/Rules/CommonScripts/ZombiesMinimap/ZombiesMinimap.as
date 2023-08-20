@@ -258,7 +258,6 @@ void RenderMap(int id)
             rules.set_s32(ZOMBIE_MINIMAP_FULL_LEFT_X, map_left);
         }
     }
-    print("map.tilemapwidth: " + map.tilemapwidth + ", nonstatic_blocks.length: " + zombie_minimap_core.nonstatic_blocks.length + ", map_width: " + map_width +  ", map_left: " + map_left);
 
     // Scan for water
     ImageData@ image_data = Texture::data(ZOMBIE_MINIMAP_TEXTURE);
