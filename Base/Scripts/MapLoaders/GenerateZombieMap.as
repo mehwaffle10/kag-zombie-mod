@@ -450,6 +450,8 @@ bool loadMap(CMap@ _map, const string& in filename)
 			// Sector information
 			portal.set_Vec2f("sector", sectors[i]);
 			portal.Sync("sector", true);
+            CBitStream params;
+            portal.SendCommand(portal.getCommandID("corrupt"), params);
 			
 			// Sector boundaries
 			s32[] borders = {left_x, right_x - 1};

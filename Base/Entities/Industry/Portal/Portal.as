@@ -35,20 +35,22 @@ namespace State
 void onInit(CBlob@ this)
 {
 	// Spawning
-	this.set_u16("spawn_delay", 15 * getTicksASecond());
-	this.set_u16("spawn_timer", 0);
-	this.set_u16("points_per_day", 10);
-	this.set_u16("points", 0);
-	this.set_u8("state", State::inactive);
-	this.set_string("rank", "basic");
-	this.SetLight(true);
+    if (isServer())
+    {
+        this.set_u16("spawn_delay", 15 * getTicksASecond());
+        this.set_u16("spawn_timer", 0);
+        this.set_u16("points_per_day", 10);
+        this.set_u16("points", 0);
+        this.set_u8("state", State::inactive);
+        this.set_string("rank", "basic");
+    }
+    this.SetLight(true);
 
 	// State changes for day/night
 	this.Tag("day");
 	this.addCommandID("day");
 	this.Tag("night");
 	this.addCommandID("night");
-	this.set_bool("is_day", true);
 
 	// Other commands
 	this.addCommandID("corrupt");
@@ -86,7 +88,7 @@ void onInit(CBlob@ this)
         CSpriteLayer@ fire = sprite.addSpriteLayer(FIRE_SPRITE_LAYER);
         if (fire !is null)
         { 
-            fire.ReloadSprite("Portal.png", 48, 16, 3, 0);
+            fire.ReloadSprite("Portal.png", 48, 16, this.getTeamNum(), 0);
             fire.SetRelativeZ(FIRE_RELATIVE_Z);
             fire.SetOffset(Vec2f(0, 16));
             Animation@ animation = fire.addAnimation(FIRE_ANIMATION, 5, true);
@@ -102,7 +104,7 @@ void onInit(CBlob@ this)
         if (flames !is null)
         { 
             
-            flames.ReloadSprite("Portal.png", 48, 16, 3, 0);
+            flames.ReloadSprite("Portal.png", 48, 16, this.getTeamNum(), 0);
             flames.SetRelativeZ(FIRE_RELATIVE_Z);
             flames.SetOffset(Vec2f(0, -18));
             Animation@ animation = flames.addAnimation(FLAMES_ANIMATION, 5, true);
@@ -126,10 +128,6 @@ void onInit(CBlob@ this)
 	// 	TileUpdates@ tile_updates = TileUpdates();
 	// 	this.set("tile_updates", @tile_updates);
 	// }
-
-    // Set up no build and anims
-    CBitStream params;
-    this.SendCommand(this.getCommandID("corrupt"), params);
 }
 
 void UpdateAnim(CBlob@ this)
@@ -472,6 +470,13 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 		}
 		Vec2f sector = this.get_Vec2f("sector");
 		setSectorBorderColor(this);
+        
+        // Prevent players from building here
+        if (map.getSectorAtPosition(this.getPosition(), "no build") !is null)
+        {
+            return;
+        }
+        map.server_AddSector(Vec2f(sector.x, 0) * map.tilesize, Vec2f(sector.y, map.tilemapheight) * map.tilesize, "no build");
 
         /*
 		// Initiate corruption
@@ -501,14 +506,6 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			tile_updates.steps = 0;
 		}
         */
-
-		// Prevent players from building here
-		if (map.getSectorAtPosition(this.getPosition(), "no build") !is null)
-		{
-			return;
-		}
-		map.server_AddSector(Vec2f(sector.x, 0) * map.tilesize, Vec2f(sector.y, map.tilemapheight) * map.tilesize, "no build");
-
 	}
 	else if (cmd == this.getCommandID("liberate"))
 	{
@@ -524,6 +521,13 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			return;
 		}
 		setSectorBorderColor(this);
+        
+        // Allow players to build here
+        if (map.getSectorAtPosition(this.getPosition(), "no build") is null)
+        {
+            return;
+        }
+        map.RemoveSectorsAtPosition(this.getPosition(), "no build");
 
         /*
 		// Initiate corruption withdrawal
@@ -574,13 +578,6 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 			// }
 		}
         */
-
-		// Allow players to build here
-		if (map.getSectorAtPosition(this.getPosition(), "no build") is null)
-		{
-			return;
-		}
-		map.RemoveSectorsAtPosition(this.getPosition(), "no build");
 	}
 }
 
