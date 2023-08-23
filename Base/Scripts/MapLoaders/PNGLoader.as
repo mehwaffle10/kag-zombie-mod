@@ -567,7 +567,7 @@ class PNGLoader
 			// Zombies
 			case map_colors::portal:		  {
 												autotile(position);
-												CBlob@ portal = spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(mirror ? 1 : 0, 3) * map.tilesize);
+												CBlob@ portal = spawnBlob(map, "portal", 3, getSpawnPosition(map, offset) - Vec2f(mirror ? 1 : 0, 2) * map.tilesize);
 												u8 portal_count = rules.get_u8("portal_count");
 												string portal_i = "portal_" + portal_count;
 												rules.set_netid(portal_i, portal.getNetworkID());

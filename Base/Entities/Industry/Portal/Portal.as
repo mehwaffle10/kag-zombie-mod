@@ -35,6 +35,7 @@ namespace State
 void onInit(CBlob@ this)
 {
 	// Spawning
+    u16 netID = this.getNetworkID();
     if (isServer())
     {
         this.set_u16("spawn_delay", 15 * getTicksASecond());
@@ -43,6 +44,7 @@ void onInit(CBlob@ this)
         this.set_u16("points", 0);
         this.set_u8("state", State::inactive);
         this.set_string("rank", "basic");
+        this.SetFacingLeft(((netID % 13) % 2) == 0);
     }
     this.SetLight(true);
 
@@ -60,7 +62,6 @@ void onInit(CBlob@ this)
 	CSprite@ sprite = this.getSprite();
 	if (sprite !is null)
 	{
-		u16 netID = this.getNetworkID();
 		sprite.animation.frame = (netID % sprite.animation.getFramesCount());
 		sprite.SetZ(-10.0f);
 
@@ -73,13 +74,13 @@ void onInit(CBlob@ this)
             Animation@ animation = portal.addAnimation(PORTAL_ACTIVE_ANIMATION, 5, true);
             if (animation !is null)
             {
-                s32[] frames = {12, 13, 14};
+                s32[] frames = {8, 9, 10};
                 animation.AddFrames(frames);
             }
-            @animation = portal.addAnimation(PORTAL_OPEN_ANIMATION, 5, false);
+            @animation = portal.addAnimation(PORTAL_OPEN_ANIMATION, 3, false);
             if (animation !is null)
             {
-                s32[] frames = {0, 6, 7, 8};
+                s32[] frames = {20, 2, 3, 4, 5, 6, 7};
                 animation.AddFrames(frames);
             }
         }
@@ -90,11 +91,11 @@ void onInit(CBlob@ this)
         { 
             fire.ReloadSprite("Portal.png", 48, 16, this.getTeamNum(), 0);
             fire.SetRelativeZ(FIRE_RELATIVE_Z);
-            fire.SetOffset(Vec2f(0, 16));
+            fire.SetOffset(Vec2f(0, 8));
             Animation@ animation = fire.addAnimation(FIRE_ANIMATION, 5, true);
             if (animation !is null)
             {
-                s32[] frames = {2, 8, 14};
+                s32[] frames = {1, 12, 23};
                 animation.AddFrames(frames);
             }
         }
@@ -106,11 +107,11 @@ void onInit(CBlob@ this)
             
             flames.ReloadSprite("Portal.png", 48, 16, this.getTeamNum(), 0);
             flames.SetRelativeZ(FIRE_RELATIVE_Z);
-            flames.SetOffset(Vec2f(0, -18));
+            flames.SetOffset(Vec2f(0, -26));
             Animation@ animation = flames.addAnimation(FLAMES_ANIMATION, 5, true);
             if (animation !is null)
             {
-                s32[] frames = {1, 7, 13};
+                s32[] frames = {0, 11, 22};
                 animation.AddFrames(frames);
             }
         }
