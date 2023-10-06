@@ -240,28 +240,6 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 		// Move up the corresponding player list
 		MoveUpPlayerList(player_list_to_move_up == "" ? null : getPlayerByUsername(player_list_to_move_up));
 	}
-	else if (cmd == this.getCommandID(MULTICHARACTER_PRINT_TRANSFER_COMMAND))
-	{
-		// DebugPrint("Command is print_transfer_char");
-		string message;
-		if (!params.saferead_string(message))
-		{
-			return;
-		}
-
-		string[] split_message = message.split(" ");
-
-		CPlayer@ player = getPlayerByUsername(split_message[0]);
-		bool claimed = split_message[1] == "claimed";
-
-		SColor color = claimed ? SColor(0, 100, 0, 192) : SColor(0, 192, 0, 100);
-		if (player !is null && player is getLocalPlayer())
-		{
-			color.setGreen(100);
-		}
-
-		client_AddToChat(message, color);
-	}
 }
 
 void onRenderScoreboard(CRules@ this)

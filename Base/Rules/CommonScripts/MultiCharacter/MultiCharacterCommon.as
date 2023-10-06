@@ -9,7 +9,6 @@ const string MULTICHARACTER_TRANSFER_COMMAND = "multicharacter_transfer_char";
 const string MULTICHARACTER_MOVE_UP_COMMAND = "multicharacter_move_up_char";
 const string MULTICHARACTER_MOVE_DOWN_COMMAND = "multicharacter_move_down_char";
 const string MULTICHARACTER_MOVE_LIST_UP_COMMAND = "multicharacter_move_up_char_list";
-const string MULTICHARACTER_PRINT_TRANSFER_COMMAND = "multicharacter_print_transfer_char";
 const string MULTICHARACTER_KILL_FEED = "multicharacter_kill_feed";
 const string MULTICHARACTER_SYNC_COMMAND = "multicharacter_sync";
 const string MULTICHARACTER_SYNC_CHARACTER = "multicharacter_sync_character";

@@ -22,7 +22,6 @@ void onInit(CRules@ this)
     this.addCommandID(MULTICHARACTER_SYNC_CHARACTER);
 
 	// Client only, used in MultiCharacterUI.as
-	this.addCommandID(MULTICHARACTER_PRINT_TRANSFER_COMMAND);
 	this.addCommandID(MULTICHARACTER_MOVE_LIST_UP_COMMAND);
 	this.addCommandID(MULTICHARACTER_KILL_FEED);
 
@@ -264,9 +263,10 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 		if (blob !is null)
 		{
 			// Get the name of the player doing the action and the action
-			string message = player_to_swap_username == "" ?
-				sending_player + " unclaimed" :
-				player_to_swap_username + " claimed";
+            bool claimed = player_to_swap_username == "";
+			string message = claimed ? sending_player : player_to_swap_username;
+            CPlayer@ player = getPlayerByUsername(message);
+            message += claimed ? " unclaimed" : " claimed";
 
 			// Add the class
 			message += " the " + blob.getName();
@@ -283,11 +283,15 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 				message += " " + blob.get_string(SURNAME);
 			}
 
-			// Tell clients to print the char transfer
-			CBitStream params;
-			params.write_string(message);
-
-			this.SendCommand(this.getCommandID(MULTICHARACTER_PRINT_TRANSFER_COMMAND), params);
+            SColor color = claimed ? SColor(0, 100, 0, 192) : SColor(0, 192, 0, 100);
+            if (player !is null && player is getLocalPlayer())
+            {
+                color.setGreen(100);
+            }
+            if (isClient())
+            {
+                client_AddToChat(message, color);
+            }
 		}
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), player_to_swap_username, -1);
