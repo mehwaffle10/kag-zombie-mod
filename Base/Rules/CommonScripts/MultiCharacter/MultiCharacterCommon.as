@@ -31,37 +31,47 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	// DebugPrint("Attempting to swap the player " + player_to_swap_username + "'s control to " + target_blob_networkID);
 
 	// Safety checks
-	// Let the player swap if the target blob is in their char list or the unclaimed char list
-	if (!hasClaimedChar(player_to_swap_username, target_blob_networkID) && !hasClaimedChar("", target_blob_networkID))
-	{
-		// DebugPrint("Player " + player_to_swap_username + " can not swap to " + target_blob_networkID);
-		return;
-	}
-
-	// Check that the player exists
+    // Check that the player exists
 	CPlayer@ player = getPlayerByUsername(player_to_swap_username);
 	if (player is null)
 	{
 		// DebugPrint("Player " + player_to_swap_username + " was null");
 		return;
 	}
-
-	// Check if the target exists and is alive and doesn't already have a player
+    // Check if the target exists
 	CBlob@ target_blob = getBlobByNetworkID(target_blob_networkID);
 	if (target_blob is null)
 	{
 		// DebugPrint("Target blob with networkID " + target_blob_networkID + " was null");
 		return;
 	}
+
+	// Let the player swap if the target blob is in their char list or the unclaimed char list
+	if (!hasClaimedChar(player_to_swap_username, target_blob_networkID) && !hasClaimedChar("", target_blob_networkID))
+	{
+        if (player is getLocalPlayer())
+        {
+            Sound::Play("NoAmmo.ogg", target_blob.getPosition(), 0.7f);
+        }
+		// DebugPrint("Player " + player_to_swap_username + " can not swap to " + target_blob_networkID);
+		return;
+	}
+
+    // Check if the target exists and is alive and doesn't already have a player
 	if (target_blob.hasTag("dead") || target_blob.getHealth() <= 0.0f)
 	{
 		// DebugPrint("Target blob with networkID " + target_blob_networkID + " was dead");
 		return;
 	}
-	if (target_blob.getPlayer() !is null)
+    CPlayer@ target_player = target_blob.getPlayer();
+	if (target_player !is null)
 	{
 		// DebugPrint("Target blob with networkID " + target_blob_networkID +
 			// " had player " + target_blob.getPlayer().getUsername());
+        if (player is getLocalPlayer() && player !is target_player)
+        {
+            Sound::Play("NoAmmo.ogg", target_blob.getPosition(), 0.7f);
+        }
 		return;
 	}
 
@@ -95,6 +105,10 @@ void SwapPlayerControl(string player_to_swap_username, u16 target_blob_networkID
 	target_blob.server_SetPlayer(player);
 	target_blob.setSexNum(sex);
 	target_blob.setHeadNum(head);
+    if (player is getLocalPlayer())
+    {
+        Sound::Play("switch.ogg");
+    }
 
 	// I added a check in EmoteHotkeys.as so swapping using hotkeys wouldn't emote
 	// Unfortunately everything I tried here didn't work, wasn't clean, or wasn't robust
