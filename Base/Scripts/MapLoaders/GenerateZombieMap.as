@@ -434,13 +434,19 @@ bool loadMap(CMap@ _map, const string& in filename)
 		// Get portal information
 		string structure_type = "portal";
 		u8 variant_index = bag.getStructureVariant(map_random, structure_type);
-		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
+		Vec2f structure_size = bag.getVariantSize(structure_type, variant_index);
 
 		// Create a portal
 		s32 left_x = sectors[i].x;
 		s32 right_x = sectors[i].y;
 		s32 border_distance = 10;  // How close a portal can get to the border of a sector
-		s32 portal_seed = left_x + border_distance + map_random.NextRanged((right_x - left_x - structure_width - 2 * border_distance));
+		s32 portal_seed = left_x + border_distance + map_random.NextRanged((right_x - left_x - structure_size.x - 2 * border_distance));
+        s32 min_y = structure_size.y + 3;
+        if (naturemap[portal_seed] < min_y)
+        {
+            print("FORCED MIN Y FOR PORTAL");
+            naturemap[portal_seed] = min_y;
+        }
 		GenerateStructure(map, naturemap, map_random, structure_type, variant_index, portal_seed);
 
 		// Add the boundaries to the newest portal
@@ -514,10 +520,10 @@ bool loadMap(CMap@ _map, const string& in filename)
 		subsector_sizes.sortDesc();
 		subsectors.insertAt(subsector_sizes.find(left_subsector_size), Vec2f(left_x, portal_seed));
 
-		s32 right_subsector_size = right_x - portal_seed - structure_width;
+		s32 right_subsector_size = right_x - portal_seed - structure_size.x;
 		subsector_sizes.push_back(right_subsector_size);
 		subsector_sizes.sortDesc();
-		subsectors.insertAt(subsector_sizes.find(right_subsector_size), Vec2f(portal_seed + structure_width, right_x));
+		subsectors.insertAt(subsector_sizes.find(right_subsector_size), Vec2f(portal_seed + structure_size.x, right_x));
 	}
 
 	// Create a list of structure types and variants ordered by size
@@ -528,7 +534,7 @@ bool loadMap(CMap@ _map, const string& in filename)
 		// Get a structure and its information
 		string structure_type = bag.pickStructure(map_random);
 		u8 variant_index = bag.getStructureVariant(map_random, structure_type);
-		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
+		u8 structure_width = bag.getVariantSize(structure_type, variant_index).x;
 
 		// Add the structure into the list
 		structure_sizes.push_back(structure_width);
@@ -547,26 +553,32 @@ bool loadMap(CMap@ _map, const string& in filename)
 		// Get a structure variant and width
 		string structure_type = structure_types[i];
 		u8 variant_index = variant_indices[i];
-		u8 structure_width = bag.getVariantWidth(structure_type, variant_index);
+		Vec2f structure_size = bag.getVariantSize(structure_type, variant_index);
 
 		print(getVariantFilename(structure_type, variant_index));
 
 		// Get left seed for structure
-		s32 structure_seed = (left_x + right_x - structure_width) / 2;
+		s32 structure_seed = (left_x + right_x - structure_size.x) / 2;
 
 		// Make structure and populate empty space
-		if (structure_seed < left_x + 6 || structure_seed + structure_width > right_x - 6)
+		if (structure_seed < left_x + 6 || structure_seed + structure_size.x > right_x - 6)
 		{
 			print("Structure " + getVariantFilename(structure_type, variant_index) + " did not fit in subsector of size " + subsector_sizes[i]);
 			Populate(map, naturemap, map_random, left_x, right_x);
 		}
 		else
 		{
+            s32 min_y = structure_size.y + 3;
+            if (naturemap[structure_seed] < min_y)
+            {
+                print("FORCED MIN Y FOR STRUCTURE");
+                naturemap[structure_seed] = min_y;
+            }
 			GenerateStructure(map, naturemap, map_random, structure_type, variant_index, structure_seed);
 
 			// Populate left and right zones with filler
 			Populate(map, naturemap, map_random, left_x, structure_seed);
-			Populate(map, naturemap, map_random, structure_seed + structure_width, right_x);
+			Populate(map, naturemap, map_random, structure_seed + structure_size.x, right_x);
 		}
 	}
 
@@ -578,6 +590,19 @@ bool loadMap(CMap@ _map, const string& in filename)
 	// 		map.server_SetTile(Vec2f(sectors[i].y, y) * map.tilesize, CMap::tile_gold);
 	// 	}
 	// }
+
+    // // DEV - Draw Naturemap
+    // for (s32 x = 0; x < naturemap.length; x++)
+    // {
+    //     s32 y = naturemap[x];
+    //     if (y < 0) {
+    //         print("X" + x + ", Y" + y);
+    //     }
+    //     if (y >= map.tilemapheight) {
+    //         print("X" + x + ", Y" + y);
+    //     }
+    //     map.server_SetTile(Vec2f(x, y) * map.tilesize, CMap::tile_gold);
+    // }
 
 	// Add variants
 	// for (s32 x = 0; x < width; x++)
@@ -605,7 +630,7 @@ class StructureGrabBag
 	u16 structures_left;
 	string[] types;  // The type of structure
 	u16[] counts;  // How many to spawn on a map
-	u8[][] variant_widths;  // Width of each variant
+	Vec2f[][] variant_sizes;  // Width of each variant
 
 	void Scramble(Random@ map_random)
 	{
@@ -613,7 +638,7 @@ class StructureGrabBag
 		u16 slots_left = structure_count;
 		types.clear();
 		counts.clear();
-		variant_widths.clear();
+		variant_sizes.clear();
 
 		// Structures with distinct counts
 		u16 mineshaft_count = 1 + map_random.NextRanged(2);
@@ -650,25 +675,25 @@ class StructureGrabBag
 		types.push_back("portal");
 		counts.push_back(0);
 
-		// Count the number of variants for each type of structure and width of each variant
+		// Count the number of variants for each type of structure and size of each variant
 		for (u8 type_index = 0; type_index < types.length; type_index++)
 		{
 			u8 variant_count = 0;
-			u8[] variants;
+			Vec2f[] variants;
 			CFileImage@ image = CFileImage(types[type_index] + "_" + variant_count);
 			while (image.isLoaded())
 			{
-				variants.push_back(image.getWidth());
+				variants.push_back(Vec2f(image.getWidth(), image.getHeight()));
 				variant_count++;
 				@image = CFileImage(types[type_index] + "_" + variant_count);
 			}
 
 			if (variants.length == 0)
 			{
-				variants.push_back(0);
+				variants.push_back(Vec2f(0, 0));
 			}
 
-			variant_widths.push_back(variants);
+			variant_sizes.push_back(variants);
 		}
 
 		for (u8 type_index = 0; type_index < types.length; type_index++)
@@ -679,12 +704,12 @@ class StructureGrabBag
 
 	u8 getStructureVariant(Random@ map_random, string type)
 	{
-		return map_random.NextRanged(variant_widths[types.find(type)].length);
+		return map_random.NextRanged(variant_sizes[types.find(type)].length);
 	}
 
-	u8 getVariantWidth(string type, u8 variant)
+	Vec2f getVariantSize(string type, u8 variant)
 	{
-		return variant_widths[types.find(type)][variant];
+		return variant_sizes[types.find(type)][variant];
 	}
 
 	string pickStructure(Random@ map_random)
