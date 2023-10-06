@@ -25,7 +25,7 @@ void onInit(CBlob@ this)
 	this.Tag("flesh");
 
 	HitData hitdata;
-    hitdata.ticks = 0;
+    hitdata.ticks = 0;  // Waffle: Add user feedback
 	this.set("hitdata", hitdata);
 
 	this.addCommandID("pickaxe");
@@ -148,43 +148,49 @@ bool RecdHitCommand(CBlob@ this, CBitStream@ params)
 		if (map !is null)
 		{
 			uint16 type = map.getTile(tilepos).type;
-			if (map.getSectorAtPosition(tilepos, "no build") !is null)
-			{
-				CBlob@[] blobs_here;
-				map.getBlobsAtPosition(tilepos + Vec2f(1, 1), blobs_here);
+            CBlob@[] blobs_here;
+            map.getBlobsAtPosition(tilepos + Vec2f(1, 1), blobs_here);
 
-				bool no_dmg = false;
+            bool no_dmg = false;
 
-				// dont dmg backwall if it's behind a blob-block
-				// hack: fixes the issue where with specific timing you can damage backwall behind blob-blocks right after placing it
-				for(int i=0; i < blobs_here.size(); ++i)
-				{
-					CBlob@ current_blob = blobs_here[i];
-					if (current_blob !is null && (current_blob.hasTag("door") || current_blob.getName() == "bridge" || current_blob.getName() == "wooden_platform"))
-					{
-						no_dmg = true;
-					}
-				}
+            // dont dmg backwall if it's behind a blob-block
+            // hack: fixes the issue where with specific timing you can damage backwall behind blob-blocks right after placing it
+            for(int i=0; i < blobs_here.size(); ++i)
+            {
+                CBlob@ current_blob = blobs_here[i];
+                if (current_blob !is null && (current_blob.hasTag("door") || current_blob.getName() == "bridge" || current_blob.getName() == "wooden_platform"))
+                {
+                    no_dmg = true;
+                }
+            }
 
-				if (!no_dmg)
-				{
-					if (getNet().isServer())
-					{
-						map.server_DestroyTile(tilepos, 1.0f, this);
+            if (!no_dmg)
+            {
+                if (isBedrock(type) || isGold(type) || isStone(type) || isThickStone(type))  // Waffle: Add user feedback
+                {
+                    if (getNet().isClient())
+                    {
+                        this.getSprite().PlaySound("metal_stone.ogg");
+                        sparks(tilepos, attackVel.Angle(), 1.0f);
+                    }
+                }
+                else if (isDirt(type))
+                {
+                    if (getNet().isClient())
+                    {
+                        this.getSprite().PlaySound("hit_wood.ogg");
+                    }
+                }
+                else
+                {
+                    if (getNet().isServer() && map.getSectorAtPosition(tilepos, "no build") is null)
+                    {
+                        map.server_DestroyTile(tilepos, 1.0f, this);
 
-						Material::fromTile(this, type, 1.0f);
-					}
-
-					if (getNet().isClient())
-					{
-						if (map.isTileBedrock(type))
-						{
-							this.getSprite().PlaySound("/metal_stone.ogg");
-							sparks(tilepos, attackVel.Angle(), 1.0f);
-						}
-					}
-				}
-			}
+                        Material::fromTile(this, type, 1.0f);
+                    }
+                }
+            }
 		}
 	}
 	else
@@ -299,6 +305,13 @@ void Pickaxe(CBlob@ this)
 				TileType t = map.getTile(hitdata.tilepos).type;
 				if (!isEmpty(t) && !isDirtBackwall(t))  // Waffle: Support modded blocks
 				{
+                    // Can't break natural blocks
+                    // if (isNaturalSolid(t))
+                    // {
+                    //     this.getSprite().PlaySound("NoAmmo.ogg", 0.5);
+                    //     return;
+                    // }
+                    // Can't break in no build sector
                     CMap::Sector@ sector = map.getSectorAtPosition(hitdata.tilepos);
                     if (sector !is null)
                     {
@@ -409,7 +422,7 @@ void Pickaxe(CBlob@ this)
 	{
 		Tile tile = map.getTile(surfacepos);
 
-		if (!isDirtBackwall(tile.type))
+		if (!isDirtBackwall(tile.type))  // Waffle: Support modded blocks
 		{
 			//normal, honest to god tile
 			if (!isEmpty(tile.type))  // Waffle: Support modded blocks

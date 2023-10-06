@@ -11,9 +11,9 @@ shared class HitData
 {
 	u16 blobID;
 	Vec2f tilepos;
-    u8 ticks;
-    Vec2f upper_left;
-    Vec2f lower_right;
+    u8 ticks;           // Waffle: Add user feedback
+    Vec2f upper_left;   // Waffle: --
+    Vec2f lower_right;  // Waffle: --
 };
 
 Vec2f getBuildingOffsetPos(CBlob@ blob, CMap@ map, Vec2f required_tile_space)

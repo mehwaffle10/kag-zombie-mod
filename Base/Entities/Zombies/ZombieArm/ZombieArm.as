@@ -55,9 +55,6 @@ void onInit(CBlob@ this)
 	//
 	moveVars.walljumped = false;
 	moveVars.walljumped_side = Walljump::NONE;
-	moveVars.wallrun_length = 0;
-	moveVars.wallrun_start = -1.0f;
-	moveVars.wallrun_current = -1.0f;
 	moveVars.wallclimbing = false;
 	moveVars.wallsliding = false;
 	//

@@ -6,18 +6,21 @@
 #include "Costs.as"
 #include "CheckSpam.as"
 #include "GenericButtonCommon.as"
+#include "TeamIconToken.as"
 
 //are builders the only ones that can finish construction?
 const bool builder_only = false;
 
 void onInit(CBlob@ this)
 {
-	AddIconToken("$stonequarry$", "../Mods/Entities/Industry/CTFShops/Quarry/Quarry.png", Vec2f(40, 24), 4);
+	//AddIconToken("$stonequarry$", "../Mods/Entities/Industry/CTFShops/Quarry/Quarry.png", Vec2f(40, 24), 4);
 	this.set_TileType("background tile", CMap::tile_wood_back);
 	//this.getSprite().getConsts().accurateLighting = true;
 
 	this.getSprite().SetZ(-50); //background
 	this.getShape().getConsts().mapCollisions = false;
+
+	this.Tag("has window");
 
 	//INIT COSTS
 	InitCosts();
@@ -29,44 +32,61 @@ void onInit(CBlob@ this)
 	this.set_u8("shop icon", 12);
 	this.Tag(SHOP_AUTOCLOSE);
 
+	int team_num = this.getTeamNum();
+
 	{
-		ShopItem@ s = addShopItem(this, "Builder Shop", "$buildershop$", "buildershop", Descriptions::buildershop);
+		ShopItem@ s = addShopItem(this, "Builder Shop", getTeamIcon("buildershop", "BuilderShop.png", team_num, Vec2f(40, 24)), "buildershop", Descriptions::buildershop);
 		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::buildershop_wood);
 	}
 	{
-		ShopItem@ s = addShopItem(this, "Quarters", "$quarters$", "quarters", Descriptions::quarters);
+		ShopItem@ s = addShopItem(this, "Quarters", getTeamIcon("quarters", "Quarters.png", team_num, Vec2f(40, 24), 2), "quarters", Descriptions::quarters);
 		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::quarters_wood);
 	}
 	{
-		ShopItem@ s = addShopItem(this, "Knight Shop", "$knightshop$", "knightshop", Descriptions::knightshop);
+		ShopItem@ s = addShopItem(this, "Knight Shop", getTeamIcon("knightshop", "KnightShop.png", team_num, Vec2f(40, 24)), "knightshop", Descriptions::knightshop);
 		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::knightshop_wood);
 	}
 	{
-		ShopItem@ s = addShopItem(this, "Archer Shop", "$archershop$", "archershop", Descriptions::archershop);
+		ShopItem@ s = addShopItem(this, "Archer Shop", getTeamIcon("archershop", "ArcherShop.png", team_num, Vec2f(40, 24)), "archershop", Descriptions::archershop);
 		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::archershop_wood);
 	}
+    // Waffle: Remove boats and vehicles
+    /*
 	{
-		ShopItem@ s = addShopItem(this, "Storage Cache", "$storage$", "storage", Descriptions::storagecache);
+		ShopItem@ s = addShopItem(this, "Boat Shop", getTeamIcon("boatshop", "BoatShop.png", team_num, Vec2f(40, 24)), "boatshop", Descriptions::boatshop);
+		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::boatshop_wood);
+	}
+	{
+		ShopItem@ s = addShopItem(this, "Vehicle Shop", getTeamIcon("vehicleshop", "VehicleShop.png", team_num, Vec2f(40, 24)), "vehicleshop", Descriptions::vehicleshop);
+		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::vehicleshop_wood);
+		AddRequirement(s.requirements, "blob", "mat_gold", "Gold", CTFCosts::vehicleshop_gold);
+	}
+    */
+	{
+		ShopItem@ s = addShopItem(this, "Storage Cache", getTeamIcon("storage", "Storage.png", team_num, Vec2f(40, 24)), "storage", Descriptions::storagecache);
 		AddRequirement(s.requirements, "blob", "mat_stone", "Stone", CTFCosts::storage_stone);
 		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::storage_wood);
 	}
 	{
-		ShopItem@ s = addShopItem(this, "Transport Tunnel", "$tunnel$", "tunnel", Descriptions::tunnel);
+		ShopItem@ s = addShopItem(this, "Transport Tunnel", getTeamIcon("tunnel", "Tunnel.png", team_num, Vec2f(40, 24)), "tunnel", Descriptions::tunnel);
 		AddRequirement(s.requirements, "blob", "mat_stone", "Stone", CTFCosts::tunnel_stone);
 		AddRequirement(s.requirements, "blob", "mat_wood", "Wood", CTFCosts::tunnel_wood);
 		AddRequirement(s.requirements, "blob", "mat_gold", "Gold", CTFCosts::tunnel_gold);
 	}
+    // Waffle: Readd quarries
 	{
-		ShopItem@ s = addShopItem(this, "Stone Quarry", "$stonequarry$", "quarry", Descriptions::quarry);
+		ShopItem@ s = addShopItem(this, "Stone Quarry", getTeamIcon("quarry", "Quarry.png", team_num, Vec2f(40, 24)), "quarry", Descriptions::quarry);
 		AddRequirement(s.requirements, "blob", "mat_stone", "Stone", CTFCosts::quarry_stone);
 		AddRequirement(s.requirements, "blob", "mat_gold", "Gold", CTFCosts::quarry_gold);
-		AddRequirement(s.requirements, "no more", "quarry", "Stone Quarry", CTFCosts::quarry_count);
+		// AddRequirement(s.requirements, "no more", "quarry", "Stone Quarry", CTFCosts::quarry_count);  // Waffle: Remove quarry limit
 	}
+    // Waffle: Add factories
 	{
-		ShopItem@ s = addShopItem(this, "Factory", "$factory$", "day_factory", "Factory\nProduces items at the start of each day\nRequires <magic material name> to operate");
+		ShopItem@ s = addShopItem(this, "Factory", getTeamIcon("quarry", "Factory.png", team_num, Vec2f(40, 24)), "day_factory", "Factory\nProduces items at the start of each day\nRequires <magic material name> to operate");
 		AddRequirement(s.requirements, "blob", "mat_stone", "Stone", CTFCosts::quarry_stone);
 		AddRequirement(s.requirements, "blob", "mat_gold", "Gold", CTFCosts::quarry_gold);
 	}
+
 }
 
 void GetButtonsFor(CBlob@ this, CBlob@ caller)
