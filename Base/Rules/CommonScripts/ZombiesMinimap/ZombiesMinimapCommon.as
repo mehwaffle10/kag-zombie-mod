@@ -176,7 +176,7 @@ void setSectorBorderColor(CBlob@ portal)
 		border.server_setTeamNum(portal.getTeamNum());
 
 		// Update the zombie minimap border colors for clients
-		if (isClient() && map !is null)
+		if (isClient() && map !is null && image_data !is null)
 		{
 			for (u8 y = 0; y < map.tilemapheight; y++)
 			{
