@@ -21,9 +21,6 @@ void onRestart(CRules@ this)
 
 void Reset(CRules@ this)
 {
-    this.set_bool("Update Nodes " + isClient(), false);
-    current_x = 0;
-    timer = delay;
     CMap@ map = getMap();
     if (map is null)
     {
@@ -36,39 +33,24 @@ void Reset(CRules@ this)
     }
 
     PathfindingCore@ pathfinding_core = PathfindingCore();
-    Node[][] nodes(map.tilemapwidth, Node[](0)); 
+    Node[] nodes(map.tilemapwidth * map.tilemapheight); 
     pathfinding_core.nodes = nodes;
     this.set(PATHFINDING_CORE, @pathfinding_core);
+    GenerateGraph(map);
 }
 
-void onTick(CRules@ this)
+void onRender(CRules@ this)
 {
-    if (timer == 0)
+    if (isClient() && getControls().isKeyPressed(KEY_NUMPAD8))
     {
-        CMap@ map = getMap();
-        if (map !is null)
-        {
-            print("Updating Graph, Current_X: " + current_x);
-            UpdateGraph(map, Vec2f(current_x, 0), Vec2f(Maths::Min(current_x + scan_width, map.tilemapwidth - 1), map.tilemapheight - 1));
-            current_x += scan_width;
-            if (current_x < map.tilemapwidth)
-            {
-                timer = delay;
-            }
-            this.set_bool("Update Nodes " + isClient(), true);
-        }
-    }
-
-    if (timer >= 0)
-    {
-        timer--;
+        a_star();
     }
 }
 
 void onBlobCreated(CRules@ this, CBlob@ blob)
 {
     CMap@ map = getMap();
-    if(getRules().get_bool("Update Nodes " + isClient()) && blob !is null && (blob.isPlatform() || blob.hasTag("door") || blob.isLadder()))
+    if (blob !is null && (blob.isPlatform() || blob.hasTag("door") || blob.isLadder()))  // getRules().get_bool("Update Nodes " + isClient()) && 
     {
         blob.AddScript("UpdateOnStaticChange");
     }

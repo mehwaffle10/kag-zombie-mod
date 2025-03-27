@@ -19,7 +19,7 @@ class MinimapIcon
         file = _file;
         name = _name;
         size = _size;
-        frame = _frame;
+        @frame = @_frame;
     }
 };
 

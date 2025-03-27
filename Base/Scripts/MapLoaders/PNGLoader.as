@@ -839,10 +839,10 @@ class PNGLoader
 		CBlob@ blob = spawnBlob(map, name, team, position, angle);
 		blob.getShape().SetStatic(fixed);
 
-		if (blob !is null && blob.isPlatform())
-		{
-			blob.AddScript("UpdateOnStaticChange");
-		}
+		// if (blob !is null && blob.isPlatform())
+		// {
+		// 	blob.AddScript("UpdateOnStaticChange");
+		// }
 
 		return blob;
 	}

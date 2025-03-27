@@ -3,9 +3,8 @@
 
 void onSetTile(CMap@ this, u32 index, TileType newtile, TileType oldtile)
 {
-    if(getRules().get_bool("Update Nodes " + isClient()) && this.isTileSolid(newtile) != this.isTileSolid(oldtile))
+    if (this.isTileSolid(newtile) != this.isTileSolid(oldtile))  // getRules().get_bool("Update Nodes " + isClient()) && 
     {
-        print("onSetTile: " + this.getTileSpacePosition(index));
         UpdateGraph(this, this.getTileSpacePosition(index), !this.isTileSolid(newtile));
     }
 }
@@ -14,7 +13,7 @@ bool onMapTileCollapse(CMap@ this, u32 offset)
 {
     // Only update if the block is solid or a platform
     Vec2f pos = this.getTileSpacePosition(offset);
-    if(getRules().get_bool("Update Nodes " + isClient()) && this.isTileSolid(this.getTile(offset).type))
+    if (this.isTileSolid(this.getTile(offset).type))  // getRules().get_bool("Update Nodes " + isClient()) && 
     {
         UpdateGraph(this, pos, true);
     }

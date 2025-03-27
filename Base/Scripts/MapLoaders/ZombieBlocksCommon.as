@@ -472,7 +472,6 @@ bool isCastleBackwall(TileType type)
 {
     type %= WORLD_OFFSET;
     return type >= CMap::tile_castle_back && type <= 69 ||
-           type == CMap::tile_ladder_castle ||
            type >= 76 && type <= 79 ||
            isMossyCastleBackwall(type);
 }
