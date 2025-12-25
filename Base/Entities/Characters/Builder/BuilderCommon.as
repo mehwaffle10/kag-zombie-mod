@@ -4,6 +4,7 @@
 #include "PlacementCommon.as";
 #include "CheckSpam.as";
 #include "GameplayEventsCommon.as";
+#include "Requirements.as";
 
 const f32 allow_overlap = 2.0f;
 
