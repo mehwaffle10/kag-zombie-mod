@@ -33,6 +33,7 @@ void onInit(CSprite@ this)
 	this.SetZ(-4.0f);
 
 	CSpriteLayer@ door = this.addSpriteLayer(DOOR);
+	door.SetRelativeZ(1.0f);
 	if (door !is null)
 	{
 		Animation@ open = door.addAnimation(OPEN_DOOR, door_open_time, false);
