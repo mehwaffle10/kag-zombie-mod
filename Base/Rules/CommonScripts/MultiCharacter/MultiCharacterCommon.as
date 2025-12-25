@@ -1,13 +1,18 @@
 
 #include "RandomNames.as";
 
+const string CLIENT_SUFFIX = "_client";
 const string MULTICHARACTER_CORE = "multicharacter_core";
 const string SURVIVOR_TAG = "survivor";
 const string OWNING_PLAYER = "owning_player";
 const string MULTICHARACTER_SWAP_PLAYER_COMMAND = "multicharacter_swap_player";
+const string MULTICHARACTER_SWAP_PLAYER_COMMAND_CLIENT = MULTICHARACTER_SWAP_PLAYER_COMMAND + CLIENT_SUFFIX;
 const string MULTICHARACTER_TRANSFER_COMMAND = "multicharacter_transfer_char";
+const string MULTICHARACTER_TRANSFER_COMMAND_CLIENT = MULTICHARACTER_TRANSFER_COMMAND + CLIENT_SUFFIX;
 const string MULTICHARACTER_MOVE_UP_COMMAND = "multicharacter_move_up_char";
+const string MULTICHARACTER_MOVE_UP_COMMAND_CLIENT = MULTICHARACTER_MOVE_UP_COMMAND + CLIENT_SUFFIX;
 const string MULTICHARACTER_MOVE_DOWN_COMMAND = "multicharacter_move_down_char";
+const string MULTICHARACTER_MOVE_DOWN_COMMAND_CLIENT = MULTICHARACTER_MOVE_DOWN_COMMAND + CLIENT_SUFFIX;
 const string MULTICHARACTER_MOVE_LIST_UP_COMMAND = "multicharacter_move_up_char_list";
 const string MULTICHARACTER_KILL_FEED = "multicharacter_kill_feed";
 const string MULTICHARACTER_SYNC_COMMAND = "multicharacter_sync";

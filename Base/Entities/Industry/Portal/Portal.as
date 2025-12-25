@@ -377,7 +377,7 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 	}
 
 	CBitStream params, missing;
-	params.write_u16(caller.getNetworkID());
+	params.write_netid(caller.getNetworkID());
 
 	if (caller.isOverlapping(this))
 	{
@@ -423,16 +423,26 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 {
 	u8 state = this.get_u8("state");
+	CBlob@ caller;
+	u16 callerNetID;
+	if (params.saferead_netid(callerNetID))
+	{
+		@caller = getBlobByNetworkID(callerNetID);
+		if (caller !is null)
+		{
+			this.SendCommand(cmd);
+		}
+	}
+
 	if (cmd == this.getCommandID("day"))
 	{
         if (state != State::liberated)
         {
             // Turn off and award points for the day
             this.set_bool("is_day", true);
+			this.set_u8("state", State::inactive);
             if (isServer())
             {
-                this.set_u8("state", State::inactive);
-                this.Sync("state", true);
                 this.set_u16("points", this.get_u16("points") + this.get_u16("points_per_day"));
                 this.Sync("points", true);
             }
@@ -445,11 +455,9 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
         {
             // Activate! It's night time
             this.set_bool("is_day", false);
+			this.set_u8("state", State::active);
             if (isServer())
             {
-                this.set_u8("state", State::active);
-                this.Sync("state", true);
-
                 // Give portals a random spawn timer so that they don't all spawn at the same time
                 this.set_u16("spawn_timer", XORRandom(this.get_u16("spawn_delay")));
             }

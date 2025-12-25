@@ -16,7 +16,7 @@ void SetAnimation(CBlob@ this, bool dug)
 	{
 		return;
 	}
-
+	
 	CSprite@ sprite = this.getSprite();
 	if (sprite is null)
 	{
@@ -73,7 +73,7 @@ void GetButtonsFor(CBlob@ this, CBlob@ caller)
 	{
 		// Create a button and lower the activation radius
 		CBitStream params, missing;
-		params.write_u16(caller.getNetworkID());
+		params.write_netid(caller.getNetworkID());
 
 		CButton@ dig_button = caller.CreateGenericButton(SHOVEL_ICON_STRING, Vec2f(0, 0), this, this.getCommandID("dig"), getTranslatedString("Dig Up Grave"));
 		if (dig_button !is null)
@@ -89,6 +89,11 @@ void onCommand(CBlob@ this, u8 cmd, CBitStream @params)
 
 	if (cmd == this.getCommandID("dig") && !this.get_bool(DUG_FLAG_STRING))
 	{
+		if (isServer())
+		{
+			this.SendCommand(cmd);
+		}
+
 		// Flag that this grave has been dug
 		this.set_bool(DUG_FLAG_STRING, true);
 

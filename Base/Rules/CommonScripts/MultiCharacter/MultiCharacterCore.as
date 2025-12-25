@@ -13,9 +13,13 @@ void onInit(CRules@ this)
 {
 	// Server commands, issued by the client
 	this.addCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND);
+	this.addCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND_CLIENT);
 	this.addCommandID(MULTICHARACTER_TRANSFER_COMMAND);
+	this.addCommandID(MULTICHARACTER_TRANSFER_COMMAND_CLIENT);
 	this.addCommandID(MULTICHARACTER_MOVE_UP_COMMAND);
+	this.addCommandID(MULTICHARACTER_MOVE_UP_COMMAND_CLIENT);
 	this.addCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND);
+	this.addCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND_CLIENT);
 	
 	// Server sync commands
 	this.addCommandID(MULTICHARACTER_SYNC_COMMAND);
@@ -217,8 +221,12 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 	// No need for safety checks, methods already have them
 	// DebugPrint("Received Command");
-	if (cmd == this.getCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND))
+	if (cmd == this.getCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND) || cmd == this.getCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND_CLIENT))
 	{
+		if (isServer())
+		{
+			this.SendCommand(this.getCommandID(MULTICHARACTER_SWAP_PLAYER_COMMAND_CLIENT), params);
+		}
 		// DebugPrint("Command is swap_player");
 		string player_to_swap_username;
 		if (!params.saferead_string(player_to_swap_username))
@@ -233,8 +241,12 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 		SwapPlayerControl(player_to_swap_username, target_blob_networkID);
 	}
-	else if (cmd == this.getCommandID(MULTICHARACTER_TRANSFER_COMMAND))
+	else if (cmd == this.getCommandID(MULTICHARACTER_TRANSFER_COMMAND) || cmd == this.getCommandID(MULTICHARACTER_TRANSFER_COMMAND_CLIENT))
 	{
+		if (isServer())
+		{
+			this.SendCommand(this.getCommandID(MULTICHARACTER_TRANSFER_COMMAND_CLIENT), params);
+		}
 		// DebugPrint("Command is transfer_char");
 		string sending_player;
 		if (!params.saferead_string(sending_player))
@@ -296,8 +308,12 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), player_to_swap_username, -1);
 	}
-	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_UP_COMMAND))
+	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_UP_COMMAND) || cmd == this.getCommandID(MULTICHARACTER_MOVE_UP_COMMAND_CLIENT))
 	{
+		if (isServer())
+		{
+			this.SendCommand(this.getCommandID(MULTICHARACTER_MOVE_UP_COMMAND_CLIENT), params);
+		}
 		// DebugPrint("Command is move_up_char");
 		string sending_player;
 		if (!params.saferead_string(sending_player))
@@ -337,8 +353,12 @@ void onCommand(CRules@ this, u8 cmd, CBitStream@ params)
 
 		TransferCharToPlayerList(getBlobByNetworkID(target_blob_networkID), unclaimed ? "" : sending_player, index - 1);
 	}
-	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND))
+	else if (cmd == this.getCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND) || cmd == this.getCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND_CLIENT))
 	{
+		if (isServer())
+		{
+			this.SendCommand(this.getCommandID(MULTICHARACTER_MOVE_DOWN_COMMAND_CLIENT), params);
+		}
 		// DebugPrint("Command is move_down_char");
 		string sending_player;
 		if (!params.saferead_string(sending_player))
