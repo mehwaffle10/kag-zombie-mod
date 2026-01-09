@@ -7,6 +7,7 @@ void Reset(CRules@ this)
 	// Reset char lists
 	MultiCharacterCore@ multicharacter_core = MultiCharacterCore();
 	this.set(MULTICHARACTER_CORE, @multicharacter_core);
+	print("Reset " + (multicharacter_core is null));
 }
 
 void onInit(CRules@ this)
@@ -71,6 +72,12 @@ void onSetPlayer(CRules@ this, CBlob@ blob, CPlayer@ player)
 
 	MultiCharacterCore@ multicharacter_core;
 	this.get(MULTICHARACTER_CORE, @multicharacter_core);
+	if (multicharacter_core is null)
+	{
+		print("onSetPlayer multicharacter_core is null");
+		return;
+	}
+	
 	MultiCharacterPlayerInfo@ player_info;
 	multicharacter_core.players.get(player.getUsername(), @player_info);
 	if (player_info is null)

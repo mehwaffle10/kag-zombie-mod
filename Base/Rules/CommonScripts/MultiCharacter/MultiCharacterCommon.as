@@ -366,6 +366,12 @@ void SaveCharList(string player_name, u16[]@ char_networkIDs)
 	MultiCharacterCore@ multicharacter_core;
 	rules.get(MULTICHARACTER_CORE, @multicharacter_core);
 
+	if (multicharacter_core is null)
+	{
+		print("SaveCharList multicharacter_core is null");
+		return;
+	}
+
 	// Write the char list
 	if (player_name != "")  // Write the player's char list
 	{
