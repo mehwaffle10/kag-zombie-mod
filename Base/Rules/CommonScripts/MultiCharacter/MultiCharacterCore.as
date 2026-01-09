@@ -7,7 +7,6 @@ void Reset(CRules@ this)
 	// Reset char lists
 	MultiCharacterCore@ multicharacter_core = MultiCharacterCore();
 	this.set(MULTICHARACTER_CORE, @multicharacter_core);
-	print("Reset " + (multicharacter_core is null));
 }
 
 void onInit(CRules@ this)
