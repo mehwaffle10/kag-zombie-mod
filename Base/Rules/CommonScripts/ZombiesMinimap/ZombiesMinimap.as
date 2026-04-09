@@ -4,6 +4,7 @@
 #include "ZombieBlocksCommon.as"
 #include "ZombiesMinimapCommon.as"
 #include "TreeCommon.as"
+#include "StupidRenderFix.as"
 
 funcdef u8 fxn(CBlob@ blob);
 
@@ -23,10 +24,6 @@ class MinimapIcon
     }
 };
 
-SMesh@ minimap = SMesh(), exploration_overlay = SMesh();
-SMaterial@ zombie_map = SMaterial(), exploration_material = SMaterial();
-Vertex[] v_raw, v_raw_exploration;
-u16[] v_i, v_i_exploration;
 MinimapIcon[] minimap_icons;
 bool minimap_initialized = false;
 
@@ -70,23 +67,6 @@ void Setup()
     {
         Texture::createFromFile(ZOMBIE_MINIMAP_EXPLORATION_TEXTURE, "pixel.png");
     }
-
-    // Exploration material initial config
-    exploration_material.AddTexture(ZOMBIE_MINIMAP_EXPLORATION_TEXTURE, 0);
-    exploration_material.DisableAllFlags();
-    exploration_material.SetFlag(SMaterial::COLOR_MASK, true);
-    exploration_material.SetFlag(SMaterial::ZBUFFER, true);
-    exploration_material.SetFlag(SMaterial::ZWRITE_ENABLE, true);
-    exploration_material.SetMaterialType(SMaterial::TRANSPARENT_VERTEX_ALPHA); //this might need to be changed
-
-    // Add indices for the mesh
-    v_i.clear();
-    v_i.push_back(0);
-    v_i.push_back(1);
-    v_i.push_back(2);
-    v_i.push_back(0);
-    v_i.push_back(2);
-    v_i.push_back(3);
 
     // Add script for minimap updates
 	if (!map.hasScript("ZombiesMinimapMapUpdates"))
@@ -155,6 +135,7 @@ void onRestart(CRules@ this)
 
 void RenderMap(int id)
 {
+	Render::SetZBuffer(false, false);
     CRules@ rules = getRules();
 	CMap@ map = getMap();
     CControls@ controls = getControls();
@@ -183,14 +164,6 @@ void RenderMap(int id)
         // Create minimap texture
         Texture::createFromData(ZOMBIE_MINIMAP_TEXTURE, image_data);
 
-        // Minimap material initial config
-        zombie_map.AddTexture(ZOMBIE_MINIMAP_TEXTURE, 0);
-        zombie_map.DisableAllFlags();
-        zombie_map.SetFlag(SMaterial::COLOR_MASK, true);
-        zombie_map.SetFlag(SMaterial::ZBUFFER, true);
-        zombie_map.SetFlag(SMaterial::ZWRITE_ENABLE, true);
-        zombie_map.SetMaterialType(SMaterial::TRANSPARENT_VERTEX_ALPHA); //this might need to be changed
-
         u8[][] nonstatic_blocks(map.tilemapwidth, u8[](0));
         zombie_minimap_core.nonstatic_blocks = nonstatic_blocks;
         bool[] generated(map.tilemapwidth, false);
@@ -218,7 +191,7 @@ void RenderMap(int id)
     ));
 
     // Setup
-    Render::SetTransformScreenspace();
+    // Render::SetTransformScreenspace();
     s32 middle = driver.getScreenWidth() / 2;
     Vec2f upper_left = Vec2f(middle - map_width / 2 * TILE_WIDTH, 40), bottom_right = upper_left + Vec2f(map_width, map.tilemapheight) * TILE_WIDTH;
 
@@ -312,21 +285,24 @@ void RenderMap(int id)
 
     // Add vertices
     SColor color = SColor(0xffffffff);
-    v_raw.clear();
+	Vertex[] v_raw, v_raw_exploration;
     v_raw.push_back(Vertex(upper_left,                                                    1000, Vec2f(f32(map_left)             / map.tilemapwidth, 0), color));
     v_raw.push_back(Vertex(upper_left + Vec2f(map_width, 0)                 * TILE_WIDTH, 1000, Vec2f(f32(map_left + map_width) / map.tilemapwidth, 0), color));
     v_raw.push_back(Vertex(upper_left + Vec2f(map_width, map.tilemapheight) * TILE_WIDTH, 1000, Vec2f(f32(map_left + map_width) / map.tilemapwidth, 1), color));
     v_raw.push_back(Vertex(upper_left + Vec2f(0,         map.tilemapheight) * TILE_WIDTH, 1000, Vec2f(f32(map_left)             / map.tilemapwidth, 1), color));
 
-    // Mesh config 
-    minimap.SetMaterial(zombie_map);
-    minimap.SetHardwareMapping(SMesh::STATIC);
-    minimap.SetVertex(v_raw);
-    minimap.SetIndices(v_i);
-    minimap.BuildMesh();
+	// Render map
+	Render::SetTransformScreenspace();
+	Render::SetAlphaBlend(true);
+	Render::SetBackfaceCull(true);
 
-    // Render mesh
-    minimap.RenderMeshWithMaterial();
+	float[] model;
+	u16[] v_i = { 0, 1, 2, 2, 3, 0 };
+	Matrix::MakeIdentity(model);
+	Render::RawTrianglesIndexed(ZOMBIE_MINIMAP_TEXTURE, v_raw, v_i);
+
+	// Render::ClearZ();
+	// Render::SetZBuffer(false, false);
 
     // Draw blobs
     s32 world_left = map_left * map.tilesize;
@@ -419,8 +395,6 @@ void RenderMap(int id)
     }
 
     // Overlay the exploration mesh
-    v_raw_exploration.clear();
-    v_i_exploration.clear();
     u8 fade_width = EXPLORATION_WIDTH / 2;
     s32 fade_gap = EXPLORATION_WIDTH - fade_width;
 
@@ -435,8 +409,7 @@ void RenderMap(int id)
         {
             color.setAlpha(255 / fade_width * i);
             RenderRectangle(
-                v_raw_exploration,
-                v_i_exploration,
+                v_i,
                 upper_left + Vec2f(i == fade_width ? 0 : x_width - i, 0) * TILE_WIDTH,
                 Vec2f(i == fade_width ? x_width - i + 1 : 1, map.tilemapheight),
                 Vec2f(0, 0),
@@ -457,8 +430,7 @@ void RenderMap(int id)
         {
             color.setAlpha(255 / fade_width * i);
             RenderRectangle(
-                v_raw_exploration,
-                v_i_exploration,
+                v_i,
                 upper_left + Vec2f(map_width - x_width + i, 0) * TILE_WIDTH,
                 Vec2f(i == fade_width ? x_width - i : 1, map.tilemapheight),
                 Vec2f(0, 0),
@@ -468,24 +440,13 @@ void RenderMap(int id)
         }
     }
 
-    // Mesh config 
-    if (v_raw_exploration.length > 0)
-    {
-        exploration_overlay.SetMaterial(exploration_material);
-        exploration_overlay.SetHardwareMapping(SMesh::STATIC);
-        exploration_overlay.SetVertex(v_raw_exploration);
-        exploration_overlay.SetIndices(v_i_exploration);
-        exploration_overlay.BuildMesh();
-
-        // Render mesh
-        exploration_overlay.RenderMeshWithMaterial();
-    }
-
     // Draw the border
     GUI::DrawFramedPane(border_upper_left,                                             Vec2f(upper_left.x + BORDER_WIDTH / 2, border_bottom_right.y));  // Left side
     GUI::DrawFramedPane(Vec2f(bottom_right.x - BORDER_WIDTH / 2, border_upper_left.y), border_bottom_right);                                            // Right Side
     GUI::DrawFramedPane(border_upper_left,                                             Vec2f(border_bottom_right.x, upper_left.y));                     // Top
     GUI::DrawFramedPane(Vec2f(border_upper_left.x, bottom_right.y),                    border_bottom_right);                                            // Bottom
+
+	StupidRenderFix();
 }
 
 u8 getPortalFrame(CBlob@ blob)
@@ -598,20 +559,14 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
     }
 }
 
-void RenderRectangle(Vertex[]@ vertices, u16[]@ indices, Vec2f upper_left, Vec2f size, Vec2f texture_offset, Vec2f texture_size, SColor color)
+void RenderRectangle(u16[]@ indices, Vec2f upper_left, Vec2f size, Vec2f texture_offset, Vec2f texture_size, SColor color)
 {
     // Add vertices
+	Vertex[] vertices;
     vertices.push_back(Vertex(upper_left,                                 1000, texture_offset,                            color));
     vertices.push_back(Vertex(upper_left + Vec2f(size.x, 0) * TILE_WIDTH, 1000, texture_offset + Vec2f(texture_size.x, 0), color));
     vertices.push_back(Vertex(upper_left + size             * TILE_WIDTH, 1000, texture_offset + texture_size,             color));
     vertices.push_back(Vertex(upper_left + Vec2f(0, size.y) * TILE_WIDTH, 1000, texture_offset + Vec2f(0, texture_size.y), color));
 
-    // Add indices
-    u32 vertices_length = vertices.length;
-    indices.push_back(vertices_length - 4);
-    indices.push_back(vertices_length - 3);
-    indices.push_back(vertices_length - 2);
-    indices.push_back(vertices_length - 4);
-    indices.push_back(vertices_length - 2);
-    indices.push_back(vertices_length - 1);
+	Render::RawTrianglesIndexed(ZOMBIE_MINIMAP_EXPLORATION_TEXTURE, vertices, indices);
 }

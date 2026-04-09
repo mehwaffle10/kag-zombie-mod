@@ -213,8 +213,7 @@ void onRender(CRules@ this)
 	else  // No Display
 	{
 
-	}
-	
+	}	
 }
 
 void onCommand(CRules@ this, u8 cmd, CBitStream@ params)

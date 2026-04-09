@@ -1,5 +1,6 @@
 
 #include "RandomNames.as"
+#include "StupidRenderFix.as"
 
 // Renders a player list from top to bottom as far as possible from the start position
 // Renders the unclaimed list if player list is null
@@ -30,7 +31,7 @@ void DrawCharacterList(CPlayer@ player, Vec2f upper_left, u16 frame_width, bool 
 		Vec2f bottom_right = Vec2f(upper_left.x + frame_width, upper_left.y + name_box_height);
 		Vec2f name_middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 14);
 		GUI::DrawFramedPane(upper_left, bottom_right);
-		
+		StupidRenderFix();
 		// Draw as much of the name as fits
 		string name = fit_string(player !is null ? player.getUsername() : "Unclaimed", frame_width);
 		
@@ -207,6 +208,7 @@ void DrawCharacterFrame(u16 frame_width, Vec2f upper_left, f32 character_scale, 
 
 				// Draw Frame
 				GUI::DrawFramedPane(upper_left, bottom_right);
+				StupidRenderFix();
 				Vec2f middle = Vec2f((upper_left.x + bottom_right.x)/2, upper_left.y + 26);
 
 				// Draw character's sprite
