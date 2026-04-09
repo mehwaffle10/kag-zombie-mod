@@ -19,6 +19,7 @@ const string ZOMBIE_MINIMAP_FULL_LEFT_X = "zombie_minimap_full_map_left_x";
 const string ZOMBIE_MINIMAP_SECTOR_NAME = "zombies_minimap_sector_name";
 const string ZOMBIE_MINIMAP_WIDTH = "zombies_minimap_map_width";
 const string ZOMBIE_MINIMAP_EXPLORE_SYNC_COMMAND = "zombies_minimap_explore_sync";
+const string SECTOR_BORDER_CORRUPT_FLAG = "sector_border_corrupt";
 
 const u8 TILE_WIDTH = 2;          // pixels
 const u8 BORDER_WIDTH = 14;       // pixels
@@ -132,7 +133,7 @@ SColor getMapColor(CRules@ rules, CMap@ map, Vec2f world_pos, TileType tile_type
         CBlob@ border = getBlobByNetworkID(rules.get_netid(border_id));
         if (border !is null)
         {
-            color = color.getInterpolated(border.getTeamNum() == 0 ? COLOR_TEAM_BLUE : COLOR_TEAM_PURPLE, 0.5f);
+            color = color.getInterpolated(border.get_bool(SECTOR_BORDER_CORRUPT_FLAG) ? COLOR_TEAM_PURPLE : COLOR_TEAM_BLUE, 0.5f);
         }
     }
     return color;
@@ -173,6 +174,7 @@ void setSectorBorderColor(CBlob@ portal)
         }
 
 		// Update the color of the sprite
+		border.set_bool(SECTOR_BORDER_CORRUPT_FLAG, !border.get_bool(SECTOR_BORDER_CORRUPT_FLAG));
 		border.server_setTeamNum(portal.getTeamNum());
 
 		// Update the zombie minimap border colors for clients
