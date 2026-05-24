@@ -293,8 +293,6 @@ void RenderMap(int id)
 
 	// Render map
 	Render::SetTransformScreenspace();
-	Render::SetAlphaBlend(true);
-	Render::SetBackfaceCull(true);
 
 	float[] model;
 	Matrix::MakeIdentity(model);
