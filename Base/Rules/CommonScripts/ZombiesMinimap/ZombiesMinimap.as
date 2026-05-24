@@ -297,9 +297,8 @@ void RenderMap(int id)
 	Render::SetBackfaceCull(true);
 
 	float[] model;
-	u16[] v_i = { 0, 1, 2, 2, 3, 0 };
 	Matrix::MakeIdentity(model);
-	Render::RawTrianglesIndexed(ZOMBIE_MINIMAP_TEXTURE, v_raw, v_i);
+	Render::RawQuads(ZOMBIE_MINIMAP_TEXTURE, v_raw);
 
 	// Render::ClearZ();
 	// Render::SetZBuffer(false, false);
@@ -409,7 +408,6 @@ void RenderMap(int id)
         {
             color.setAlpha(255 / fade_width * i);
             RenderRectangle(
-                v_i,
                 upper_left + Vec2f(i == fade_width ? 0 : x_width - i, 0) * TILE_WIDTH,
                 Vec2f(i == fade_width ? x_width - i + 1 : 1, map.tilemapheight),
                 Vec2f(0, 0),
@@ -430,7 +428,6 @@ void RenderMap(int id)
         {
             color.setAlpha(255 / fade_width * i);
             RenderRectangle(
-                v_i,
                 upper_left + Vec2f(map_width - x_width + i, 0) * TILE_WIDTH,
                 Vec2f(i == fade_width ? x_width - i : 1, map.tilemapheight),
                 Vec2f(0, 0),
@@ -559,7 +556,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
     }
 }
 
-void RenderRectangle(u16[]@ indices, Vec2f upper_left, Vec2f size, Vec2f texture_offset, Vec2f texture_size, SColor color)
+void RenderRectangle(Vec2f upper_left, Vec2f size, Vec2f texture_offset, Vec2f texture_size, SColor color)
 {
     // Add vertices
 	Vertex[] vertices;
@@ -568,5 +565,5 @@ void RenderRectangle(u16[]@ indices, Vec2f upper_left, Vec2f size, Vec2f texture
     vertices.push_back(Vertex(upper_left + size             * TILE_WIDTH, 1000, texture_offset + texture_size,             color));
     vertices.push_back(Vertex(upper_left + Vec2f(0, size.y) * TILE_WIDTH, 1000, texture_offset + Vec2f(0, texture_size.y), color));
 
-	Render::RawTrianglesIndexed(ZOMBIE_MINIMAP_EXPLORATION_TEXTURE, vertices, indices);
+	Render::RawQuads(ZOMBIE_MINIMAP_EXPLORATION_TEXTURE, vertices);
 }
